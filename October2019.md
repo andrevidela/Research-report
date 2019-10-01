@@ -7,7 +7,8 @@
 - [x] meeting at 2pm with statebox
 - [x] compile Idris 2
   - removed network tests though
-- [ ] figure out national insurance number
+- [x] figure out national insurance number
+  - no answer, will call tomorrow
 - [x] figure out laptop + monitors (no US layout, maybe worth using a desktop instead?)
   - sent a message to Edwin, we'll see if uni makes an exception
 - [ ] fix wifi access on iPad
@@ -18,4 +19,5 @@
  
 ## 02
 
+- [ ] call to schedule application for national insurance number
 - [ ] meeting at 2pm with Edwin

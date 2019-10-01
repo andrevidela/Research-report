@@ -23,3 +23,7 @@
 - [ ] resend emails to Edwin if he didn't answer
 - [ ] call to schedule application for national insurance number
 - [ ] meeting at 2pm with Edwin
+  Topics:
+  - Idris2 from personal repo to Idris-dev?
+  - Does my case study sound like an interesting challenge?
+  - Laptop?

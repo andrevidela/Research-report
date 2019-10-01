@@ -15,8 +15,11 @@
   - I was typing the wrong password all along ;__;
 - [x] find big idris repos (potsdam repo?)
   - found IdrisLibs and Idris2libs, are there others?
-- [ ] compile them + typedefs, TParsec, Idris-CT, + all dependencies with Idris 1
-- [ ] compile them + typedefs, TParsec, Idris-CT, + all dependencies with Idris 2
+- [ ] compile them + TParsec, Idris-CT, + all dependencies with Idris 1
+  - [ ] tparsec
+  - [ ] idris-ct
+  - [ ] IdrisLibs
+- [ ] compile them + TParsec, Idris-CT, + all dependencies with Idris 2
   - probably won't work as is, but if any of them work, keep an eye on them for future benchmarks
  
 ## 02

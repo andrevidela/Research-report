@@ -15,3 +15,6 @@
 - [ ] compile them + typedefs, TParsec, Idris-CT, + all dependencies with Idris 2
   - probably won't work as is, but if any of them work, keep an eye on them for future benchmarks
  
+## 02
+
+- [ ] meeting at 2pm with Edwin

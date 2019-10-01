@@ -15,10 +15,12 @@
   - I was typing the wrong password all along ;__;
 - [x] find big idris repos (potsdam repo?)
   - found IdrisLibs and Idris2libs, are there others?
-- [ ] compile them + TParsec, Idris-CT, + all dependencies with Idris 1
-  - [ ] tparsec
-  - [ ] idris-ct
-  - [ ] IdrisLibs
+- [x] compile them + TParsec, Idris-CT, + all dependencies with Idris 1
+  - [x] tparsec
+  - [x] idris-ct
+  - [ ] IdrisLibs (compile failed)
+  
+##### delayed:
 - [ ] compile them + TParsec, Idris-CT, + all dependencies with Idris 2
   - probably won't work as is, but if any of them work, keep an eye on them for future benchmarks
  
@@ -26,6 +28,9 @@
 
 - [ ] resend emails to Edwin if he didn't answer
 - [ ] call to schedule application for national insurance number
+- [ ] compile them + TParsec, Idris-CT, + all dependencies with Idris 2
+  - probably won't work as is, but if any of them work, keep an eye on them for future benchmarks
+- [ ] find an adapt haskell examples
 - [ ] meeting at 2pm with Edwin
   Topics:
   - Idris2 from personal repo to Idris-dev?

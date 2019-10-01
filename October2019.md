@@ -12,7 +12,8 @@
 - [x] figure out laptop + monitors (no US layout, maybe worth using a desktop instead?)
   - sent a message to Edwin, we'll see if uni makes an exception
 - [ ] fix wifi access on iPad
-- [ ] find big idris repos (potsdam repo?)
+- [x] find big idris repos (potsdam repo?)
+  - found IdrisLibs and Idris2libs, are there others?
 - [ ] compile them + typedefs, TParsec, Idris-CT, + all dependencies with Idris 1
 - [ ] compile them + typedefs, TParsec, Idris-CT, + all dependencies with Idris 2
   - probably won't work as is, but if any of them work, keep an eye on them for future benchmarks

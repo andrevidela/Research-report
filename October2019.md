@@ -36,3 +36,4 @@
   - Idris2 from personal repo to Idris-dev?
   - Does my case study sound like an interesting challenge?
   - Laptop?
+  - potsdam repo?

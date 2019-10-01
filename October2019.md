@@ -8,3 +8,9 @@
 - [x] compile Idris 2
   - removed network tests though
 - [ ] figure out national insurance number
+...
+- [ ] find big idris repos (potsdam repo?)
+- [ ] compile them + typedefs, TParsec, Idris-CT, + all dependencies with Idris 1
+- [ ] compile them + typedefs, TParsec, Idris-CT, + all dependencies with Idris 2
+  - probably won't work as is, but if any of them work, keep an eye on them for future benchmarks
+ 

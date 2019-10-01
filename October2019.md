@@ -8,6 +8,7 @@
 - [x] compile Idris 2
   - removed network tests though
 - [ ] figure out national insurance number
+- [ ] figure out laptop + monitors (no US layout, maybe worth using a desktop instead?)
 ...
 - [ ] find big idris repos (potsdam repo?)
 - [ ] compile them + typedefs, TParsec, Idris-CT, + all dependencies with Idris 1

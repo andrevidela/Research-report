@@ -21,8 +21,7 @@
   - [ ] IdrisLibs (compile failed)
   
 ##### delayed:
-- [ ] compile them + TParsec, Idris-CT, + all dependencies with Idris 2
-  - probably won't work as is, but if any of them work, keep an eye on them for future benchmarks
+- compile them + TParsec, Idris-CT, + all dependencies with Idris 2
  
 ## 02
 
@@ -39,7 +38,6 @@
     - something like 10x faster than idris 1
   - [x] TParse Idris 2 branch
     - something like 4x faster than Idris1
-- [ ] find an adapt haskell examples
 - [x] meeting at 2pm with Edwin
   Topics:
   - Idris2 from personal repo to Idris-dev?
@@ -57,3 +55,15 @@
 
 - deploy infrastructure for benchmarking + see with CI
 - 2 approachs: convert programs from non linerat to linears. or design a new implementation with linear and see what happens.
+
+### delayed
+
+- find an adapt haskell examples
+
+
+## 03
+
+- [ ] find an adapt haskell examples
+- [ ] write a script that measures compilation time
+- [ ] write a script that measures run time
+- [ ] ask anton about access to arcaea again

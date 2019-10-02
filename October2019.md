@@ -27,7 +27,9 @@
 ## 02
 
 - [x] resend emails to Edwin if he didn't answer
-- [ ] call to schedule application for national insurance number
+- [x] call to schedule application for national insurance number
+  - meeting at 14:50 in Glasgow
+  - Contact Fred to see if I should visit strathclyde as well
 - [ ] compile them + TParsec, Idris-CT, + all dependencies with Idris 2
   - probably won't work as is, but if any of them work, keep an eye on them for future benchmarks
 - [ ] find an adapt haskell examples

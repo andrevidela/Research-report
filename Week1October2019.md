@@ -67,3 +67,4 @@
 - [ ] write a script that measures compilation time
 - [ ] write a script that measures run time
 - [ ] ask anton about access to arcaea again
+- [ ] scan the amazon locker at Agnes Blackadder Haugh

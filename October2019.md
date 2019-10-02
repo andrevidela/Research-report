@@ -39,3 +39,4 @@
   - Does my case study sound like an interesting challenge?
   - Laptop?
   - potsdam repo?
+  - vacation days?

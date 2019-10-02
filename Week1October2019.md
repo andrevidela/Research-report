@@ -51,7 +51,7 @@
   - potsdam repo?
     - [ ] send email to potsdam for other repos for benchmarks
   - vacation days?
-    - tell anyone
+    - tell at least someone
 
 ### next steps
 

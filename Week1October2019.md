@@ -47,3 +47,4 @@
   - Laptop?
   - potsdam repo?
   - vacation days?
+- [ ] send email to potsdam for other repos for benchmarks

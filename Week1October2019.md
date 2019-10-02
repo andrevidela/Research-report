@@ -40,11 +40,20 @@
   - [x] TParse Idris 2 branch
     - something like 4x faster than Idris1
 - [ ] find an adapt haskell examples
-- [ ] meeting at 2pm with Edwin
+- [x] meeting at 2pm with Edwin
   Topics:
   - Idris2 from personal repo to Idris-dev?
+    - dunno, maybe when it's self hosted?
   - Does my case study sound like an interesting challenge?
+    -Yay
   - Laptop?
+    - no progress
   - potsdam repo?
+    - [ ] send email to potsdam for other repos for benchmarks
   - vacation days?
-- [ ] send email to potsdam for other repos for benchmarks
+    - tell anyone
+
+### next steps
+
+- deploy infrastructure for benchmarking + see with CI
+- 2 approachs: convert programs from non linerat to linears. or design a new implementation with linear and see what happens.

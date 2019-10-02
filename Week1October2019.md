@@ -30,8 +30,15 @@
 - [x] call to schedule application for national insurance number
   - meeting at 14:50 in Glasgow
   - Contact Fred to see if I should visit strathclyde as well
-- [ ] compile them + TParsec, Idris-CT, + all dependencies with Idris 2
+- [x] compile them + TParsec, Idris-CT, + all dependencies with Idris 2
   - probably won't work as is, but if any of them work, keep an eye on them for future benchmarks
+  - [x] Idris2Libs
+    - Had to remove `-V --allow-capital-pattern-variables`
+    - stuck on `1/1: Building ..tests.Linear (./tests/Linear.idr)`
+  - [x] Idris-ct Idris2 branch
+    - something like 10x faster than idris 1
+  - [x] TParse Idris 2 branch
+    - something like 4x faster than Idris1
 - [ ] find an adapt haskell examples
 - [ ] meeting at 2pm with Edwin
   Topics:

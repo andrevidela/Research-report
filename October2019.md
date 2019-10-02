@@ -26,7 +26,7 @@
  
 ## 02
 
-- [ ] resend emails to Edwin if he didn't answer
+- [x] resend emails to Edwin if he didn't answer
 - [ ] call to schedule application for national insurance number
 - [ ] compile them + TParsec, Idris-CT, + all dependencies with Idris 2
   - probably won't work as is, but if any of them work, keep an eye on them for future benchmarks

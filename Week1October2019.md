@@ -51,10 +51,10 @@
   - vacation days?
     - tell at least someone
 
-### next steps
+### Meeting notes: next steps
 
 - deploy infrastructure for benchmarking + see with CI
-- 2 approachs: convert programs from non linerat to linears. or design a new implementation with linear and see what happens.
+- 2 approachs: convert programs from non linear to linear or design a new implementation with linear in mind and see what happens.
 
 ### delayed
 

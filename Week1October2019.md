@@ -1,8 +1,12 @@
 ## 04
 
 - [x] send email to potsdam
-- [ ] find the haskell examples
-- [ ] run them
+- [x] find the haskell examples
+  - trying out https://gitlab.haskell.org/ghc/nofib
+  - had some trouble with cabal and regex-compat
+- [ ] writes scripts for benchmark compile-time
+
+
 
 ## 03
 

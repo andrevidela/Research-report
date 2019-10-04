@@ -1,6 +1,6 @@
 ## 04
 
-- [ ] send email to potsdam
+- [x] send email to potsdam
 - [ ] find the haskell examples
 - [ ] run them
 

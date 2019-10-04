@@ -5,9 +5,17 @@
   - trying out https://gitlab.haskell.org/ghc/nofib
   - had some trouble with cabal and regex-compat
   - it works? not sure how to read output
-- [ ] writes scripts for benchmark compile-time
+- [x] writes scripts for benchmark idris-ct compile time
   - idris-ct takes forever zzzzz 
+  - result:s
+  ```
+  idris --build idris-ct.ipkg 2> /dev/null  1040.68s user 73.42s system 56% cpu 32:38.09 total
+  idris2 --build idris-ct.ipkg 2> sleep.stderr  47.78s user 6.41s system 99% cpu 54.457 total
+  ```
+  - nice x22 speedup on Idris-ct
 - [ ] check training on monday
+- [ ] answer botta about PIK and slow runtime, ask for examples
+
 
 
 

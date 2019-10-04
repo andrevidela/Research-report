@@ -14,7 +14,8 @@
   ```
   - nice x22 speedup on Idris-ct
 - [ ] check training on monday
-- [ ] answer botta about PIK and slow runtime, ask for examples
+- [x] answer botta about PIK and slow runtime, ask for examples
+  - updated thesis draft with idea for improving runtime by allowing O(1) memory allocation
 
 
 

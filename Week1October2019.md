@@ -1,28 +1,22 @@
-## 01
+## 04
 
+- [ ] send email to potsdam
+- [ ] find the haskell examples
+- [ ] run them
 
-- [x] fix cs account with new password
-- [x] figure out accomodation
-- [x] contacted health inssurance
-- [x] meeting at 2pm with statebox
-- [x] compile Idris 2
-  - removed network tests though
-- [x] figure out national insurance number
-  - no answer, will call tomorrow
-- [x] figure out laptop + monitors (no US layout, maybe worth using a desktop instead?)
-  - sent a message to Edwin, we'll see if uni makes an exception
-- [x] fix wifi access on iPad
-  - I was typing the wrong password all along ;__;
-- [x] find big idris repos (potsdam repo?)
-  - found IdrisLibs and Idris2libs, are there others?
-- [x] compile them + TParsec, Idris-CT, + all dependencies with Idris 1
-  - [x] tparsec
-  - [x] idris-ct
-  - [ ] IdrisLibs (compile failed)
-  
-##### delayed:
-- compile them + TParsec, Idris-CT, + all dependencies with Idris 2
- 
+## 03
+
+- [ ] find an adapt haskell examples
+- [ ] write a script that measures compilation time
+- [ ] write a script that measures run time
+- [x] ask anton about access to the game again
+  - Maybe once the project is better defined, might not use the name of it for the paper.
+- [x] scan the amazon locker at Agnes Blackadder Haugh
+
+#### What actually happened
+
+Wrote emails all day for law insurance and managing matters in Switerland
+
 ## 02
 
 - [x] resend emails to Edwin if he didn't answer
@@ -60,11 +54,28 @@
 
 - find an adapt haskell examples
 
+## 01
 
-## 03
 
-- [ ] find an adapt haskell examples
-- [ ] write a script that measures compilation time
-- [ ] write a script that measures run time
-- [ ] ask anton about access to arcaea again
-- [ ] scan the amazon locker at Agnes Blackadder Haugh
+- [x] fix cs account with new password
+- [x] figure out accomodation
+- [x] contacted health inssurance
+- [x] meeting at 2pm with statebox
+- [x] compile Idris 2
+  - removed network tests though
+- [x] figure out national insurance number
+  - no answer, will call tomorrow
+- [x] figure out laptop + monitors (no US layout, maybe worth using a desktop instead?)
+  - sent a message to Edwin, we'll see if uni makes an exception
+- [x] fix wifi access on iPad
+  - I was typing the wrong password all along ;__;
+- [x] find big idris repos (potsdam repo?)
+  - found IdrisLibs and Idris2libs, are there others?
+- [x] compile them + TParsec, Idris-CT, + all dependencies with Idris 1
+  - [x] tparsec
+  - [x] idris-ct
+  - [ ] IdrisLibs (compile failed)
+  
+##### delayed:
+- compile them + TParsec, Idris-CT, + all dependencies with Idris 2
+

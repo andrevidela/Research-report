@@ -4,7 +4,10 @@
 - [x] find the haskell examples
   - trying out https://gitlab.haskell.org/ghc/nofib
   - had some trouble with cabal and regex-compat
+  - it works? not sure how to read output
 - [ ] writes scripts for benchmark compile-time
+  - idris-ct takes forever zzzzz 
+- [ ] check training on monday
 
 
 

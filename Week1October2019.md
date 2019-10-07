@@ -13,7 +13,7 @@
   idris2 --build idris-ct.ipkg 2> sleep.stderr  47.78s user 6.41s system 99% cpu 54.457 total
   ```
   - nice x22 speedup on Idris-ct
-- [ ] check training on monday
+- [x] check training on monday
 - [x] answer botta about PIK and slow runtime, ask for examples
   - updated thesis draft with idea for improving runtime by allowing O(1) memory allocation
 

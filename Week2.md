@@ -27,5 +27,5 @@ I guess I read "clowns to the left jokers to the right" by McBride
 - [ ] test the benchmarks by Nicola
 - [ ] read about fibrations
 - [x] watch this Microsoft research talk about lean (https://www.youtube.com/watch?v=Dp-mQ3HxgDE)
-  - No mention of Agda or cubical type theory, might be interesting to compare lean with cubical agda
+  - No mention of Agda or cubical type theory, might be interesting to compare lean with cubical agda, specialy in terms of quotients
 - [ ] finish implementing Fibonacci etc

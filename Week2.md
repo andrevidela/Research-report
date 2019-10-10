@@ -15,3 +15,16 @@
   - port fibonacchi
   - port vector sum
   - string concatenation 
+
+## 9
+
+too sick to do anything
+
+I guess I read "clowns to the left jokers to the right" by McBride
+
+## 10
+
+- [ ] test the benchmarks by Nicola
+- [ ] read about fibrations
+- [ ] watch this Microsoft research talk about lean
+- [ ] finish implementing Fibonacci etc

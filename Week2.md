@@ -34,3 +34,8 @@ I guess I read "clowns to the left jokers to the right" by McBride
   - interestingly `(n : Nat) -> Vect n Nat` does not allocate a vector of size `n` immediately
   - only in idris2, still have to implement idris2
   - should create github repo as well
+
+## 11
+ - [x] Tried reading through algebraic types and see if there is a universal way of detecting types that can be represented with a continuous buffer in memory instead of chasing pointers.
+ - Read through Idris 2 code to see where data declaration were handled and how they were inserted in context but couldn't find anything.
+ - Interestingly this is where having a compiler written in a dependently typed language can be useful since it could allow us to write things such as "Cont" the category of containers or things like Typedefs with Pi-types which could represent all datatypes in Idris. Interestingly enough this could also be a contender to implement "derive" instead of going through elaborator reflection.

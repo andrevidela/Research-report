@@ -4,4 +4,5 @@
 - [ ] port the existing fibonacci benchmarks to Idris2
 - [ ] finish multiplication and use it as benchmark?
 - [ ] keep looking for ways to implement data declarations as Containers
-- [ ] watch javascript for idris developers
+- [x] watch javascript for idris developers
+  - hilarious, should watch it with other people too

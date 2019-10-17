@@ -30,3 +30,18 @@ time echo 8 | ./emissionsgame2fast2 3:10.961 total
 - [ ] keep looking for ways to implement data declarations as Containers
 - [x] watch javascript for idris developers
   - hilarious, should watch it with other people too
+
+## 15
+worked on typedefs and internet
+
+## 16
+
+worked on bitwise multiplication
+
+## 17
+
+- [x] read chapter 5 of Edwin's thesis
+  - should be fun to implement in Idris, we'll see if I have enough time
+- [ ] finish bitwise mutiplication
+- [ ] implement in idris 2
+- [ ] see if I can introduce linear annotations

@@ -14,3 +14,11 @@ should be enough to showcase when linearity matters or not.
 
 - [ ] start looking into how to reclaim memory when a linear value has been 
       pattern matched on.
+  - basically put logs and compiled the compiler again
+  - I should automate the running of benchmarks for each new commit
+
+## 23
+
+## 24
+
+## 25

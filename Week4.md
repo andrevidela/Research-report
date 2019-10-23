@@ -23,7 +23,7 @@ should be enough to showcase when linearity matters or not.
   - turns out public re-exports are broken in Idris1? I had to add `Control.Catchable` in `Idris/Package.idr`
   - nvm that wasn't it. I does work on the REPL but not when compiling from scratch. Might be due to some import state
     transfering over when loading multiple files in the REPL.
-  - nuking everything and rebuilding worked ¯\_(ツ)_/¯ 
+  - nuking everything and rebuilding worked ¯\\_(ツ)_/¯ 
 
 ## 24
 

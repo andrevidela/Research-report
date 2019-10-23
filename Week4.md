@@ -19,6 +19,8 @@ should be enough to showcase when linearity matters or not.
 
 ## 23
 
+- [ ] Idris2 doesn't compile? Edwin pls
+
 ## 24
 
 ## 25

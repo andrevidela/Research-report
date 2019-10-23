@@ -19,7 +19,8 @@ should be enough to showcase when linearity matters or not.
 
 ## 23
 
-- [ ] Idris2 doesn't compile? Edwin pls
+- [x] Idris2 doesn't compile? Edwin pls
+  - turns out public re-exports are broken in Idris1? I had to add `Control.Catchable` in `Idris/Package.idr`
 
 ## 24
 

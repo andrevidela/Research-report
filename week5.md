@@ -26,3 +26,9 @@ here is what's left:
 - [ ] give a target for the output
 
 
+# 30 SPLS
+
+# 31
+
+- start reading the gentle art of levitation
+- start reading those https://homepages.inf.ed.ac.uk/wadler/topics/linear-logic.html

@@ -34,3 +34,7 @@ here is what's left:
   - I think I should be able to modify Swift For TensorFloow to take any metric space instead of a euclidean space for convolution. This should allow to use not only Graph convolution networks but any other metric space with any kind of data that cannot trivially be converted to euclidean space. Moreover if we find a way to translate between graphs and euclidean spaces we can see if the same training data yields the same results depending on the metric space used.
 - start reading the gentle art of levitation
 - start reading those https://homepages.inf.ed.ac.uk/wadler/topics/linear-logic.html
+
+# 1
+
+- got heavily distracted by neural networks and urban simulation, spent the day looking at cities skyline API and how to implement CNN but abstracting over the convolution. Read https://arxiv.org/abs/1711.10455

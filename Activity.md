@@ -9,9 +9,10 @@
 
 - [x] contact package manager student to add typedefs as benchmark
   - probably not until next semester
+- [x] fixed computer
 
 # 19
 
-- [x] reading though practical 
+- [x] reading though practical levitation
 
 # 18

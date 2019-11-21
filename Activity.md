@@ -4,7 +4,13 @@
   - Add a tag to linearity 1 and then use it when pattern matching on a value 
     The pattern match will have one branch with linearity w and one branch with linearity 1, linearity 1 can do the update in-place
 - [ ] add binary math to benchmarks
+- [ ] watch "how to write a paper" from SPJ
+- [ ] finish re-reading linear haskell
 
+
+# 21
+
+rough day
 
 # 20
 

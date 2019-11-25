@@ -5,6 +5,7 @@
     The pattern match will have one branch with linearity w and one branch with linearity 1, linearity 1 can do the update in-place
 - [ ] watch "how to write a paper" from SPJ
 - [ ] finish re-reading linear haskell
+- [ ] split the PR for documentation with the WIP branch
 - Nicola 
   - [ ] test the benchmarks by Nicola (_10.10_)
 
@@ -29,6 +30,12 @@
   - idea: compose nets and compose layers, see if they give the same result, see if they commute in ther category theory interpretation
 - GNN
   - idea: abstract over the data structure used for convolution, use categorical morphisms to convert from one object to the other (derivable euclidean spaces and finite descrete graphs)
+
+# 25.11
+
+- Added a tag that tracks if a definition is unique or not.
+- wrote more documentation
+
 
 # 21.11
 

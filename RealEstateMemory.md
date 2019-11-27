@@ -75,13 +75,29 @@ universe = do
   matter <- bigBang
   objects <- createObjects matter
   earth <- indexWhere (\x => name x == "earth") object
+  let earth = globalWarming earth -- update earth in-place
+  … 
+  heatDeath -- at the end of scope, earth can be freed
+```
+
+You will note that in this example we purposely used the same identifier `earth` to indicate that we do not
+create a copy.
+
+Here is another example of what we are after:
+
+```
+universe : IO ()
+universe = do
+  matter <- bigBang
+  objects <- createObjects matter
+  earth <- indexWhere (\x => name x == "earth") object
   sun <- indexWhere (\x => name x == "sun") object
   giantRed <- age (+ 10'000'000) sun
   giantRed `engulf` earth -- 1. last referece from earth, free memory
   …
   newPlanet <- MkNewPlanet objects -- 2. reuse memory from freed earth
   …
-  heatDeath -- at the end of scope, earth can be freed
+  heatDeath
 ```
 
 In this example we observe two behaviours:
@@ -89,6 +105,43 @@ In this example we observe two behaviours:
 1. freeing memory associated to a reference _before_ the end of its scope
 2. reusing freed memory so that the memory footprint of the function stays constant during its runtime even 
    though objects are being allocated and freed.
+
+An astute reader will probably have realized that both those problem are really similar, indeed one could
+interpret the first one as a special case of the second:
+
+```
+universe : IO ()
+universe = do
+  matter <- bigBang
+  objects <- createObjects matter
+  earth1 <- indexWhere (\x => name x == "earth") object
+  -- last use of `earth1`, reclaim its memory and use it to put `earth2` there instead
+  let earth2 = globalWarming earth1 
+  … 
+  heatDeath
+```
+
+However the memory impact is very different. In this case, we do a `free` and `malloc` operation in succession
+but simply changing some values in the middle of a memory buffer would be equivalent.
+
+Each approach has different trade-off, in-place memory updates are a lot more efficient than `free` and `malloc`.
+However being able to track freed memory and allocate new objects in previously. However in-place memory updates
+are not always possible take this example
+
+```
+allocateList : Nat -> List Objects
+allocateList size = let object = operation size
+                        moreObjects = moreOPeration object -- last use of object, free
+                        evenMore = keepOperating moreObjects -- alst use of `moreObjects`, free
+                        ls = createList evenMore -- reuse the memory freed by `object` and `evenMore`
+                        ls
+```
+
+In this example we have no information about the memory footprint of `object` and `moreObjects`. However, we know
+that whatever space they occuped we can reuse for `ls`. (note: This example is bad because `object` and `moreObjects`
+would be allocated on the stack and `ls` on the heap so they don't share the same memory region, we should fix this
+example with one that doesn't have this problem)
+
 
 ## Detecting unique usage
 

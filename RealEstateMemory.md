@@ -162,6 +162,7 @@ data Uniqueness =
     NotUnique
 ```
 
+This is eerily similar to the semiring we use for linearity which 
 
     
     
@@ -224,6 +225,33 @@ unconclusive.
 The second drawback turn out to be extremely simple to solve: Purely functional program cannot create cyclic data
 structures to begin with so the point is moot. It is true that with careful use of escape hatches it is possible
 (IORef and the like) but in the general case cyclicity is not a concern.
+
+We believe our existing implementation can be extended to support reference counting by replacing our `Uniqueness`
+type by a simpler one but that carries more information:
+
+```
+RefCount : Type
+RefCount = Maybe Nat
+
+isUnique : RefCount -> Bool
+isUnique (Just 1) = True
+isUnique _ = False
+
+isErased : RefCount -> Bool
+isErased (Just 0) = True
+isErased _ = False
+
+increment : RefCount -> Refcount
+increment (Just n) = Just (S n)
+increment Nothing = Just (S Z)
+```
+
+Here RefCount is just an alias for `Maybe Nat` where the `Nothing` case represens a lack of information about the
+reference count and the `Just` case represents the number of references pointing to that definition.
+
+`isErased` is called like so because of how it interacts with `0` linearity annotations, a `0` linearity definition
+will never be allocated and therefore its Refcount will always be `0`, `0` linearity annotation are interprested as
+erased types at runtime.
 
 # Conclusion
 

@@ -31,6 +31,15 @@
 - GNN
   - idea: abstract over the data structure used for convolution, use categorical morphisms to convert from one object to the other (derivable euclidean spaces and finite descrete graphs)
 
+# 27.11
+
+- started watching how to write a great research paper by SPJ
+- started working on an outline for the memory-reclaim paper
+
+# 26.11
+
+- keep going through the codebase, maybe `GlobalDef` wasn't the right choice?
+
 # 25.11
 
 - Added a tag that tracks if a definition is unique or not.

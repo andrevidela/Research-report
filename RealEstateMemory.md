@@ -145,6 +145,27 @@ example with one that doesn't have this problem)
 
 ## Detecting unique usage
 
+Rust _CHEATS_ and everything is unique provided it's not _lent_ to a function that _borrows_ it. Identifiers cannot
+be aliased and usage is tracked around with _lifetimes_ and careful control flow analysis. This puts Rust in another
+_linear category_ of uniqueness type. Our type system, QTT does not say anything about uniqueness, it is then our
+responsibility to carefully construct and study situations where uniqueness can be inferred and/or enforced. 
+
+To this end we've added a new `uniqueness` tag to each definintion  which has 3 states
+
+```
+data Uniqueness = 
+    ||| More analysis is required
+    NotSure |
+    ||| This definition is unique
+    Unique |
+    ||| This definition has been shared
+    NotUnique
+```
+
+
+    
+    
+
 ## What do we expect to gain?
 
 
@@ -180,6 +201,29 @@ why?
 - Because we made a mistake in our implementation?
 - Because our theoretical model is incomplete or too weak?
 - Because 
+
+# Further work
+
+## Uniqueness and ARC
+
+Reference counting and automatic reference counting are mechanisms for automatic "garbage collection" (in the sense
+that is frees garbage from the heap), they rely on compile-time analysis to insert `free` or `alloc` operations as
+well as `refcount += 1` or `refcount -= 1` at runtime. Those operations allow to defer memory analysis to compile-time
+rather than runtime, making the runtime more predictible by avoiding reliance on "GC Pauses" where the runtime is 
+stopped until the garbage collector mechanism is done sweeping the runtime memory.
+
+ARC suffers from two big drawbacks however:
+
+- it still adds some runtime cost (albeit constant) by inserting those increment and decrement operation
+- Cyclic data structures cannot be modeled.
+
+Nevertheless we believe we can solve the first issue with careful analysis of the control flow helped by linear
+annotation. Indeed, the literature for how ARC and linearity are related is sparse and the implications are still
+unconclusive.
+
+The second drawback turn out to be extremely simple to solve: Purely functional program cannot create cyclic data
+structures to begin with so the point is moot. It is true that with careful use of escape hatches it is possible
+(IORef and the like) but in the general case cyclicity is not a concern.
 
 # Conclusion
 

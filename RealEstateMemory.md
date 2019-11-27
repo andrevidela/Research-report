@@ -44,9 +44,6 @@ bake flour water = do
   pure bread
 ```
 
-
-
-
 There is only 1 earth.
 
 ```
@@ -58,7 +55,7 @@ globalWarming = record { temperature $= (+ 5)
 ```       
 
 In this paper we are going to inspect the last case.  How can we detect that a reference is unique and can therefore
-be updated in-place _or_ deleted after its use. For example
+be updated in-place _or_ deleted after its use. Let us start with a very traditional example
 
 ```
 universe : IO ()
@@ -66,10 +63,32 @@ universe = do
   matter <- bigBang
   objects <- createObjects matter
   earth <- indexWhere (\x => name x == "earth") object
-  … -- whatever happens here we neve alias earth again
+  … 
   heatDeath -- at the end of scope, earth can be freed
 ```
-  
+
+After `heatDeath`, `earth` and all other local variable should be freed. However could we do the following?
+
+```
+universe : IO ()
+universe = do
+  matter <- bigBang
+  objects <- createObjects matter
+  earth <- indexWhere (\x => name x == "earth") object
+  sun <- indexWhere (\x => name x == "sun") object
+  giantRed <- age (+ 10'000'000) sun
+  giantRed `engulf` earth -- 1. last referece from earth, free memory
+  …
+  newPlanet <- MkNewPlanet objects -- 2. reuse memory from freed earth
+  …
+  heatDeath -- at the end of scope, earth can be freed
+```
+
+In this example we observe two behaviours:
+
+1. freeing memory associated to a reference _before_ the end of its scope
+2. reusing freed memory so that the memory footprint of the function stays constant during its runtime even 
+   though objects are being allocated and freed.
 
 ## Detecting unique usage
 

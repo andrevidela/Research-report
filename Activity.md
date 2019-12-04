@@ -33,6 +33,7 @@
 # 04.12
 
 - [x] read little typer chapter 1
+- [x] read little typer chapter 2
 
   
 # 02.12

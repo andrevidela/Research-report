@@ -30,6 +30,10 @@
 - GNN
   - idea: abstract over the data structure used for convolution, use categorical morphisms to convert from one object to the other (derivable euclidean spaces and finite descrete graphs)
   
+# 05.12
+
+- [x] read chapter 4
+  
 # 04.12
 
 - [x] read little typer chapter 1

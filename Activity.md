@@ -1,8 +1,6 @@
 # TODO
 
-- [ ] find a way to detect uses of linearity 1 and then deallocate them
-  - Add a tag to linearity 1 and then use it when pattern matching on a value 
-    The pattern match will have one branch with linearity w and one branch with linearity 1, linearity 1 can do the update in-place
+
 - [ ] finish re-reading linear haskell
 - [ ] split the PR for documentation with the WIP branch
 - Nicola 
@@ -33,6 +31,8 @@
 # 05.12
 
 - [x] read chapter 4
+- [x] find a way to detect uses of linearity 1 and then deallocate them
+  - im just gonna use let!
   
 # 04.12
 

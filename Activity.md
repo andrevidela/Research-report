@@ -30,7 +30,7 @@
   
 # 05.12
 
-- [x] read chapter 4
+- [x] read little typer chapter 4
 - [x] find a way to detect uses of linearity 1 and then deallocate them
   - im just gonna use let!
   

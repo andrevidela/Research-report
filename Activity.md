@@ -28,6 +28,14 @@
 - GNN
   - idea: abstract over the data structure used for convolution, use categorical morphisms to convert from one object to the other (derivable euclidean spaces and finite descrete graphs)
   
+# 06.12
+
+- got the uni laptop, started setting it up but I don't have access to the firmware password so I can't boot in recovery mode or on a usb-stick
+- meeting with edwin, new ideas about how to go about implementing in-place updates
+- might try to see if there is a bug with dependent function types getting eroneously erased when they shouldnt
+  - I should write a test case
+  - I should see what happens if I delete the line
+  
 # 05.12
 
 - [x] read little typer chapter 4

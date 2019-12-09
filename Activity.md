@@ -25,9 +25,14 @@
     - [ ] cleanup the garbage nicely
 - Fractal nets
   - idea: compose nets and compose layers, see if they give the same result, see if they commute in ther category theory interpretation
+  - look into http://events.cs.bham.ac.uk/syco/6/
 - GNN
   - idea: abstract over the data structure used for convolution, use categorical morphisms to convert from one object to the other (derivable euclidean spaces and finite descrete graphs)
   
+# 9.12
+
+- [x] setup uni laptop
+- [ ] try to fix the compile errors due to the new tag
 # 06.12
 
 - got the uni laptop, started setting it up but I don't have access to the firmware password so I can't boot in recovery mode or on a usb-stick

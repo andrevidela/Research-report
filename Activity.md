@@ -29,6 +29,14 @@
 - GNN
   - idea: abstract over the data structure used for convolution, use categorical morphisms to convert from one object to the other (derivable euclidean spaces and finite descrete graphs)
   
+# 08.01
+
+back in business
+- [x] tried to setup streaming
+
+------------------------ 2020------------------------
+
+
 # 15.12
 
 - test fail due to corrupt TTC, whut?

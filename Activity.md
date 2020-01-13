@@ -30,6 +30,12 @@
   - idea: abstract over the data structure used for convolution, use categorical morphisms to convert from one object to the other (derivable euclidean spaces and finite descrete graphs)
   
   
+# 10.01
+
+- streamed again
+- [x] make cosmetic PR
+
+  
 # 09.01
 
 - [x] started streaming

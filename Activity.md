@@ -29,6 +29,10 @@
 - GNN
   - idea: abstract over the data structure used for convolution, use categorical morphisms to convert from one object to the other (derivable euclidean spaces and finite descrete graphs)
   
+# 13.01
+
+- streamed again
+- started looking into erasing of pi types
   
 # 10.01
 

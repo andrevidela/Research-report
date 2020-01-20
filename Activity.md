@@ -1,6 +1,7 @@
 # TODO
 
-
+- [ ] write a tool that measures compile time between two commits of idris2
+- [ ] write a tool that measute compile time of prelude in idris2 using 2 commits of idris2
 - [ ] finish re-reading linear haskell
 - [ ] split the PR for documentation with the WIP branch
 - Nicola 

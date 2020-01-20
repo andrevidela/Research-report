@@ -36,6 +36,7 @@
 - put a reminder to fill up this page
 - finished my research proposal
 - streamed ep 3
+  - worked some more on pattern matching on function types.
 
 # 13.01
 

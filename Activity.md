@@ -29,8 +29,14 @@
   - look into http://events.cs.bham.ac.uk/syco/6/
 - GNN
   - idea: abstract over the data structure used for convolution, use categorical morphisms to convert from one object to the other (derivable euclidean spaces and finite descrete graphs)
+
+# 21.01 break day
   
   
+- watched modalities in type theory  http://youtu.be/SLJDwhRg5Yk
+- watched ordinal notations in agda  https://youtu.be/Rt2OrG3IHkU
+- rewatched quantitative type reasoning in granule  https://youtu.be/2HOtpcrmXMQ
+
 # 20.01
 
 - put a reminder to fill up this page

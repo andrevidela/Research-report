@@ -1,5 +1,7 @@
 # TODO
 
+- [ ] fix version number on idris makefile
+  - when you compile idris with `make idris2` and then compile again, but from another commit. The new binary is indeed compiled but it retains its old version number.
 - [ ] write a tool that measures compile time between two commits of idris2
 - [ ] write a tool that measute compile time of prelude in idris2 using 2 commits of idris2
 - [ ] finish re-reading linear haskell

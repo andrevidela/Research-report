@@ -33,6 +33,11 @@
 - GNN
   - idea: abstract over the data structure used for convolution, use categorical morphisms to convert from one object to the other (derivable euclidean spaces and finite descrete graphs)
   
+# 31.1
+
+- streamed ep 8
+- [x] gave a go to replace the logging into its own file but that wouldn't actually give us any benefits since it depends on `Session` `Ctxt` and `Refs` which are all defined in `Context` and `Options`, which means we can't import `Logging` from `Context` anyways since `Logging` would have to import `Context`. The solution would be to split again the file into `Context.Data` where all the data types live but that would make a much bigger diff that what was intended. This is particularly problematic for the self-hosting efforts
+  
 # 28.1
 
 very refreshed from the break!

@@ -32,6 +32,17 @@
   - look into http://events.cs.bham.ac.uk/syco/6/
 - GNN
   - idea: abstract over the data structure used for convolution, use categorical morphisms to convert from one object to the other (derivable euclidean spaces and finite descrete graphs)
+
+
+# 04.02
+
+- almost fixed that versio nnumber issue, lots of recompiles
+
+# 03.02
+
+- streamed ep 9
+- started looking into that version number thing again
+  
   
 # 31.1
 

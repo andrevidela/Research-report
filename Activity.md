@@ -33,6 +33,10 @@
 - GNN
   - idea: abstract over the data structure used for convolution, use categorical morphisms to convert from one object to the other (derivable euclidean spaces and finite descrete graphs)
 
+# 09.02
+
+- went back to using rig type as a value on the context record
+
 # 08.02
 
 - tried to put the rigcount as a type parameter but its starting to contaminate everything. Maybe I should put it as a value in `Context` to avoid the spreading of the disease. This might also make it more flexible if I want to bring a semiring from the user program.

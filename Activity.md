@@ -33,6 +33,11 @@
 - GNN
   - idea: abstract over the data structure used for convolution, use categorical morphisms to convert from one object to the other (derivable euclidean spaces and finite descrete graphs)
 
+#10.02
+
+- stream 11
+- little typer
+
 # 09.02
 
 - went back to using rig type as a value on the context record

@@ -36,7 +36,7 @@
 # 16.01
 
 - streaming ep 15
-- removing more rig stuff, getting close, maybe I should start updating the parser to parse intervals
+- Finished removing RigCount constructors
 
 # 15.01
 

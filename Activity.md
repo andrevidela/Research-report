@@ -33,6 +33,15 @@
 - GNN
   - idea: abstract over the data structure used for convolution, use categorical morphisms to convert from one object to the other (derivable euclidean spaces and finite descrete graphs)
 
+# 16.01
+
+- streaming ep 15
+- removing more rig stuff, getting close, maybe I should start updating the parser to parse intervals
+
+# 15.01
+
+- keep working on removing rig, tried to add a new view with dependent interface but it didn't work
+
 # 11.01
 
 - keep working on removing rig and adding ranges as semiring

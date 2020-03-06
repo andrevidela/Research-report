@@ -1,5 +1,6 @@
 # TODO
 
+- [ ] data con rig count?
 - [ ] fix c issue
 - [ ] fix version number on idris makefile
   - when you compile idris with `make idris2` and then compile again, but from another commit. The new binary is indeed compiled but it retains its old version number.

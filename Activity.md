@@ -1,6 +1,6 @@
 # TODO
 
-- [ ] fix file read error on compiling the prelude
+- [ ] fix c issue
 - [ ] fix version number on idris makefile
   - when you compile idris with `make idris2` and then compile again, but from another commit. The new binary is indeed compiled but it retains its old version number.
 - [ ] write a tool that measures compile time between two commits of idris2
@@ -33,16 +33,22 @@
 - GNN
   - idea: abstract over the data structure used for convolution, use categorical morphisms to convert from one object to the other (derivable euclidean spaces and finite descrete graphs)
 
-# 16.01
+# 06.03
+
+- [x] fix file read error on compiling the prelude
+  - fixed an issue with `sed` on mac os but there is another problem with the c RTS file
+
+
+# 16.02
 
 - streaming ep 15
 - Finished removing RigCount constructors
 
-# 15.01
+# 15.02
 
 - keep working on removing rig, tried to add a new view with dependent interface but it didn't work
 
-# 11.01
+# 11.02
 
 - keep working on removing rig and adding ranges as semiring
 

@@ -1,7 +1,5 @@
 # TODO
 
-- [ ] data con rig count?
-- [ ] fix c issue
 - [ ] fix version number on idris makefile
   - when you compile idris with `make idris2` and then compile again, but from another commit. The new binary is indeed compiled but it retains its old version number.
 - [ ] write a tool that measures compile time between two commits of idris2
@@ -37,6 +35,8 @@
 # 08.03
 
 - [x] add rigcount to datacon and DCon
+- [x] fix c issue
+  - actuall commenting out SEL works 
 - [ ] write small example where it matter
 - [ ] make the change to avoid copies when the rigcount = Rig1
 - [ ] get the rigcount from the parser when using letbindings

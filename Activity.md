@@ -40,6 +40,26 @@
 - [ ] benchmark without the change
 - [ ] benchmark with the change
 
+## Why does
+
+this work
+```idris
+compute : Vect (S (S (S Z))) Int
+compute = let 1 (x :: xs) : Vect (S (S (S Z))) Int = [1,2,3] in
+              4 :: xs
+```
+
+but not
+
+```idris
+vectTail : (1 v : Vect (S n) a) -> Vect n a
+vectTail (x :: xs) = xs
+compute : Vect (S (S (S Z))) Int
+compute = let 1 (x :: xs) : Vect (S (S (S Z))) Int = [1,2,3]
+              1 v2 = 4 :: (vectTail xs) in
+              v2
+```
+              
 # 08.03
 
 - [x] add rigcount to datacon and DCon

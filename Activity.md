@@ -35,6 +35,7 @@
 # 13.03
 
 - [x] write small example where it matter
+- [ ] detect when the binding is Rig1
 - [ ] make the change to avoid copies when the rigcount = Rig1
 - [ ] get the rigcount from the parser when using letbindings
 - [ ] benchmark without the change

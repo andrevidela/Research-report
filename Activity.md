@@ -32,6 +32,14 @@
 - GNN
   - idea: abstract over the data structure used for convolution, use categorical morphisms to convert from one object to the other (derivable euclidean spaces and finite descrete graphs)
 
+# 08.04
+
+after finishing up the PR about Rigcount here is what I discovered:
+
+- `if isErased rig then erased else top` appears, very often, why? Is there a common pattern that would allow us to understand why its necessary
+- the `combine` rule in `ProcessDef` is extremely complex, why? `combine l r = if l |+| r == top && not (isErased $ l `glb` r) && (l `glb` r) /= top`
+- Preorder for now isn't very different from Ord. But I think we should keep it since it's what allows us to use ranges
+
 # 13.03
 
 - [x] write small example where it matter

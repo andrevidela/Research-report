@@ -1,106 +1,128 @@
-# Compiling linear types
+# Linear types and performance
+
+## removing RigCount in favor or a generic semigroup with pre-order relation
 
 
-## Memory layout
+One of the first steps into using linearity for performance improvement and memory analysis was to expand the linearity checking to use a _generic_ defitinion of linearity annotation instead of the traditional one `0` `1` `\omega`.
 
-### Linarize memory representation of datatypes such as Vect n a
+Indeed the compiler is (was) using a data type of three values in order to represent linearity annotations, this data type was then pattern matched-on and analysed during linearity checking in order to compile and check when and if linearity annotation of different bound variables was consistent. However this technique, while intuitive and effective, did not allow room for experimentation using different semirings other than 0, 1 and \omega. 
 
-can we use linear types to predict memory layout at compile time in order to avoid needles memory fragmentation
-and allow constant time access to objects in memory 
+The first step was then to get rid of `RigCount` and replace it by a type variable that is constrained by a verified semiring interface
 
-#### Unorganised notes:
+```
+interface Semiring a where
+    |+| : a -> a -> a
+    |*| : a -> a -> a
+    plusNeutral : a
+    timesNeutral : a
+```
 
-I was reading “clowns on the left, jokers on the right” from McBride while I was deliriously feverish this week, and in this paper datatypes are builts with “algeraic containers” such that it is possible to define a tail-recurssive catamorphism/traversal of them, regardless of their structure. This property emerges by construction.
+This definition entirely encapsulates the necessary information to define a semi-ring along with its proofs. As such, RigCount can be reinstated and used as typealias for a new type `data ZeroOneOmega = Zero | One | Omega` which follows the same semantics as the old RigCount but now using Our semiring definition.
 
-Looking at more examples of datatypes that are _not_ optimised correctly (like Vect, Fin, Elem) I noticed the following pattern
+Interestingly enough. THis is not enough. Though QTT does not require an ordering on the linearity annotations. Pattern matching on them poses a challenge that cannot be solved without using an ordering relation on the linearity values. Thankfully this has already been noticed and fixed in Granule as mentionned in it founding paper [reference to granule] in which the linearity annotation (there called graded parameter) is a pre-ordered semi-ring. the ordering allows to combine multiple semiring values together which is exactly what we need to do for pattern matching: attemping to merge the values together and error if they are not compatible with each other.
 
- 9 -- should automatically optimize as int
-10 data Fin : Nat -> Type where
-11   FZ : Fin (S n)
-12   FS : Fin n -> Fin (S n)
-13
-14 -- should automatically optimize as a buffer of n elements of `a`
-15 data Vect : (n : Nat) -> Type -> Type where
-16   Nil : Vect Z a
-17   (::) : a -> Vect n a -> Vect (S n) a
-18
-19 -- should automatically erase the vector and optimise as `struct { void * a; int index; }`
-20 data Elem : (a : Type) -> (vs : Vect n a) -> Type where
-21   Here : Elem x (x :: xs)
-22   There : Elem x xs -> Elem x (y :: xs)
+Finally, the last addition, Idris uses the assumption that by default, variables are bound with an _unchecked_ linearity annotation. This behaviour is translated by the property that an unchecked linearity value is trivially compatible with every other value. In therms of our pre-ordered semiring, this is equivalent to a `top` value that is defined for every element in the preorder and for which every value is smaller than `top`.
 
-they can all be represented with a `mu` container with a unit, summed with a product, something like: `type a = mu (1 + (a * rec))` (I’m going to use `rec` to refer to the recursive reference to the mu)
-
-Our cases are a bit more complicated because McBride doesn’t have dependent pairs in this algebra. But assuming we could add dependent pairs, I conjecture that every type of the shape
+This replacement of linearity variables has also surfaced a lot of patterns in the existing implementation that are curious and not yet understood like
 
 
-`nat= mu (Z : 1 + (S :  rec))`
-`Fin index = mu (FZ : (n ** rec (S n)) + (FS: rec n ** rec (S n))`
-`List a = mu (Nil : 1 + (Cons : a * rec a ** rec a)`
-`Vect Nat a = mu (Nil : Vect Z a) + (Cons : a * rec n a ** rec (S n) a)`
+```
+if isErased x then erased else top
+```
 
-You will notice they all share the same structure:
+can also be implemented with
 
-`type index a = mu (Inital : (k : index ** rec k a) + (someValue : a * someRecursive: type k a ** rec (f k) a)`
+```
+x |*| top
+```
 
-so much so that you can rewrite all the examples as
+Since `Zero` times `top`equals `Zero` (thanks to the properties of our Semiring, top has no particular meaning regarding traditional arithmetic where top would be considered to be "infinite" and multiplying zero and infinity would not be defined) this multiplication is equivalent to the previous `if`-statement, however, the semantics associated with it are different. In QTT the multiplication is only used to update the context in order to account for a tensor operation that introduces `n` new copies (I think ? I'm saying that from memory I need to check again). However, in the idris compiler this if-statment is only used ad-hoc to update some local state about the current linearity values of what is being compiled. Sometimes this state isn't even carried over to the rest of the compilation. It is unclear if this behaviour is epxected or if it is symptomatic of a hole in the theory or implementation.
 
-`nat = type () ()`
+## Merging QTT And graded parameterised monads
 
-`fin = type Nat ()`
+QTT uses a semiring in order to describe linearity of bound variables. This original implementation of QTT in Idris2 used a 0, 1, omerga semiring with additoin, multiplication, zero, and one as neutral and omega as the default linearity. 
 
-`list = type () var` // var means free type variable
+However there is technically nothing preventing us, in principle, from replacing this semiring by something else. Ideally we should be able to use other semiring snad get different semantics. Like graded modalities for nat, or affine semantics for intervals. 
 
-`vect = type Nat var`
+While this sounds doable in theory, the practice shows that we need more than a semiring in order to implement a programming language such as idris on top of QTT. Features like Pattern matching, implicit binding of variable, linearity inference,  all require more information than a semiring provide. That is why we actually need a bounded semilattice in our impleemntation, the upper bound serves as our "default" (very permissible linearity) and the ordering allows to combine values with different linearities when matching over them.
 
-As you can see the first two should be expected to be optimized as `int` and the later two could be optimized into linear buffers.
+A program working with quantitative type theory can also be defined as an object in the category of _quantitative Categories with families_ which objets are categories themselves. Programs are morphisms within it. A program in a language such as granule is also an object in a category but in the category of graded monads. finding a functor between the two would provide a way to convert from one language to the other. A bijective functor would prove that they actually support the same feature set.
 
-Here is where the madness happens:
+If such a functor doesn't exist there might be a product category that has two projections (are they forgetful functors?), one for graded monads and one for QCwF which unifies the two theories.
 
-`matrix m n a = vect m (vect n a)`
+## Expanding the semantics of linearity to re-introduce Exponentials
 
-should itself be linearized into a buffer of `n * m` elements using the fact that each element of the outer vector contains a linearized buffer of `n` elements so as long as index can be “linearized” into an int and the content can be linearized into a continuous buffer the whole can be linearised into a buffer.
+Using 0 1 and omega as linearity annotation is a fine idea in itself but brings up a set of new challenges: What about programs which _want_ to be linear (for performance reason) but cannot because they don't have a linear usage of variables.
+
+one way to fix this issue is to re-introduce exponentials but with 0,1, omega as linearity annotation we cannot introduce them at all! indeed, increasing the bound of a 0 term will break things (I think? I need to check, but intuitively it seems the semantics of an erased value do not play well with exponentials since suddenly the variable isn't erased anymore) and inceasing the bound of 1 doesn't go anywhere, omega cannot be used as a valid since it means "unchecked", anything goes. we need somehting akin to girard's bounded linear logic where the exponential is defined in terms of a finite bound. For that we are going to make use of our removal of RigCount and use Nat with an infinite bound as our new semiring. Our pre-order is the order on Nat. Our top value is the infinite value, 0 and 1 stay the same, addition and multiplication are the ones defined on Nats. 
+
+With this new semiring we can equip our calculus with a new constructor for exponentials using values of the semiring that aren't 0, aren't top and do not result in top when added together.
+
+```
+let 1 v = 4
+    3 increase = exp 2 v in f v -- where f uses its argument three times
+```
+
+that is now we can, given a value in our semiring, increase the bound of our linearities without breaking the contract that they will be used exactly the number of times advertised.
+
+## Exponentials and ranges
+
+Another semiring we can use now are intervals, or ranges. This semiring allows us to recover affine semantics in our linearity annotations, indeed a variable with linearity `[0..1]` can be used 0 or 1 time but there is no way to know which one it will be until we run the program. combining ranges with our previous semiring we get a large spectrum of modalities that can describe our programs things like [0..w], [4..6] [1..2] all become possible.
+
+## remaining limitations
+
+despite this progress in expressivity we stil haven't tacked some important challenged with linear types. While playing with the semiring is useful, we still don't have a good solution for interacting between term and type level, this shows up in two crucially missing features
+
+### Parametric linearity
+
+Sometimes linearity is too restrictive, specially for library users. Someone might want to use a library which features linearity but their own code is not written in linear style. As of today this makes the entire library unusable since the compiler will, unsuccessfully, try to merge unchecked linearities with rigid ones, which will result in an unfixable type error for our user.
+
+One solution would be to relax the linearity merging rules but this might introduce unsoundness in the calculus, or ruin our efforts at opimisation since now, sometimes linear typing behaves with the expected performance guarantees, but sometimes, when the arguments given aren't linear, it does not.
+
+Another one, which is one that _linear haskell_ has been using, is to use parametricity in the linearity of functions exposed by the compiler. 
+
+
+```
+maybeLinear : forall l . (a -o_l b) -o a -o_l b 
+```
+
+this function might be trivial but it clearly exposes that _if_ the function passed in is linear, then everything is linear. If the function passed in argument has no guarantees, then we do not know what is going on with a and b.
+
+Technically speaking, as pragmatic compiler designers, we could simply synthesize non-linear versions of each linear functions so that users who are un-interested in linearity can still use them. However this does not entirely solve the problem as there exists functions which are partially linear and partially parametric. This brings us to our second problem
+
+### Allowing type indices to interact with linearity
+
+Dependent types are extremely useful when used in conjunction with data types in order to restrict some values or semantics about them. parameterising a datatype at the type level in order to restrict the values it can take is commonly referred to as _indexing_, where the type parameter is the _index_ of the datatype. Granule already allows a great deal of interaction between type indices and linearity, however this is allowed by a fundamental difference between type-level and term-level definitions. Term-level values are not allowed to show up as linearity annotations in Granule. While this restriction should also apply for Idris, it is impossible to check for, indeed, thanks to the flexibility of dependent types, one is unable to tell if a value comes from the term-level or the type level.
+
+However there is hope. We might be able to restrict type-level interaction to erased types (just like is already the case with general type-level computation) but only when interacting with Nat types, or `Nat`-like types, which brings us to our third limitation
+
+### Allow user-defined semirings to be used in the type-checking mechanism
+
+While intervals provide a great deal of expressivity, they do not encapuslate the entire realm of possible programs out there. While it is true that our goal is to restrict the amount of possible programs that are _correct_ we also want to allow _new ways_ of expressing the correctness of your programs. Dependent types are a step in that direction, linear type are another, allowing user-defined semirings to be used by the type checked in order to enforce invariants that only users can predicts would be a step equivalent in complexity and in power as the one from hindley-milner to Martin-lof dependent types. Suddenly, values that were only handled by the user can also be used by the compiler and this now provide new ways of checking for invariants. Granule shares this goal of allowing user-defined linearities but hasn't implemented it as of yet. There is no doubt that such a feature will exist at some point in the future, we just need more time to figure out the details, because now both type checking and linearity checking are dependent.
+
+One typical example of how this would be useful is in access restriction of variables, imagine a semring with values `Public`, `Private`, `Anything` where private values cannot be exposed through the api (think about cryptographic secrets, tokens, identities) but public ones can, programs have to juggle private and public data but never _leak_ any private data. using a non-linear type system it would be trivial to accidentally write
+
+```
+leak : (public : Int) -> (private : Int) -> Int
+leak pub priv = priv `mod` pub
+```
+
+where the private key is leaked simply by calling this function with `1` as its first argument
+
+however with the signatures
+```
+mod : (Public a b : Int) -> Int
+
+leak : (Public pub : Int) -> (Private priv : Int) -> Int
+leak pub priv = priv `mod` pub -- compile error
+```
+
+would result in a compile error since the private key is used as a public field
+
+## Further reserach
+
+Implementing those features, and even implementing the one that are in the "currenlty" missing section will bring up a lot more questions about dependent and linear programming, notably in the areas of programming erogonomics, type driven developement, computer security, compiler safety, compile types, performance, ease of use, error handling, compiler diagnostics, error message and program debugging. While those areas are all fascinating in themselves you will understand why I chose to merely stick with linear type semantics and performance.
 
 
 
-## runtime case study: C++ parser
-
-### Idris 1 implementation
-
-#### runtime
-
-#### discussion
-
-### Idris 2 implementation
-
-#### runtime
-
-#### discussion
-
-## runtime case study IdrisLibs
-
-### Idris 1
-
-#### runtime
-
-#### discussion
-
-### Idris2
-
-#### runtime
-
-#### discussion
-
-## compile time case study: Typedefs
-
-### Idris 1
-
-#### compile time
-
-#### discussion
-
-### Idris 2
-
-#### compile time
-
-#### discussion
+Currently, there is no way to interact with linearity annotation outside of writing them now manually 

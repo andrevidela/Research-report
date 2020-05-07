@@ -2,26 +2,38 @@
 
 ## Table of content
 
+
+- Literature review
 - What are linear types
-    - linear types in Idris2
+	- linear types in Idris2
 - How can we use them for performance
 - The work I did
-    - Replacing RigCount
-    - Introducing Nats
-    - Introducing ranges
+	- Replacing RigCount
+	- Introducing Nats
+	- Introducing ranges
 - The Theory
-    - Merging QTT and Graded monads
-    - Co-effects in the type system
-    - Lol pattern matching and holes
-    - Exponentials and memory management
+	- Merging QTT and Graded monads
+	- Co-effects in the type system
+	- Lol pattern matching and holes
+	- Exponentials and memory management
 - Future work
-    - Reference counted runtime
-    - linear stream fusion?
-    - Linear inference, parametrisation, ergonomics?
-    - Error management, exceptions and control flow?
-    - Programmin security, encoding language features at the type level
-    - Allowing merging of user-defined linearity semirings
-    
+	- Reference counted runtime
+	- linear stream fusion?
+	- Linear inference, parametrisation, ergonomics?
+	- Error management, exceptions and control flow?
+	- Programmin security, encoding language features at the type level
+	- Allowing merging of user-defined linearity semirings
+
+## Literature review
+  
+- linear logic
+- Bounded linear logic
+- deforestation
+- linear types can change the world + is there a use for linear logic
+- QTT
+- Granule
+- Reference COunting as a Computational Interpretation of LInear logic
+- Counting immutable beans
 
 ## What are linear types
 
@@ -41,35 +53,31 @@ But this great improvement in flexibility has a lot of costs, most importatnly f
 
 Typically this program:
 
-```
-length : Vect n a -> Nat
-length _ {n} = n
-
-isEven : Nat -> Bool
-isEven Z = True -- zero is even
-isEven (S Z) = False -- one is not
-isEven (S n) = not $ isEven n -- is the precedessor is even the successor isn't
-
-isEvenVect : Vect n a -> Bool
-isEvenVect = isEven . length
-```
+	length : Vect n a -> Nat
+	length _ {n} = n
+	
+	isEven : Nat -> Bool
+	isEven Z = True -- zero is even
+	isEven (S Z) = False -- one is not
+	isEven (S n) = not $ isEven n -- is the precedessor is even the successor isn't
+	
+	isEvenVect : Vect n a -> Bool
+	isEvenVect = isEven . length
 
 While this is non-obivous from the implementation of `isEvenVect` this will bring the length value of the vector from the type level to the term-level. However, pattern matching on this type-level information has desastrous consequence, simple operations that would be O(1) for built-in types like `Int` are now O(n) because of the recusrive nature of the data that we are pattern-matching on.
 
 Linear types however allow to precisely tell how a value will be used. If we expect it to only be used at the type-level, then it should be annotated with 0. If it can be used at the term-level exactly once, then it should be annotated with 1. If we do not want to concern ourselves with such restrictions, then we should forego any annotation and it will be automatically inferred as ∞, which means "this value is unrestricted, it could be used 0, or any amount of times". 
 
-```
-length : {1 n : Nat} -> (0 v : Vect n a) -> Nat
-length _ = n
-
-isEven : (1 n : Nat) -> Bool
-isEven Z = True
-isEven (S Z) = False
-isEven (S n) = not (isEven n)
-
-isEvenVect : {0 n : Nat} -> Vect n a -> Bool
-isEvenVect = isEven . length -- type error? because n has linearity 0 but 1 is expected.
-```
+	length : {1 n : Nat} -> (0 v : Vect n a) -> Nat
+	length _ = n
+	
+	isEven : (1 n : Nat) -> Bool
+	isEven Z = True
+	isEven (S Z) = False
+	isEven (S n) = not (isEven n)
+	
+	isEvenVect : {0 n : Nat} -> Vect n a -> Bool
+	isEvenVect = isEven . length -- type error? because n has linearity 0 but 1 is expected.
 
 This new version of our program highlights this behaviour of moving data from the type level to the term level and catched our intent with a type error. In order to fix it we need to remove the "erased" constraint on `n` by either making it _linear_ and use `1` instead of `0` or entirely lift all restrictions and remove the linearity annotation.
 
@@ -85,13 +93,11 @@ As you can see, CPS allows you to tightly control the scope of a linear value so
 
 Indeed the following listing shows that whenever a variable is bound linearly. It is, by definition, unique in its upcoming scope. It might become shared later but that does not prevent us from using the previously listed property while the variable is in scope. 
 
-```
-let 1 myList = [1,2,3,4]
-    1 mutated = 3 :: tail MyList
-    1 reclaimed = map show mutated
-    1 deleted = tail . tail . tail . tail $ reclaimed
- in …
- ```
+	let 1 myList = [1,2,3,4]
+	    1 mutated = 3 :: tail MyList
+	    1 reclaimed = map show mutated
+	    1 deleted = tail . tail . tail . tail $ reclaimed
+	 in …
 
 in this scope the variable `myList` is successively mutated, reclaimed, and deleted without any extranious allocation (except for the additional memory associated with the newly allocated strings). While a traditional functional programming language with a garbage collector would naively allocate memory for each of those lines and reclaim them at a the next collection, our implementation can deduce that since `myList` is local and linear, it must be the only copy and therefore can be mutated at will. Each line therefore saves us one allocation and one free per line.
 
@@ -100,34 +106,30 @@ in this scope the variable `myList` is successively mutated, reclaimed, and dele
 
 For this thesis, the goal was to explore how linear types can be used for performance in this very specific usecase of locally declaring a linear variable in a local let-binding. However this situation, while promissing, is quite unlikely to happen. Indeed large long linear let-bindings aren't very common and the majority of functions do not actually accept linear values as input as the typical `dup` example shows
 
-```
--- this cannot be linear because the arugment is used twice
-dup : t -> (t, t)
-dup v = (v, v)
-```
+	-- this cannot be linear because the arugment is used twice
+	dup : t -> (t, t)
+	dup v = (v, v)
 
 However if we manage to allow more flexibility in our linear variables we might be able to allow both linearity _and_ function like `dup` to make use of them. Such extensions of linear logic arise as early as 1991 with Bounded linear logic which allow to annotate every deliriction rule with a number which precisely describes how many times the value can be reused.
 
 In our case we make use of Quantitative Type Theory to implement our linearity rules whith a semiring and uses the multiplication and addition rules in order to update the bound of a linear variable whenever it's shared in a new context.
 
-Idris2 was using the semiring `0`,`1`,`∞` for it linearity annotation originally. While this is useful it isn't enough in order to implement a function such as `dup`, for this we need to replace `0``1``∞` and allow any arbitrary semiring to be used as a linearity annotation.
+Idris2 was using the semiring `0`,`1`,`∞` for it linearity annotation originally. While this is useful it isn't enough in order to implement a function such as `dup`, for this we need to replace ``0``1``∞`` and allow any arbitrary semiring to be used as a linearity annotation.
 
 
 ### Removing RigCount in favor or a generic semigroup with pre-order relation
 
 
-Indeed the compiler is (was) using a data type of three values in order to represent linearity annotations, this data type was then pattern matched-on and analysed during linearity checking in order to compile and check when and if linearity annotation of different bound variables was consistent. However this technique, while intuitive and effective, did not allow room for experimentation using different semirings other than 0, 1 and \omega. 
+Indeed the compiler is (was) using a data type of three values in order to represent linearity annotations, this data type was then pattern matched-on and analysed during linearity checking in order to compile and check when and if linearity annotation of different bound variables was consistent. However this technique, while intuitive and effective, did not allow room for experimentation using different semirings other than 0, 1 and omega. 
 
 The first step was then to get rid of `RigCount` and replace it by a type variable that is constrained by a verified semiring interface
 
 
-```
-interface Semiring a where
-    |+| : a -> a -> a
-    |*| : a -> a -> a
-    plusNeutral : a
-    timesNeutral : a
-```
+	interface Semiring a where
+	    |+| : a -> a -> a
+	    |*| : a -> a -> a
+	    plusNeutral : a
+	    timesNeutral : a
 
 This definition entirely encapsulates the necessary information to define a semi-ring along with its proofs. As such, RigCount can be reinstated and used as typealias for a new type `data ZeroOneOmega = Zero | One | Omega` which follows the same semantics as the old RigCount but now using Our semiring definition.
 
@@ -138,15 +140,11 @@ Finally, the last addition, Idris uses the assumption that by default, variables
 This replacement of linearity variables has also surfaced a lot of patterns in the existing implementation that are curious and not yet understood like
 
 
-```
-if isErased x then erased else top
-```
+	if isErased x then erased else top
 
 can also be implemented with
 
-```
-x |*| top
-```
+	x |*| top
 
 Since `Zero` times `top`equals `Zero` (thanks to the properties of our Semiring, top has no particular meaning regarding traditional arithmetic where top would be considered to be "infinite" and multiplying zero and infinity would not be defined) this multiplication is equivalent to the previous `if`-statement, however, the semantics associated with it are different. In QTT the multiplication is only used to update the context in order to account for a tensor operation that introduces `n` new copies (I think ? I'm saying that from memory I need to check again). However, in the idris compiler this if-statment is only used ad-hoc to update some local state about the current linearity values of what is being compiled. Sometimes this state isn't even carried over to the rest of the compilation. It is unclear if this behaviour is epxected or if it is symptomatic of a hole in the theory or implementation.
 
@@ -174,10 +172,8 @@ one way to fix this issue is to re-introduce exponentials but with 0,1, omega as
 
 With this new semiring we can equip our calculus with a new constructor for exponentials using values of the semiring that aren't 0, aren't top and do not result in top when added together.
 
-```
-let 1 v = 4
-    3 increase = exp 2 v in f v -- where f uses its argument three times
-```
+	let 1 v = 4
+	    3 increase = exp 2 v in f v -- where f uses its argument three times
 
 that is now we can, given a value in our semiring, increase the bound of our linearities without breaking the contract that they will be used exactly the number of times advertised.
 
@@ -207,9 +203,7 @@ One solution would be to relax the linearity merging rules but this might introd
 Another one, which is one that _linear haskell_ has been using, is to use parametricity in the linearity of functions exposed by the compiler. 
 
 
-```
-maybeLinear : forall l . (a -o_l b) -o a -o_l b 
-```
+	maybeLinear : forall l . (a -o_l b) -o a -o_l b 
 
 this function might be trivial but it clearly exposes that _if_ the function passed in is linear, then everything is linear. If the function passed in argument has no guarantees, then we do not know what is going on with a and b.
 
@@ -221,30 +215,24 @@ Linearity is often a barrier to writing programs in the existing imperative-like
 
 Take this simple example
 
-```
-mayFail : (computation : Either String Int) -> (1 v : Int) -> Either String Int
-mayFail (Left err) _ = Left err
-mayFail (Right a) b = Right (a * b)
-```
+	mayFail : (computation : Either String Int) -> (1 v : Int) -> Either String Int
+	mayFail (Left err) _ = Left err
+	mayFail (Right a) b = Right (a * b)
 
 In this example the value v is ignored when the pattern on the left maps to `Left` which doesn't make it linear but affine. There are multiple ways to go about solving this problem. One of them is using `Intervals` which allow to simulate affine semantics. Affine means that, while we do not know the exact number of uses. We know it is bounded by some finite value.
 
 It would look like this
 
-```
-mayFail : (computation : Either String Int) -> ([0..1] v : Int -> Either String Int
-```
+	mayFail : (computation : Either String Int) -> ([0..1] v : Int -> Either String Int
 
 Another solution woud be to allow type-level computation to affect the multiplicity of a variable
 
-```
-LinearFail : Either a b -> Nat
-LinearFail (Left _) = 0
-LinearFail (Right _) = 1
-
-mayFail : (computation : Either String Int) 
-       -> ((LinearFail computation) v : Int) -> Either String Int
-```
+	LinearFail : Either a b -> Nat
+	LinearFail (Left _) = 0
+	LinearFail (Right _) = 1
+	
+	mayFail : (computation : Either String Int) 
+	       -> ((LinearFail computation) v : Int) -> Either String Int
 
 While this is a bit verbose it is _extremely_ powerful and desirable, it is the topic of the next possible area of research: Allowing type indices to interacti with linearity anotations.
 
@@ -261,21 +249,17 @@ While intervals provide a great deal of expressivity, they do not encapuslate th
 
 One typical example of how this would be useful is in access restriction of variables, imagine a semring with values `Public`, `Private`, `Anything` where private values cannot be exposed through the api (think about cryptographic secrets, tokens, identities) but public ones can, programs have to juggle private and public data but never _leak_ any private data. using a non-linear type system it would be trivial to accidentally write
 
-```
-leak : (public : Int) -> (private : Int) -> Int
-leak pub priv = priv `mod` pub
-```
+	leak : (public : Int) -> (private : Int) -> Int
+	leak pub priv = priv `mod` pub
 
 where the private key is leaked simply by calling this function with `1` as its first argument
 
 however with the signatures
 
-```
-mod : (Public a b : Int) -> Int
-
-leak : (Public pub : Int) -> (Private priv : Int) -> Int
-leak pub priv = priv `mod` pub -- compile error
-```
+	mod : (Public a b : Int) -> Int
+	
+	leak : (Public pub : Int) -> (Private priv : Int) -> Int
+	leak pub priv = priv `mod` pub -- compile error
 
 would result in a compile error since the private key is used as a public field
 

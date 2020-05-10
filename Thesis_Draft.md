@@ -26,6 +26,12 @@
 
 ## Literature review
   
+Linear types originate from linear logic, first proposed by girard [^1], at the time it was speculated they could enables lambda calculi to express resource management in an elegant and sound manner. Results developped by Wadler [^2] expose some opportunities for efficient operation leveraging linearity. However few of those efforts have proved useful in commercially available programming languages. Deforestation has been put aside in favor of fold/unfold in GHC, and the few existing programing languages existing do not mention how
+
+
+This is a test
+
+
 - linear logic
 - Bounded linear logic
 - deforestation
@@ -114,7 +120,7 @@ However if we manage to allow more flexibility in our linear variables we might 
 
 In our case we make use of Quantitative Type Theory to implement our linearity rules whith a semiring and uses the multiplication and addition rules in order to update the bound of a linear variable whenever it's shared in a new context.
 
-Idris2 was using the semiring `0`,`1`,`∞` for it linearity annotation originally. While this is useful it isn't enough in order to implement a function such as `dup`, for this we need to replace ``0``1``∞`` and allow any arbitrary semiring to be used as a linearity annotation.
+Idris2 was using the semiring `0`,`1`,`∞` for it linearity annotation originally. While this is useful it isn't enough in order to implement a function such as `dup`, for this we need to replace `0`1`∞` and allow any arbitrary semiring to be used as a linearity annotation.
 
 
 ### Removing RigCount in favor or a generic semigroup with pre-order relation
@@ -268,3 +274,11 @@ This allows us to implement what were previously language features inside the ty
 We could the imagine more complicated models of private/public/protected APIs only using user-defined semirings mixing up different concepts like linearity, affine types, performance, etc. Such an area of use would be smart-contracts on blockchains which suffer from extremly complex resource management that entirely depend on the semantics of the blockchain so that each has to be special-purpose. While also requiring very strick resource-checking and security access checking.
 
 Currently, there is no way to interact with linearity annotation outside of writing them now manually 
+
+[^1]:	[https://girard.perso.math.cnrs.fr/Synsem.pdf][1]
+
+[^2]:	- Deforestation
+	- Linear types can change the world
+	- Is there a use for linear types
+
+[1]:	https://girard.perso.math.cnrs.fr/Synsem.pdf

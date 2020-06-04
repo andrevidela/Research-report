@@ -1,6 +1,6 @@
 # Literature review
 
-The literature on linear type, however, as we will see, it does not tend to focus on performance. During this literature review I will enumerate the relevant papers that hint or establish new results using linear types, mostly through the lens of performance. Our main concern for Idris 2 is to provide an implementation that is both novel _and_ practical for commercial software, as we will see, a lot of challenges await us.
+During this literature review I will enumerate the relevant papers that hint or establish new results using linear types, mostly through the lens of performance. As we will see, most of it does not focus on performance, but rather on semantics. While those aren't our focus, they will still inform of of what is _expected_ from a modern linearly typed programming language. The goal of Idris2 is to be such a language, modern, linearly and dependently typed aimed at commercial software rather than tu be a purely academic curiosity.
 
 ## Linear logic, Girard 1987
 
@@ -13,15 +13,17 @@ Specifically, the mention of resource management for computer software was inter
 
 ## Bounded Linear Logic, Girard 1991
 
-Bounded linear logic improves the expressivity of linear logic while keeping its benefits: intuitionnistic-compatible logic that is computationally relevat. The key difference with linear logic is that weakening rules are _bounded_ by a finite value such that each value can be used as many time as the bound allows. In addition, some typing rules might allow it to _waste_ resources by_underusing_ the variable, hinting that affine types might bring some concrete benefits to our programming model.
+Bounded linear logic improves the expressivity of linear logic while keeping its benefits: intuitionnistic-compatible logic that is computationally relevant. The key difference with linear logic is that weakening rules are _bounded_ by a finite value such that each value can be used as many time as the bound allows. In addition, some typing rules might allow it to _waste_ resources by_underusing_ the variable, hinting that affine types might bring some concrete benefits to our programming model.
 
-As before there is no practical application of this in terms of programming language, at least not that I could find. However this brings up the first step toward a managing _quantities_ and complexity in the language. An idea that will be explored again later with Granule and Quantitative Type Theory.
+As before, there is no practical application of this in terms of programming language, at least not that I could find. However this brings up the first step toward a managing _quantities_ and complexity in the language. An idea that will be explored again later with Granule and Quantitative Type Theory.
+
+NOTE: (I should re-read this one to find more about the expected uses at the time)
 
 ## Deforestation Wadler 1988
 
-Deforestation is a small algorithm proposed to avoid extranious allocation when performing list operations in a programming language close to System-F. This algorithm did not end up being used in practice in GHC (it was replaced by fold/unfold) but it showed promise in the sense that it was relying on the linearity of operations. This assumption that operations on lists must be linear was made to avoid performing an effect twice which would end up in an ill-defined tree-less program. This is notable because it is the first instance of a use for linearity in the context of performance.
+Deforestation is a small algorithm proposed to avoid extranious allocation when performing list operations in a programming language close to System-F. This algorithm did not end up being used in practice in GHC (it was replaced by fold/unfold, TODO: find the reference) but it showed promise in the sense that it was relying on the linearity of operations. This assumption that operations on lists must be linear was made to avoid performing an effect twice which would end up in an ill-defined tree-less program. This is notable because it is the first instance of a use for linearity in the context of performance.
 
-While deforestation itself might not be the algorithm that we want to implement today. I is likely we can come up with a similar, or even better, set of optimising rules in idris2.
+While deforestation itself might not be the algorithm that we want to implement today, it is likely we can come up with a similar, or even better, set of optimisation rules in idris2.
 
 ## Is there a use for linear types & Linear types can change the world, Wadler 1991
 
@@ -33,7 +35,7 @@ However the weakness of both those results is that the API exposed to the progra
   
 It turns out that linear types can also be used to replace entirely the memory management system, this paper shows that a simple calculus augmented with memory management primitives can make use of linearity in order to control memory allocation and deallocation using linear types.
 
-This breakthrough is not without compromises either. The calculus is greatly simplified for modern standards and the amount of manual labour required from the developper to explicitly share a value is jarring in this day and age. What's more, it is not clear how to merge this approach with modern implementation of linearity (such a Quantitative Type Theory). While this paper seem quite far removed from our end goal of a transparent but powerful memory optimisation it suggest some interesting relation between data/codata and resource management. 
+This breakthrough is not without compromises either. The calculus is greatly simplified for modern standards and the amount of manual labour required from the developper to explicitly share a value is jarring in this day and age. What's more, it is not clear how to merge this approach with modern implementation of linearity (such a Quantitative Type Theory). While this paper seems quite far removed from our end goal of a transparent but powerful memory optimisation it suggest some interesting relation between data/codata and resource management (linear infinite streams?).
 
 ## Practical affine types
   
@@ -73,8 +75,14 @@ In our example, since `v`could be shared prior to the calling of `f` we cannot p
 
 
 ---- 
+# Linear uses
 
-Idris2 is such a language, and the opportunity is there to finally bring to life the always-promised-never-delivered dream of performance and correctness within the same language. Providing programmers with the tools to write elegant and correct software (Type Driven Development, Brady 2017), while ensuring performance. In this thesis I am going to reuse the intuition originally suggested by Wadler 1991 and rephrase it as 
+As we've seen linear types have lots of promise regarding uses in modern programming practices. They allow to model common patterns that are notorious for being error-prone and the source of important security flaws. Indeed a protocol might have been proven safe but it's implementation might not be. Linear types allow stateful protocols to make use of an additional layer of guarantee. 
+
+However those efforts have not been very successful in penetrating the mainstream of programming languages. While we will not discuss the reasons _why_ we will note that linear types can actually _help_ overcoming a common criticism of purely functional programming: That they are slow and do not/cannot provide any performance guarantee. Indeed, as we've seen in the review, linear types show a lot of promise regarding performance but have not realised that promise in practice. The hope is that Idris2 will provide the necessary infrastructure to demonstrate those ideas and finally legitimize linear types as a valid typing discipline for commercial software.
+---- 
+
+Indeed, Idris2 features both linear and dependent types, providing programmers with the tools to write elegant and correct software (Type Driven Development, Brady 2017), while ensuring performance. In this thesis I am going to reuse the intuition originally suggested by Wadler 1991 and rephrase it as 
 
 > If you own a linear variable and it is not shared, you can feely mutate it
 

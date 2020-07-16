@@ -46,3 +46,17 @@ be very represeentative. However they should show a lot of improvements
 Those two patches should be interesting enough to make the bulk of the thesis. I might sprinkle in some of my experiments with multiplicities and semirings. 
 As well as future work with reference counting and control flow analysis
 
+## Todo
+
+- [ ] try %mutate with JS backend
+- [ ] Correctly implement control flow analysis for mutation of linear arguments (DOING)
+- [ ] run the benchmarks again
+- [ ] gather the benchmarks results from %mutating
+- [ ] gather the benchmarks restuls for the control flow patch
+- [ ] restricted idris for linearity
+  - [ ] add compiler flag
+  - [ ] remove subtyping
+  - [ ] make every linear function mutating
+  - [ ] (OPTIONAL) have a function flag that makes everything in a body linear
+  - [ ] (OPTIONAL) ^ this will require to have maybe `w` as unrestricted linearity explicitly
+  

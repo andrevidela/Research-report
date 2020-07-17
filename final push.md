@@ -48,10 +48,11 @@ As well as future work with reference counting and control flow analysis
 
 ## Todo
 
-- [ ] try %mutate with JS backend
-- [ ] Correctly implement control flow analysis for mutation of linear arguments (DOING)
-- [ ] run the benchmarks again with automatic mutation detection for linear use
-- [ ] gather the benchmarks results from %mutating with the Sat solver
+- [ ] Add %mutate again  (DOING)
+  - [ ] try %mutate with JS backend
+  - [ ] gather the benchmarks results from %mutating with the Sat solver
+- [ ] Correctly implement control flow analysis for mutation of linear arguments
+  - [ ] run the benchmarks again with automatic mutation detection for linear use
 - [ ] write a table of contents for the thesis and start pulling all the notes together
 - [ ] restricted idris for linearity
   - [ ] add compiler flag

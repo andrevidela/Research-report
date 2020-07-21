@@ -52,6 +52,8 @@ As well as future work with reference counting and control flow analysis
   - [ ] try %mutate with JS backend
   - [ ] gather the benchmarks results from %mutating with the Sat solver
   - [ ] Correctly implement control flow analysis for mutation of linear arguments  (DOING)
+    - [ ] Update every branch of the case tree to use CMut instead of CCon
+    - [ ] Find out at which phase of the compiler we want this to happen
   - [ ] run the benchmarks again with automatic mutation detection for linear use
 - [ ] write a table of contents for the thesis and start pulling all the notes together
 - [ ] restricted idris for linearity

@@ -56,6 +56,7 @@ As well as future work with reference counting and control flow analysis
     - [x] Find out at which phase of the compiler we want this to happen
   - [ ] run the benchmarks again with automatic mutation detection for linear use
 - [ ] write a table of contents for the thesis and start pulling all the notes together
+- [ ] duplicate each case to have a linear one and dispatch linear calls to the linear case (RigCount in DataCon)
 - [ ] restricted idris for linearity
   - [ ] add compiler flag
   - [ ] remove subtyping

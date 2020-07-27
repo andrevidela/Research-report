@@ -46,6 +46,12 @@ be very represeentative. However they should show a lot of improvements
 Those two patches should be interesting enough to make the bulk of the thesis. I might sprinkle in some of my experiments with multiplicities and semirings. 
 As well as future work with reference counting and control flow analysis
 
+# Questions for Edwin
+
+- Why does the Scheme backend remove mutation?
+  - Is there a way to make it dummer/less aggresive with optimisations
+- What am I supposed to do with the litterature review?
+
 ## Todo
 
 - [ ] Add %mutate again

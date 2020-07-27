@@ -56,10 +56,16 @@ As well as future work with reference counting and control flow analysis
 
 - [ ] Add %mutate again
   - [x] try %mutate with JS backend (DOING)
-    - [ ] run the Fibonacci benchmarks
+    - [x] run the Fibonacci benchmarks
   - [ ] gather the benchmarks results from %mutating with the Sat solver
     - [ ] run with scheme backend
+      - [ ] fib
+      - [ ] linTest
+      - [ ] Bench
     - [ ] run with JS backend
+      - [ ] fib
+      - [ ] linTest
+      - [ ] Bench
   - [x] Correctly implement control flow analysis for mutation of linear arguments 
     - [x] Update every branch of the case tree to use CMut instead of CCon
     - [x] Find out at which phase of the compiler we want this to happen

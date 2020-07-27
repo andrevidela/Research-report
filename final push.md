@@ -48,7 +48,8 @@ As well as future work with reference counting and control flow analysis
 
 # Questions for Edwin
 
-- How do I implement mutation for the Bench.idr file???
+- How do I implement mutation for the Bench.idr file??
+- why do I get a memory error with mutation on LState.idr?
 - What am I supposed to do with the litterature review?
 
 ## Todo

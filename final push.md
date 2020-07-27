@@ -60,11 +60,11 @@ As well as future work with reference counting and control flow analysis
     - [ ] run with scheme backend
       - [ ] fib
       - [ ] linTest
-      - [ ] Bench
+      - [ ] ~~Bench~~ (see question)
     - [ ] run with JS backend
       - [ ] fib
       - [ ] linTest
-      - [ ] Bench
+      - [ ] ~~Bench~~ (see question)
   - [x] Correctly implement control flow analysis for mutation of linear arguments 
     - [x] Update every branch of the case tree to use CMut instead of CCon
     - [x] Find out at which phase of the compiler we want this to happen

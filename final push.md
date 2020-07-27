@@ -48,8 +48,7 @@ As well as future work with reference counting and control flow analysis
 
 # Questions for Edwin
 
-- Why does the Scheme backend remove mutation?
-  - Is there a way to make it dummer/less aggresive with optimisations
+- How do I implement mutation for the Bench.idr file???
 - What am I supposed to do with the litterature review?
 
 ## Todo

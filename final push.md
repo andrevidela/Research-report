@@ -55,7 +55,7 @@ As well as future work with reference counting and control flow analysis
 ## Todo
 
 - [ ] Add %mutate again
-  - [ ] try %mutate with JS backend (DOING)
+  - [x] try %mutate with JS backend (DOING)
     - [ ] run the Fibonacci benchmarks
   - [ ] gather the benchmarks results from %mutating with the Sat solver
     - [ ] run with scheme backend

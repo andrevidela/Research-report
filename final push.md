@@ -56,12 +56,14 @@ As well as future work with reference counting and control flow analysis
 - [ ] Add %mutate again
   - [x] try %mutate with JS backend (DOING)
     - [x] run the Fibonacci benchmarks
-  - [ ] gather the benchmarks results from %mutating with the Sat solver
+  - [ ] gather the benchmarks results from %mutating 
     - [ ] run with scheme backend
+      - [ ] sat solver
       - [ ] fib
       - [ ] linTest
       - [ ] ~~Bench~~ (see question)
     - [ ] run with JS backend
+      - [ ] sat solver
       - [ ] fib
       - [ ] linTest
       - [ ] ~~Bench~~ (see question)

@@ -46,12 +46,6 @@ be very represeentative. However they should show a lot of improvements
 Those two patches should be interesting enough to make the bulk of the thesis. I might sprinkle in some of my experiments with multiplicities and semirings. 
 As well as future work with reference counting and control flow analysis
 
-# Questions for Edwin
-
-- How do I implement mutation for the Bench.idr file??
-- why do I get a memory error with mutation on LState.idr?
-- What am I supposed to do with the litterature review?
-
 ## Todo
 
 - [ ] Add %mutate again
@@ -62,17 +56,17 @@ As well as future work with reference counting and control flow analysis
       - [ ] sat solver
       - [ ] fib
       - [ ] linTest
-      - [ ] ~~Bench~~ (see question)
+      - [ ] Bench (see question)
     - [ ] run with JS backend
       - [ ] sat solver
       - [ ] fib
       - [ ] linTest
-      - [ ] ~~Bench~~ (see question)
+      - [ ] Bench (see question)
   - [x] Correctly implement control flow analysis for mutation of linear arguments 
     - [x] Update every branch of the case tree to use CMut instead of CCon
     - [x] Find out at which phase of the compiler we want this to happen
   - [ ] run the benchmarks again with automatic mutation detection for linear use
-- [ ] write a table of contents for the thesis and start pulling all the notes together
+- [x] write a table of contents for the thesis and start pulling all the notes together
 - [ ] duplicate each case to have a linear one and dispatch linear calls to the linear case (RigCount in DataCon)
 - [ ] restricted idris for linearity
   - [ ] add compiler flag

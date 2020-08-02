@@ -51,7 +51,9 @@ As well as future work with reference counting and control flow analysis
 - [ ] Add %mutate again
   - [x] try %mutate with JS backend (DOING)
     - [x] run the Fibonacci benchmarks
+  - [ ] implement --time on the compiler backend
   - [ ] gather the benchmarks results from %mutating 
+    - [ ] write a result generator
     - [ ] run with scheme backend
       - [ ] sat solver
       - [ ] fib

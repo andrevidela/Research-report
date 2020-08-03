@@ -255,15 +255,15 @@ increment n = S n
 We see that the natural number is used exactly once on the right hand side of our definition. Therefore we can update out program with linearity annotations like so
 
 ```haskell
-increment : (1 _ : Nat) -> Nat
+increment : (1 n : Nat) -> Nat
 increment n = S n
 ```
 
 Additionally, idris2 feature pattern matching and the rules of linearity also apply to each variable that is bond when matching on it. That is, if the value we are matching is linear then we need to use the pattern variables linearly. 
 
 ```haskell
-sum : (1 _ : Nat) -> (1 _ : Nat) -> Nat
-sum Z n = n
+sum : (1 n : Nat) -> (1 m : Nat) -> Nat
+sum Z m = m
 sum (S n) m = S (sum n m)
 ```
 

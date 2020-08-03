@@ -291,7 +291,7 @@ hole : ()
 
 As you can see we need to use `v` but we are only allowed to return `()`.
 
-trying i out anyways result in this code and this corresponding error
+If you try to compile it anyways, you will get this error:
 
 ```haskell
 drop : (1 v : a) -> ()

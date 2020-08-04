@@ -53,8 +53,18 @@ As well as future work with reference counting and control flow analysis
     - [x] run the Fibonacci benchmarks
   - [x] implement --time on the compiler backend
   - [ ] gather the benchmarks results from %mutating 
-    - [ ] write a result generator
+    - [x] write a result generator
     - [ ] run with scheme backend
+      - [ ] sat solver
+      - [ ] fib
+      - [ ] linTest
+      - [ ] Bench (see question)
+    - [ ] run with JS backend
+      - [ ] sat solver
+      - [ ] fib
+      - [ ] linTest
+      - [ ] Bench (see question)
+    - [ ] run benchmarks with scheme backend WHILE REMOVING STARTUP TIME
       - [ ] sat solver
       - [ ] fib
       - [ ] linTest

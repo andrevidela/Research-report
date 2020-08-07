@@ -54,16 +54,18 @@ As well as future work with reference counting and control flow analysis
   - [x] implement --time on the compiler backend
   - [ ] gather the benchmarks results from %mutating 
     - [x] write a result generator
-    - [ ] run with scheme backend
-      - [ ] sat solver
-      - [ ] fib
-      - [ ] linTest
-      - [ ] Bench (see question)
+    - [x] run with scheme backend
+      - [x] sat solver
+      - [x] fib
+      - [x] linTest
+      - [ ] ~~Bench (see question)~~
+      - [ ] ~~SAT (see question)~~
     - [ ] run with JS backend
       - [ ] sat solver
       - [ ] fib
       - [ ] linTest
-      - [ ] Bench (see question)
+      - [ ] ~~Bench (see question)~~
+      - [ ] ~~SAT (see question)~~
     - [ ] run benchmarks with scheme backend WHILE REMOVING STARTUP TIME
       - [ ] sat solver
       - [ ] fib
@@ -74,6 +76,11 @@ As well as future work with reference counting and control flow analysis
       - [ ] fib
       - [ ] linTest
       - [ ] Bench (see question)
+    - [ ] pretty graphs with results
+      - [ ] graph of JS backend
+      - [ ] graph of scheme backend
+      - [ ] graph of JS without startup
+      - [ ] graph of scheme without startup
   - [x] Correctly implement control flow analysis for mutation of linear arguments 
     - [x] Update every branch of the case tree to use CMut instead of CCon
     - [x] Find out at which phase of the compiler we want this to happen

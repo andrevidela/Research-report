@@ -66,12 +66,12 @@ As well as future work with reference counting and control flow analysis
       - [ ] linTest
       - [ ] ~~Bench (see question)~~
       - [ ] ~~SAT (see question)~~
-    - [ ] run benchmarks with scheme backend WHILE REMOVING STARTUP TIME
-      - [ ] sat solver
-      - [ ] fib
-      - [ ] linTest
-      - [ ] Bench (see question)
-    - [ ] run with JS backend
+    - [x] run benchmarks with scheme backend WHILE REMOVING STARTUP TIME
+      - [x] sat solver
+      - [x] fib
+      - [x] linTest
+      - [ ] ~~Bench (see question)~~
+    - [ ] run with JS backend WHILE REMOVING STARTUP TIME
       - [ ] sat solver
       - [ ] fib
       - [ ] linTest

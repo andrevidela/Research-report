@@ -46,33 +46,46 @@ be very represeentative. However they should show a lot of improvements
 Those two patches should be interesting enough to make the bulk of the thesis. I might sprinkle in some of my experiments with multiplicities and semirings. 
 As well as future work with reference counting and control flow analysis
 
-# Questions for Edwin
-
-- How do I implement mutation for the Bench.idr file??
-- why do I get a memory error with mutation on LState.idr?
-- What am I supposed to do with the litterature review?
-
 ## Todo
 
 - [ ] Add %mutate again
   - [x] try %mutate with JS backend (DOING)
     - [x] run the Fibonacci benchmarks
+  - [x] implement --time on the compiler backend
   - [ ] gather the benchmarks results from %mutating 
-    - [ ] run with scheme backend
-      - [ ] sat solver
-      - [ ] fib
-      - [ ] linTest
-      - [ ] ~~Bench~~ (see question)
+    - [x] write a result generator
+    - [x] run with scheme backend
+      - [x] sat solver
+      - [x] fib
+      - [x] linTest
+      - [ ] ~~Bench (see question)~~
+      - [ ] ~~SAT (see question)~~
     - [ ] run with JS backend
       - [ ] sat solver
       - [ ] fib
       - [ ] linTest
-      - [ ] ~~Bench~~ (see question)
+      - [ ] ~~Bench (see question)~~
+      - [ ] ~~SAT (see question)~~
+    - [x] run benchmarks with scheme backend WHILE REMOVING STARTUP TIME
+      - [x] sat solver
+      - [x] fib
+      - [x] linTest
+      - [ ] ~~Bench (see question)~~
+    - [ ] run with JS backend WHILE REMOVING STARTUP TIME
+      - [ ] sat solver
+      - [ ] fib
+      - [ ] linTest
+      - [ ] Bench (see question)
+    - [ ] pretty graphs with results
+      - [ ] graph of JS backend
+      - [ ] graph of scheme backend
+      - [ ] graph of JS without startup
+      - [ ] graph of scheme without startup
   - [x] Correctly implement control flow analysis for mutation of linear arguments 
     - [x] Update every branch of the case tree to use CMut instead of CCon
     - [x] Find out at which phase of the compiler we want this to happen
   - [ ] run the benchmarks again with automatic mutation detection for linear use
-- [ ] write a table of contents for the thesis and start pulling all the notes together
+- [x] write a table of contents for the thesis and start pulling all the notes together
 - [ ] duplicate each case to have a linear one and dispatch linear calls to the linear case (RigCount in DataCon)
 - [ ] restricted idris for linearity
   - [ ] add compiler flag

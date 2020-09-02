@@ -1,17 +1,16 @@
 # Literature review
 
-During this literature review I will enumerate the relevant papers that hint or establish new results using linear types, mostly through the lens of performance. As we will see, most of it does not focus on performance, but rather on semantics. While those aren't our focus, they will still inform of of what is _expected_ from a modern linearly typed programming language. The goal of Idris2 is to be such a language, modern, linearly and dependently typed aimed at commercial software rather than tu be a purely academic curiosity.
+This literature review, or context review, will enumerate and comment on the existing literature about linear types and related topics. In order to give context to this research project I will present it through three lenses: The first aims to tell the origin story of linear types and their youthful promises. The second will focus on the current understanding of their application for real-world use. And the last one will focus on the latest theoretical developments that linear types spun up.
 
-## Linear logic, Girard 1987
+## Origins
 
-This is the foundational paper about linear logic, interestingly enough it already highlights the limits of linear logic:
-- The complexity of having to handle linear and unrestricted variables separately
-- The lack of expressiveness of a purely linear calculus
-- How bounds and Bounded linear logic could address those
+Linear types were first introduced by J-Y. Girard in his 1987 publication simply named _Linear logic_ . In this text he introduces the idea of restricting the application of the weakening rule and contraction rule from intuitionistic logic in order to allow to statement to be managed as _resources_. Linear terms once used cannot be referred again, premises cannot be duplicated and contexts cannot be extended. This restriction was informed by the necessity real-world computational restriction, in particular accessing information concurrently.
 
-Specifically, the mention of resource management for computer software was interesting but not very insightful. Indeed, Girard mentions how exponentials could approximate storage but nothing is said about how this would manifests in practice. Justifiably since there were no linear languages back then.
+One of the pain points mentioned was the inability to restrict usages to something more sophisticated than "used exactly once". Linear variables could be promoted to their unrestricted variants with the exponential operator (`!`) but that removes any benefit we get from linearity. A limitation that will be revisited in the follow-up paper: Bounded linear logic.
 
-## Bounded Linear Logic, Girard 1991
+It is worth noting that, already at this stage, memory implication were considered, typically the exponential operator was understood as being similar to "long term storage" of a variable such that it could be reused in the future.
+
+### Bounded Linear Logic, Girard 1991
 
 Bounded linear logic improves the expressivity of linear logic while keeping its benefits: intuitionnistic-compatible logic that is computationally relevant. The key difference with linear logic is that weakening rules are _bounded_ by a finite value such that each value can be used as many time as the bound allows. In addition, some typing rules might allow it to _waste_ resources by_underusing_ the variable, hinting that affine types might bring some concrete benefits to our programming model.
 
@@ -19,23 +18,26 @@ As before, there is no practical application of this in terms of programming lan
 
 NOTE: (I should re-read this one to find more about the expected uses at the time)
 
-## Deforestation Wadler 1988
 
-Deforestation is a small algorithm proposed to avoid extranious allocation when performing list operations in a programming language close to System-F. This algorithm did not end up being used in practice in GHC (it was replaced by fold/unfold, TODO: find the reference) but it showed promise in the sense that it was relying on the linearity of operations. This assumption that operations on lists must be linear was made to avoid performing an effect twice which would end up in an ill-defined tree-less program. This is notable because it is the first instance of a use for linearity in the context of performance.
+## Applications
 
-While deforestation itself might not be the algorithm that we want to implement today, it is likely we can come up with a similar, or even better, set of optimisation rules in idris2.
+Soon after the development of linear types, they appeared in a paper aimed at optimising away redundant allocations when manipulating lists: The deforestation algorithm.
 
-## Is there a use for linear types & Linear types can change the world, Wadler 1991
+Deforestation (Wadler ref) is a small algorithm proposed to avoid extranious allocation when performing list operations in a programming language close to System-F.  The assumption that operations on lists must be linear was made to avoid duplicating operations. If a program was non-linear, the optimisation would duplicate each of the computation associated with the non-linear variable, making the resulting program less efficient.
 
-I will lump those two papers together because they serve and show the same thing with regards to linear types. Linear types can be used for in-place update and mutation instead of relying on copying. And they both provide programming API that make use of linear defintions and linear data in order to showcase where and how the code differ in both performance and API.
+While deforestation itself might not be the algorithm that we want to implement today, it is likely we can come up with a similar, or even better, set of optimisation rules in idris2 by relying on linearity. In this case linearity avoid duplicating computation, this idea was again investigated in "Once upon a Type" which formalises the detection of linear variables and uses this information for safe inlining. Indeed arbitrarily inlining functions might result in duplicated computation (just like in the deforestation algorithm). Beside inlining and mutation, another way to use linear types for performance is memory space mutation.
+
+Linear types ca change the world (Walder 1991) show that Linear types can be used for in-place update and mutation instead of relying on copying. And they both provide programming API that make use of linear defintions and linear data in order to showcase where and how the code differ in both performance and API.
   
-However the weakness of both those results is that the API exposed to the programmer relies on a continuation, which is largely seen as unacceptable user experience (ask your local javascript developer what they think of "callback hell"). However, we can probably reuse the ideas proposed there and rephrase them in the context of Idris2 in order to provide a more user-friendly API for this feature, maybe even make it transparent for the user.
+However the weakness of this result is that the API exposed to the programmer relies on a continuation, which is largely seen as unacceptable user experience (ask your local javascript developer what they think of "callback hell"). However, we can probably reuse the ideas proposed there and rephrase them in the context of Idris2 in order to provide a more user-friendly API for this feature, maybe even make it transparent for the user. This API problem carries over to another way linear types can be useful: Memory management and reference counting.
 
-## Reference counting as a computational interpretation of linear logic, 1995
-  
 It turns out that linear types can also be used to replace entirely the memory management system, this paper shows that a simple calculus augmented with memory management primitives can make use of linearity in order to control memory allocation and deallocation using linear types.
 
 This breakthrough is not without compromises either. The calculus is greatly simplified for modern standards and the amount of manual labour required from the developper to explicitly share a value is jarring in this day and age. What's more, it is not clear how to merge this approach with modern implementation of linearity (such a Quantitative Type Theory). While this paper seems quite far removed from our end goal of a transparent but powerful memory optimisation it suggest some interesting relation between data/codata and resource management (linear infinite streams?).
+
+### Invertible functions
+
+More recently, linear types and linear functions have been useful in order to describe and study _invertible functions_, that is, functions that have an inverse such that their action can be undone. For example the function `+ 1` can is invertible and its effect is to subtract `1` from a value that was modified by `+1`. 
 
 ## Practical affine types
   
@@ -45,11 +47,11 @@ Practical affine types show that their implementation for linear+affine types al
 
 ## Linear Haskell 2017
 
-Haskell already benefits from a plethora of big and small extensions, they are so prevalent that they became a meme in the community: every file must begin with a page of language extension declarations. Linear Haskell is notable in that it extends the type system to allow linear functions to be defined. It introduces the linear arrow `-o` which declares a function to be linear. Since Haskell is lazy that means "if called exactly once, then its argument is consumed exactly once".
+Haskell already benefits from a plethora of big and small extensions, they are so prevalent that they became a meme in the community: every file must begin with a page of language extension declarations. Linear Haskell is notable in that it extends the type system to allow linear functions to be defined. It introduces the linear arrow `-o` which declares a function to be linear. Because of Haskell's laziness, linearity doesn't mean "will be used exactly once" but rather "_if_ it is used, then it will be used exactly once".
 
-This drastic change in the language was motivated by a concern for safe APIs, typically when dealing with unsafe or low-level code. Linear types allow to expose an API that cannot be misused while keeping the same level of expressivity and being completely backwards compatible. In addition, Linear Haskell features linear parametricity, the ability to abstract over linearity annotation. This last feature is was allows all existing APIs to be backwards compatible with linearity annotations. Idris2 does not allow to abstract over multiplicities, in that regard it would be interesting to see if we can still achieve a backward compatible API in idris that is both compatible with linear and traditional programs.
+This addition to the language was motivated by a concern for safe APIs, typically when dealing with unsafe or low-level code. Linear types allow to expose an API that cannot be misused while keeping the same level of expressivity and being completely backwards compatible. This backward compatibility is in part allowed thanks to parametric linearity, the ability to abstract over linearity annotations. 
 
-## Granule, Orchard et al. 2018
+## Cutting edge linear types
 
  Granule is a language that features _quantitative reasoning via graded modal types_. They even have indexed types to boot! This effort is the result of years of research in the domain of effect, co-effect, resource-aware calculus and co-monadic computation. Granule itself makes heavy use of _graded monads_ (Katsuma, Orchard et al. 2016) which allow to precisely annotate co-effects in the type system. This enables the program to model _resource management_ at the type-level. What's more, graded monads provide an algebraic structure to _combine and compose_ those co-effects. This way, linearity can not only be modelled but also _mixed-in_ with other interpretations of resources. While this multiplies the opportunities in resource tracking, this approach hasn't received the treatment it deserves with regards to performance and tracking runtime complexity.
 

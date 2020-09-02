@@ -172,3 +172,10 @@ undo+1 : (n : Nat) -> {prf : n = S k} -> Nat
 ```
 
 which ensures that the argument is a `S` of `k` for any `k`.
+
+
+# Support for non-computational theories
+
+Agda features cubical type theory which allows to define a lot of theorems as a proof in the language, rather than as a postulate. However a notorious limitation of cubical Agda is the inability to be computed to runnable machine code. Efforts are going into inserting cubical theories into running programs, by restricting their uses to erased types, but this is still a work in progress.
+
+However if the same effort existed in idris2, cubical theorems could all be annotated with linearity 0 such that the compiler trivially checks that they are never instantiated at runtime while providing the theorems and proofs we need at compile time.

@@ -1,79 +1,81 @@
 # Introduction 
+
 Dear reader,
 Most master thesis dive deep into their subject matter with very little to no regard to the uninitiated mind.
 While this approach is justified in many cases I want to take this opportunity to experiment with a more gentle introduction to the topic, at the cost of formality and familiarity. 
 
-Indeed I feel like this subject matter is strange enough yet, simple enough, that it can be taught in the next few pages even for an uninitiated student. 
+Indeed, I feel like this topic is strange enough yet, simple enough, that it can be taught in the next few pages to an uninitiated student. 
 
 The following will only make assumptions about basic understanding of imperative and functional programming. 
 
 ## A note about vocabulary and Jargon 
 
-Those technical papers are often hard to approach for the unintiated because of the heavy use of unfamiliar vocabulary and domain-specific jargon. While those practices have their uses, they hinder learning quite a lot. Unfortunately I do not have a solution for this problem, but I hope this section will help you mitigate this feeling of helplessness when sentences seem to be composed of randomly generated sequences of letters rather than english words.
+Those technical papers are often hard to approach for the unintiated because of the heavy use of unfamiliar vocabulary and domain-specific jargon. While those practices have their uses, they tend to hinder learning by obscuring basic concepts. Unfortunately I do not have a solution for this problem, but I hope this section will help you mitigate this feeling of helplessness when sentences seem to be composed of randomly generated sequences of letters rather than legitimate words.
+
+##### Type
+
+A label associated to a collection of values. For example `String` is the type given to strings of characters for text. `Int` is the type given to integer values. `Nat` is the type given to natural numbers.
+
+##### Linear types
+
+Types that have a usage restriction. Typically a value labelled with a linear type can only be used once, no less, no more.
 
 ##### Linearity / Quantity / Multiplicity
 
-Used interchangably most of the time. They refer the the number of type a variable is expected to be used.
-
-##### Linear types
-Linear types describe values that can be used exactly 0 times, exactly 1 time or have no restriction put on them
-
-##### Affine types
-Affine types describe values that can be used at most 0 times, at most 1 times or at most infinitely many times (aka no restrictions)
-
-##### Monad
-A mathematical structure that allows to encapsulate _change in a context_. For example `Maybe` is a Monad because it creates a context in which the values we are manipulating might be absent.
-
-##### Co-monad / Comonad
-A mathematical structure that allows to encapsulate _access to a context_. For example `List` is a Comonad because it allows us to work in a context were the value we manipulate is one out of many available to us, those other values available to us are the other values of the list.
+Used interchangably most of the time. They refer the the number of time a variable is expected to be used.
 
 ##### Semiring
-A mathematical structure that requires its values to be combined with `+` and `*` in the ways you expect from natural numbers
 
-##### Lattice
-A mathematical structure that relates values to one another in a way that doesn't allow arbitrary comparaison between two arbitrary values. Here is a pretty picture of one:
-
-As you can see we can't really tell what's going on  between X and Y, they aren't related directly, but we can tell that they are both smaller than W and greater than Z
+A mathematical structure that requires its values to be combined with `+` and `*` in the ways you expect from natural numbers.
 
 ##### Syntax
+
 The structure of some piece of information, usual in the form of _text_. Syntax itself does not convey any meaning.
 
 ##### Semantics
+
 The meaning associated to a piece of data, most often related to syntax.
 
-##### Type constructor
+##### Pattern matching
 
-A value that returns a value of type : `Type`. `Int : Type` is a type constructor that return the type `Int`, `Maybe : Type -> Type` is a type constructor that return the type`Maybe Int` when provided with the type `Int`
+Destructuring a value into its constituant parts in order to access them or understand what kind of value we are dealing with.
 
-#####  Generic type / Polymorphic type
+#####  Generic type / Polymorphic type / Type parameter
 
-A type that depends on a _type parameter_ like `Maybe : Type -> Type` takes  1 type as parameter.
+A type that has a _type parameter_ . For example `Maybe a` takes  1 type as parameter, the `a` has type `Type`.
 
 #####  Indexed type
 
-A type that depends on a _type parameter_ that changes with the values that inhabit the type. Like `Vect 3 String` has index `3` for vectors of `3` elements, and a type parameter `String`
-
-##### Referential transparency
-
-The ability of a program to always return the same values, given the same argument irrespective of its context.
-
+A _type parameter_ that changes with the values that inhabit the type. For example `["a", "b", "c"] : Vect 3 String` has index `3` and a type parameter `String`, because it has 3 elements and the elements are Strings. If the value was `["a", "b"]` then the type would become `Vect 2 String`, the index would change from `3` to `2`, but the type parameter would stay as `String`
 
 # Programming recap
-If you know about programming, you probably know about types and functions. Types are ways to classify values that the computer manipulates and functions are lists of instructions that describe how those values are changed. 
+If you know about programming, you probably know about types and functions. Types are ways to classify values that the computer manipulates and functions are instructions that describe how those values are changed. 
 
-In _imperative programming_ functions perform memory operations like "load" and "store" or make use of complex protocols to connect to the internet. While powerful in a practical sense, those functions are really hard to study, so in order to make you life easier we only consider functions in the _mathematical_ sense of the word : a function is _something_ that takes an input and returns an output. 
+In _imperative programming_ functions can perform powerful operations like "malloc" and "free" for memory management or make network requests through the internet. While powerful in a practical sense, those functions are really hard to study, so in order to make life easier we only consider functions in the _mathematical_ sense of the word : A function is something that takes an input and returns an output. 
 
-In mathematical notations those functions are also defined using a _domain_ and _codomain_ (or a domain and an image) which describe which values are allowed and which values are expected to come out. 
+```haskell
+f : A -> B
+```
 
-This simplifies our model because it forbids the complexity related to complex operations like arbitrary memory modification or network access. We can recover those features by using patterns like "monad" but it is not the topic of this brief section so we will skip it. 
+This notation tells us what type the function is ready to injest as input and what type is expected as the output.
 
- Functional programming is often used to describe a programming practice centered around the use of such functions. Types are used to describe the values those functions manipulate. In additions, traditionally functional programming language have a strong emphasis on their type system which allow the types to describe the structure of the values in much more detail than simply "the amount of memory it requires to allocate"
+```haskell
+input    output
+    v    v
+f : A -> B
+^
+name 
+```
 
-During the rest of this thesis we are going to concern ourselves with Idris2, a purely functional programming language featuring Quantitiative type theory. 
+This simplifies our model because it forbids the complexity related to complex operations like arbitrary memory modification or network access. (We can recover those features by using patterns like "monad" but it is not the topic of this brief introduction so we will skip it. )
+
+ Functional programming describes a programming practice centered around the use of such functions, and types are used to describe the values those functions manipulate. In addition, traditionally functional programming language have a strong emphasis on their type system which allow the types to describe the structure of the values very precisely.
+
+During the rest of this thesis we are going to talk about Idris2, a purely functional programming language featuring Quantitiative Type Theory, a type theory centered around managing resources.
 
 # Idris and dependent types 
 
-Before we jump into idris2, allow me to introduce idris, its predecessor. Idris is a programming language featuring dependent types. Dependent types allow developers to make use of a type discipline powerful enough to write both programs and theorems writhin the same language. 
+Before we jump into Idris2, allow me to introduce Idris, its predecessor. Idris is a programming language featuring dependent types. Dependent types in that they allow you to write both programs and theorems writhin the same language. 
 
 Here is an example program featuring dependent types
 
@@ -81,33 +83,52 @@ Here is an example program featuring dependent types
 intOrString : (b : Bool) -> if b then Int else String
 intOrString True = 404
 intOrString False = "we got a string"
+
 ```
+As you can see the return type of this function contains an if-statement that uses the argument of our function as its conditional.
 
-Non-dependent type system cannot represent this behavior and have to resort to patterns like "either" (or more generally alternative monads) which encapsulates all the possible meanings out program could have. Even if sometimes we _know_ there is only one of them that can occur. 
-
+The next snipped disentangles the type signature a little bit.
 
 ```haskell
-intOrString' :: Bool -> Either Int String
-intOrString' True = Left 404
-intOrString' False = Right "we got a string"
+--    name of the argument         return type
+--             |                        |
+--             |  Type of the argument  |
+--             |    |                   |
+--             v    v       /----------/ \----------\  
+intOrString : (b : Bool) -> if b then Int else String
+--             ^               ^
+--             \---------------/
+--                dependency
+```
+
+Since the return type is different depending on the value of `b` it means this is a _dependent type_. 
+
+Non-dependent type system cannot represent this behavior and have to resort to patterns like "either" (or, more generally, alternative monads) which encapsulates all the possible meanings our program could have. Even if sometimes we _know_ there is only one of them that can occur. 
+
+```haskell
+eitherIntOrString :: Bool -> Either Int String
+eitherIntOrString True = Left 404
+eitherIntOrString False = Right "we got a string"
 ```
 
 This small example is one reason why dependent types are desirable for general purpose programming, they allow the programmer to state the behavior of the program without ambiguity and without superfluous checks that, in addition to hinder readability, can have a negative impact on the runtime performance of the program. 
 
 # Idris and type holes
 
-A very useful feature of Idris is _type holes_, one can replace any term by a variable name prefixed by a question mark, like this : `?hole` This tells the compiler to infer the type a this position and report it to the user in order to better understand what value could possibly fit the expected type. If we take our example of `intOrString` and replace the implementation by a hole we have
+A very useful feature of Idris is _type holes_, one can replace any term by a variable name prefixed by a question mark, like this : `?hole` . This tells the compiler to infer the type a this position and report it to the user in order to better understand what value could possibly fit the expected type. When asked about a hole, the compiler will also report what it knows about the surrounding context in order to help us figure out which values could suit the expected type.
+
+If we take our example of `intOrString` and replace the implementation by a hole we have the following:
 
 ```haskell
 intOrString : (b : Bool) -> if b then Int else String
 intOrString b = ?hole
 ```
 
-asking the Idris compiler what the hole is supposed to contain we get
+Asking the Idris compiler what the hole is supposed to contain we get
 
 ```haskell
 b : Bool
----------
+--------------------------------
 hole : if b then Int else String
 ```
 
@@ -119,7 +140,7 @@ intOrString True = ?hole1
 intOrString False = ?hole2
 ```
 
-asking again what is in hole1 get us
+Asking again what is in hole1 get us
 
 ```haskell
 ------------
@@ -133,21 +154,29 @@ and hole2 gets us
 hole2 : String
 ```
 
-Which we can fill with literaly values like `123` or `"this value is of type String"`.
+Which we can fill with literal values like `123` or `"good afternoon"`. The complete program would look like this:
+
+```haskell
+intOrString : (b : Bool) -> if b then Int else String
+intOrString True = 123
+intOrString False = "good afternoon"
+```
+
 
 ## A note about Either
 
-Interestingly enough using the same strategy in `intOrString'` does not yield such precise results, indeed
+Interestingly enough using the same strategy in `eitherIntOrString` does not yield such precise results, indeed
 
 ```haskell
-intOrString' : Bool -> Either Int String
-intOrString' b = ?hole
+eitherIntOrString : Bool -> Either Int String
+eitherIntOrString b = ?hole
 ```
 
 Asking for `hole` gets us
+
 ```haskell
 b : Bool
-----------
+------------------------
 hole : Either Int String
 ```
 
@@ -173,14 +202,14 @@ hole2 : Either Int String
 
 ## A note about usage
 
-In itself this isn't a problem how ever this lack of information manifests itself in otherways during programming, take the following program
+In itself using `Either` isn't a problem however this lack of information manifests itself in other ways during programming, take the following program
 
 ```haskell
 checkType : Int
-checkType = let intValue = IntOrString True in ?hole
+checkType = let intValue = intOrString True in ?hole
 ```
 
-the hole give use as information
+The hole gives us the following:
 
 ```haskell
 intValue : Int
@@ -188,7 +217,8 @@ intValue : Int
 hole : Int
 ```
 
-If we want to manipulate this value we can, simply because we can treat it as a regular integer
+If we want to manipulate this value we can treat it as any other integer, there is nothing special about it, except for the fact that it comes from a dependent function.
+
 ```haskell
 checkType : Int
 checkType = let intValue = IntOrString True 
@@ -202,21 +232,19 @@ doubled : Int
 hole : Int
 ```
 
-and return the modified value
+We can then return the modified value without any fuss:
 
 ```haskell
 checkType : Int
-checkType = let intValue = IntOrString True 
+checkType = let intValue = intOrString True 
                 doubled = intValue * 2 in doubled
 ```
-
-without any fuss.
 
 Constrast that with the non-dependent implementation `intOrString'`
 
 ```haskell
 checkType : Int
-checkType = let intValue = IntOrString' True in ?hole
+checkType = let intValue = eitherIntOrString True in ?hole
 ```
 
 ```haskell
@@ -225,38 +253,52 @@ intValue : Either Int String
 hole : Int
 ```
 
-The compiler is unable to tell us if this value is an `Int` or a string. despite us _knowing_ that `IntOrString` returns an `Int` we cannot use this fact to convince the compiler to simplify the signature for us. We have to go through a runtime check to ensure that the value we are inspecting is indeed an `Int`
+The compiler is unable to tell us if this value is an `Int` or a string. despite us _knowing_ that `IntOrString` returns an `Int` we cannot use this fact to convince the compiler to simplify the signature for us. We have to go through a runtime check to ensure that the value we are inspecting is indeed an `Int`. This is one aspect where using dependent types results in more efficient program too.
 
 ```haskell
-let intValue = intOrString' True in
-    case intValue of
-        (Left i) => ?hole1
-        (Right str) => ?hole2
+checkType : Int
+checkType = let intValue = eitherIntOrString True in
+                case intValue of
+                     (Left i) => ?hole1
+                     (Right str) => ?hole2
 ```
 
-This introduces the additional problem that we now need to provide a value for an impossible case (`Right`). What do we even return? we do not have an Int to double. Or alternatives are:
+This introduces the additional problem that we now need to provide a value for an impossible case (`Right`). What do we even return? we do not have an Int to double. Our alternatives are:
+  
 - Panic and crash the program
 - Make up a default value, silencing the error but hiding a potential bug
 - Change the return type to `Either Int String` and letting the caller deal with it.
+
+None of which are ideal nor replicate the functionality of the dependent version we saw before.
 
 This conclude our short introduction to dependent types and I hope you've been convinced of their usefulnesss. In the next section we are going to talk about linear types.
 
 # Idris2 and linear types
 
-Idris2 takes things further and introduces _linear types_ in its type system, allowing us to define how a variable will be used. In Idris2 variables are annotated with a _quantity_ , 0, 1 or W which indicate if the variable cannot be used (0), can be used exactly once (1) or is not subject to any usage restriction (w).
+Idris2 takes things further and introduces _linear types_ in its type system, allowing us to define how many times a variable will be used. Three different quantities exist in Idris2 : `0`, `1` and `ω`. `0` means the value cannot be used in the body of a function, `1` means it has to be used exactly once, no less, no more.  `ω`   means the variable isn't subject to any usage restrictions, just like other non-linear programming languages. 
 
-Take the following example
+We are going to revisit this concept later as there are more subtleties, specially about the `0` usage. For now we are going to explore some examples of linear function and linear types. Take the following function:
 
 ```haskell
 increment : Nat -> Nat
 increment n = S n
 ```
 
-We see that the natural number is used exactly once on the right hand side of our definition. Therefore we can update out program with linearity annotations like so
+As we've seen before with our `intOrString` function we can name our arguments in order to refer to them later in the type signature. We can do the same here even if we do not use the argument in a dependent type. Here we are going to name our first argument `n`.
+
+```haskell
+increment : (n : Nat) -> Nat
+increment n = S n
+```
+
+In this case, the name `n` doesn't serve any other purpose than documentation/ but our implementation of linear types has one particularity: quantities have to be assigned to a _name_. Since the argument of `increment` is used exactly once in the body of the function we can update our type signature to assign the quantity `1` to the argument `n`
 
 ```haskell
 increment : (1 n : Nat) -> Nat
 increment n = S n
+                ^
+                |
+              We use n once here
 ```
 
 Additionally, idris2 feature pattern matching and the rules of linearity also apply to each variable that is bond when matching on it. That is, if the value we are matching is linear then we need to use the pattern variables linearly. 
@@ -264,7 +306,12 @@ Additionally, idris2 feature pattern matching and the rules of linearity also ap
 ```haskell
 sum : (1 n : Nat) -> (1 m : Nat) -> Nat
 sum Z m = m
+    ^
+    We match on the argument here
+
 sum (S n) m = S (sum n m)
+     ^
+     we match on the argument and bind the values used by the constructor to `n`
 ```
 
 Obviously this programming discipline does not allow us to express every program the same way as before. Here are two typical examples that cannot be expressed 
@@ -275,23 +322,25 @@ drop : (1 v : a) -> ()
 copy : (1 v : a) -> (a, a)
 ```
 
-We can explore what is wrong with those functions by trying to implement them and making use of _holes_.
+We can explore what is wrong with those functions by trying to implement them and making use of holes.
 
 ```haskell
 drop : (1 v : a) -> ()
-drop v = ?hole
+drop v = ?drop_rhs
 ```
 
 ```haskell
 0 a : Type
 1 v : a
 ------------
-hole : ()
+drop_rhs : ()
 ```
+  
+As you can see, each variable is annotated with an additional number on its left, `0` or `1`, they inform us of how many times each variable has to be used (If there is no restriction, the usage number is simply removed, just like our previous examples didn't show any usage numbers).
 
-As you can see we need to use `v` but we are only allowed to return `()`.
+As you can see we need to use `v` (since it maked with `1`) but we are only allowed to return `()`. This would be solved if we had a function of type `(1 v : a) -> ()`  to consume the value and return `()`, but this is exactly the signature of the function we are trying to implement!
 
-If you try to compile it anyways, you will get this error:
+If we try to implement the function by returning `()` directly we get the following:
 
 ```haskell
 drop : (1 v : a) -> ()
@@ -301,6 +350,8 @@ drop v = ()
 ```haskell
 There are 0 uses of linear variable v
 ```
+
+Which indicates that `v` is supposed to be used but no uses have been found.
 
 Similarly for `copy` we have
 
@@ -341,40 +392,122 @@ copy v = (v, ?hole)
 hole : a
 ```
 
-The hole has been updated to reflect the fact that though `v` is in scope, no uses of it are available, despite that we still need to make up a value of type `a` out of thin air, which is impossible.
+The hole has been updated to reflect the fact that though `v` is in scope, no uses of it are available. Despite that we still need to make up a value of type `a` out of thin air, which is impossible.
 
 While there are experimental ideas that allow us to recover those capabilities they are not currently present in Idris2. We will talk about those limitations and how to overcome them our "limitations and future work" section. 
+
+## Something about 0
 
 In the following snipped you will notice that we use an implicit argument that hold the type of a list
 
 ```haskell
 length : {a : Type} -> List a -> Nat
+length [] = Z
+length (x :: xs) = S (length xs)
 ```
 
-If an argument is superfluous it can be annotated with 0 indicating that it will not and cannot appear in the body of our function. While this might be strange at first glance it makes a lot of sense in a dependently typed setting.
+If an argument is superfluous it can be annotated with 0 indicating that it will not and cannot appear in the body of our function. While this might be strange at first it makes a lot of sense in a dependently typed setting.
 
 ```haskell
 length : {0 a : Type} -> List a -> Nat
 ```
 
- Indeed, variables with linearity 0 Do not appear in the execution of the program but are allowed to be used during the compilation of the program and therefore are allowed unrestricted use as along as its constrained within a type signature or a rewrite .
+ Indeed, variables with linearity `0` do not appear in the execution of the program but are allowed to be used during the compilation of the program and therefore are allowed unrestricted use as along as its constrained to functions which takes argument with linearity `0`.
 
-This does not only apply type values of type "types" but to every value, for example here the same example with vector showcases an erased Nat
+This feature is available for every value, here the same example with vector showcases an erased Nat:
 
-*vsctor length*
+```haskell
+--               n isn't consumed by Vect
+--                           v
+length : {0 n : Nat} -> Vect n a -> Nat
+length [] = Z -- n doesn't appear in the body
+length (x :: xs) = S (length xs)
+```
 
-Exercises
+Note: This function uses curly brackets instead of parenthesis, this indicates that the argument between curly brackets is _implicit_, that is, the used doesn't have to give the argument to the function, the compiler can figure out the argument to use by itself. 
+
+The subtleties about `0` do not end here, take this example from the idris compiler.
+
+```haskell
+getLocName : (idx : Nat) -> Names vars -> (0 p : IsVar name idx vars) -> Name
+getLocName Z (x :: xs) First = x
+getLocName (S k) (x :: xs) (Later p) = getLocName k xs p
+                                ^                      ^
+            we match on `p` but its type is            |
+            (0 : p : IsVar name idx vars)              |
+                                                       |
+                           We use `p` in the body of the function
+```
+
+This function matches on an erased argument, and then binds the arguments of its constructor to a new value `p` and uses it in a recursive call. Why does that work?
+
+If we replace the implementation of the second clause by a hole we get:
+
+```haskell
+getLocName (S k) (x :: xs) (Later p) = ?erased
+```
+
+```haskell
+ 0 name : Name
+   k : Nat
+   xs : Names ns
+   x : Name
+ 0 p : IsVar name k ns
+ 0 vars : List Name
+-------------------------------------
+erased : Name
+```
+
+Which indicates that `p` is inaccessible, updating the program to make the recursive call 
+
+```haskell
+getLocName (S k) (x :: xs) (Later p) = getLocName k xs ?erased
+```
+
+```haskell
+ 0 name : Name
+   k : Nat
+   xs : Names ns
+   x : Name
+ 0 p : IsVar name k ns
+ 0 vars : List Name
+-------------------------------------
+erased : IsVar ?name k ns
+```
+
+Tell us that we need to pass a proof of type `IsVar`, the context would suggest that we cannot use `p` because of its `0` linearity, but thankfully the recursive call does not consume the proof either. Therefore it can safely be passed along:
+
+```haskell
+getLocName (S k) (x :: xs) (Later p) = getLocName k xs p
+```
+
+
+# Exercises
 
 Drop and copy cannot be written for arbitrary types _but_ if you know how to construct your type you can _work really hard_ to implement them. Here is an example with Nat
 
-*dropNat*
-*cooyNat*
+```haskell
+dropNat : (1 _ : Nat) -> ()
+dropNat Z = ()
+dropNat (S n) = dropNat n
 
-It is worthy to notice that while dropNat effectively spends O(n) doing nothing, copy _simulates_ allocation by construction a new value that is entirely identical and takes the same space as the original one (albeit very inefficiently, one would expect a memcpy to be O(1) in the size of the input, not O(ℕ))
+copyNat : (1 _ : Nat) -> (Nat, Nat)
+copyNat Z = (Z, Z)
+copyNat (S n) = let (a, b) = copyNat n in
+                    (S a, S b)
+```
+
+It is worthy to notice that while dropNat effectively spends O(n) doing nothing, copy _simulates_ allocation by constructing a new value that is  identical and takes the same space as the original one (albeit very inefficiently, one would expect a memcpy to be O(1), not O(n) in the size of the input)
 
 Here is an interface for this behavior
-Drop
-Copy
+
+```haskell
+interface Drop a where
+    drop : a -> ()
+
+interface Copy a where
+    copy : a -> (a, a)
+```
 
 Can you implement this interface for List, Vector, and Binary Trees?
 What about String and Int? What's wrong with them?

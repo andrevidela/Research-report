@@ -29,3 +29,7 @@ go from one to the other?
 
 Only allow predefined operations on files, use 3d space to navigate the project. Use arms and hand 
 motions to operate on the file. WOrking on an implementation should feel like blacksmithing.
+
+## An Idris2 hackathon
+
+Let's make everything happen

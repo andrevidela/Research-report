@@ -3,51 +3,16 @@
 Here is what's left before we release the thesis into the wild, ideally I'd like to be done with the benchmarking by the end of July and with the thesis by the
 end of august so I have 1 month left for corrections.
 
-## %mutate doesn't show any improvements
 
-Probably because Chez is too smart
+# Todo
 
-### solutions?
-
-#### make Chez worse
-
-Not really worth it. we already know mutation is more performance than allocation. We'll see the result we want but not really learn much from it
-
-#### Try on the JS backend
-
-The JS backend was just released recently and I didn't ipmlement this on JS so maybe it's worth a try
-
-#### Go all-in with linearity and re-implement control flow analysis in the core language instead of during codegen
-
-working on it
-
-## write all of this down
-
-I have a folder with all that in ulysses I need to gather all the notes and organise them in a coherent narative
-
-## make a stricter version of Idris2
-
-removing the subtyping rules in Idris would be very annoying but it would make the patch a lot easier to implement. Basically every linear function that uses its argument in a function
-can mutate it. Mutation either happens with a constructor mutating a reference _or_ by calling a function that itself mutates the argument because its linear too
-
-### Steps
-
-- [ ] remove the subtyping
-- [ ] make use of the mutating construct we added before
-
-### problems
-
-I can probably build the compiler itself with this patch but not the libraries since they make much more liberal use of linearity.
-That means that benchmarking will only be synthetic benchmarks and won't be able to use the prelude or contrib. So maybe they won't
-be very represeentative. However they should show a lot of improvements
-
-# conclusion
-
-Those two patches should be interesting enough to make the bulk of the thesis. I might sprinkle in some of my experiments with multiplicities and semirings. 
-As well as future work with reference counting and control flow analysis
-
-## Todo
-
+- [ ] Implement session types for the session type chapter
+- [ ] Implement permutations as a category for the permutation chapter
+  - [ ] port Idris-ct
+- [ ] Have more programs to benchmarks
+- [ ] explain why the original idea didn't work
+- [ ] work on the multiplicities and reference counting idea
+- [ ] explain the difference between linear types with linearity on the types and QTT with linearity on the binder
 - [ ] Add %mutate again
   - [x] try %mutate with JS backend (DOING)
     - [x] run the Fibonacci benchmarks
@@ -94,4 +59,54 @@ As well as future work with reference counting and control flow analysis
   - [ ] make every linear function mutating
   - [ ] (OPTIONAL) have a function flag that makes everything in a body linear
   - [ ] (OPTIONAL) ^ this will require to have maybe `w` as unrestricted linearity explicitly
+
+# Progress
+
+## %mutate doesn't show any improvements (DONE)
+
+Probably because Chez is too smart
+
+> analyse variance instead
+
+### solutions?
+
+#### make Chez worse (DONE)
+
+Not really worth it. we already know mutation is more performance than allocation. We'll see the result we want but not really learn much from it
+
+> Let's ignore this for now and just remove the startup time
+
+#### Try on the JS backend (DONE)
+
+The JS backend was just released recently and I didn't ipmlement this on JS so maybe it's worth a try
+
+#### Go all-in with linearity and re-implement control flow analysis in the core language instead of during codegen
+
+working on it
+
+## write all of this down (DONE)
+
+I have a folder with all that in ulysses I need to gather all the notes and organise them in a coherent narative
+
+## make a stricter version of Idris2
+
+removing the subtyping rules in Idris would be very annoying but it would make the patch a lot easier to implement. Basically every linear function that uses its argument in a function
+can mutate it. Mutation either happens with a constructor mutating a reference _or_ by calling a function that itself mutates the argument because its linear too
+
+### Steps
+
+- [ ] remove the subtyping
+- [ ] make use of the mutating construct we added before
+
+### problems
+
+I can probably build the compiler itself with this patch but not the libraries since they make much more liberal use of linearity.
+That means that benchmarking will only be synthetic benchmarks and won't be able to use the prelude or contrib. So maybe they won't
+be very represeentative. However they should show a lot of improvements
+
+# conclusion
+
+Those two patches should be interesting enough to make the bulk of the thesis. I might sprinkle in some of my experiments with multiplicities and semirings. 
+As well as future work with reference counting and control flow analysis
+
   

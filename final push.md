@@ -7,8 +7,8 @@ end of august so I have 1 month left for corrections.
 # Todo
 
 - [ ] Implement session types for the session type chapter
-- [ ] Implement permutations as a category for the permutation chapter
-  - [ ] port Idris-ct
+- [x] Implement permutations as a category for the permutation chapter
+  - [x] port Idris-ct
 - [ ] Have more programs to benchmarks
 - [ ] explain why the original idea didn't work
 - [ ] work on the multiplicities and reference counting idea

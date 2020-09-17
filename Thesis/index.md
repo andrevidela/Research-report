@@ -1,42 +1,56 @@
 # Table of content
 
+- Abstract
 - Introduction
-	- Vocabulary etc
+	- Vocabulary and jargon
 	- Programming recap
 	- Idris and dependent types
 	- Idris and type holes
-		- Either revisited
-		- Type hole usage
+		- Simple example
+		- Dependent types example
+		- Holes in Idris
+		- What’s wrong with non-dependent types
 	- idris2 and linear types
-	- Exercises
-- literature review
-	- (introduction to) linear types (LL, BLL, QTT)
-	- use of (affine and) linear types (session types, rust, cyclone)
-	- performance using linear types (Deforestation, Reference counting, free after use)
-	- Graded monad and modal types (Granule, QTT semirings, co-effects)
+		- Incremental steps
+		- Dropping and picking it up again
+		- Dancing around linear types
+		- Linear intuition
+	- The story begins
+- Quantitative Type Theory in practice
+	- Opening the door to new opportnities
+	- Permtations
+	- Compile-time string concatenation
+	- Invertible functions
+	- Support for non-computational theories
+	- Levitation improvements
+- Context review
+	- Origins
+	- Applications
+	- Cutting edge linear types
+- Section 1: Quantitative Type theory ergonomics
+- Section 2: Performance improvement in Idris2
+	- What's the big idea?
+		- Why mutation
+		- Why QTT and idris2
+		- Why it would work?
 
-- What's the big idea?
-	- Why mutation
-	- Why QTT and idris2
-	- Why it would work?
+	- The implementation ?
+		- % mutate
+		- automatically mutate linear use
+		- automatically dispatch linear calls
 
-- The implementation ?
-	- % mutate
-	- automatically mutate linear use
-	- automatically dispatch linear calls
+	- benchmarks
+		- synthetic benchmarks (fib, update, megaupdate)
+		- compiler benchmarks (run the optimised version of the compiler on things and compare with unoptimised)
+		- real projects (SAT, Game of life, Statebox)
 
-- benchmarks
-	- synthetic benchmarks (fib, update, megaupdate)
-	- compiler benchmarks (run the optimised version of the compiler on things and compare with unoptimised)
-	- real projects (SAT, Game of life, Statebox)
-
-- Results
-	- synthetic results
-		- No improvements because Chez is too smart (to verify)
-		- check with JS
-	- compiler results
-		- No improvements because the compiler does not make heavy use of linearity
-	- real projects
+	- Results
+		- synthetic results
+			- No improvements because Chez is too smart (to verify)
+			- check with JS
+		- compiler results
+			- No improvements because the compiler does not make heavy use of linearity
+		- real projects
 
 - Conclusion
 	- Promising but currently limited
@@ -54,11 +68,11 @@ Idris2 is a programming language featuring Quantitative type theory, a Type Theo
 Until Idris2, our understanding of linear types and their uses in dependently-typed programs was hypothetical. However this changes with languages like Idris2, which allow us to explore the semantics of running programs using linear and dependent types. 
 In this thesis I explore multiple facets of programming through the lens of quantitative programming, from ergonomics, to performance. I will present how quantitative annotations can help the programmer write program that precisely match their intension, help the compiler better analyse the program written, and help the output bytecode to run faster.
 
-# 0 Introduction 
+# Introduction 
 
-In this project I will demonstrate different uses and results resulting from a programming practice that allows us to specify how many times each variable is being used. This information is part of the type system, in our case we are tracking if a variable is allowed to be used exactly once, or if it has no restrictions. Such types are called “linear types”. 
+In this project I will demonstrate different uses and results stemming from a programming practice that allows us to specify how many times each variable is being used. This information is part of the type system, in our case we are tracking if a variable is allowed to be used exactly once, or if it has no restrictions. Such types are called “linear types”. 
 
-As we will see there is a lot more to this story, so as part of this thesis, I will spend some time introducing the topic of dependent types and linear types. After that we will see some example of (new and old) uses for linear types in Idris2. This focus on practical examples will be followed by a context review of the existing body of theoretical work around linear types. Once both the theoretical and practical landscape have been set I will talk about the main two topics of this thesis, the ergonomics of QTT for software developement and the performance improvement we can derive from the linearity features of Idris2.
+As we will see there is a lot more to this story, so as part of this thesis, I will spend some time introducing the topic of dependent types and linear types. After that we will see some example of (new and old) uses for linear types in Idris2. This focus on practical examples will be followed by a context review of the existing body of theoretical work around linear types. Once both the theoretical and practical landscape have been set I will talk about the main two topics of this thesis, the ergonomics of Quantitative Type Theory (QTT, for short) for software development and the performance improvement we can derive from the linearity features of Idris2.
 
 The ergonomics chapter will focus on how the current implementation of Idris can be extended, and the step already taken toward those extensions. And the performance chapter will analyse one aspect of performance that can be optimised thanks to clever use of linearity.
 
@@ -125,7 +139,7 @@ name
 This simplifies our model because it forbids the complexity related to complex operations like arbitrary memory modification or network access [^1].
 Functional programming describes a programming practice centered around the use of such functions. In addition, traditional functional programming language have a strong emphasis on their type system which allow the types to describe the structure of the values very precisely.
 
-During the rest of this thesis we are going to talk about Idris2, a purely functional programming language featuring Quantitiative Type Theory (QTT), a type theory [^2]based around managing resources. But before we talk about QTT itself, we have to explain what is Idris and what are dependent types.
+During the rest of this thesis we are going to talk about Idris2, a purely functional programming language featuring Quantitiative Type Theory (QTT), a type theory[^2] based around managing resources. But before we talk about QTT itself, we have to explain what is Idris and what are dependent types.
 
 ## Idris and dependent types 
 
@@ -226,7 +240,7 @@ intOrString False = "we got a string"
 --           └ `b` is `False` so we expect to return a String
 ```
 
-This is typically not achievable [^4] in programming languages with conventional type systems. Which is why one might want to use Idris rather than Java, C or even Haskell in order to implement their programs.
+This typically cannot be done[^4] in programming languages with conventional type systems. Which is why one might want to use Idris rather than Java, C or even Haskell in order to implement their programs.
 
 ### Holes in Idris
 
@@ -347,7 +361,10 @@ But doing so introduces the additional problem that we now need to provide a val
 - Make up a default value, silencing the error but hiding a potential bug.
 - Change the return type to `Either Int String` and letting the caller deal with it.
 
-None of which are ideal nor replicate the functionality of the dependent version we saw before. This is why dependent types are desirable, not only they make programs more precise, they also help avoid needless runtime checks and they help the compiler help the programmer by communicating precisely which types are expected.
+None of which are ideal nor replicate the functionality of the dependent version we saw before. This is why dependent types are desirable, they help:
+- Avoid needless runtime checks.
+- The compiler better understand the semantics of the program.
+- Inform the programmer by communicating precisely which types are expected.
 
 This concludes our short introduction to dependent types and I hope you've been convinced of their usefulness. In the next section we are going to talk about linear types.
 
@@ -828,7 +845,7 @@ This conclude our introductory chapter. I suggest you come back to it regularly 
 
 In the next section I will start listing and talking about uses of linear types, and what happens when they are combined with dependent types. Some of them were already known, but some of them are also new and delightful.
 
-# 5 QTT in practice
+# Quantitative Type Theory in practice
 
 Linear types haven’t really found a place in mainstream commercial application of software engineering. Becase qtt is even more niche than linear logic and because it’s much newer it hasn’t seen almost _any_ use under any shape or form. The Idris2 compiler itself stands as the most popular example of a complex program that showcases uses for QTT and quantitative types. For this reason, while this section does not provide any concrete contributions, I thought it was warranted to list some new, innovative and unexpected uses for linear types and QTT.
 
@@ -1253,7 +1270,7 @@ Coincidentally, this might actually _help_ our use of levitated declarations sin
 
 In addition, idris2 now supports type matching thanks to explicit linearity declarations for types. This is necessary in order to implement automatic derivation of interfaces with methods that use higher order functions like Functor and Applicative. 
 
-# 1 Literature review
+# Context Review
 
 This literature review, or context review, will enumerate and comment on the existing literature about linear types and related topics. In order to give context to this research project I will present it through three lenses: The first aims to tell the origin story of linear types and their youthful promises. The second will focus on the current understanding of their application for real-world use. And the last one will focus on the latest theoretical developments that linear types spun up.
 
@@ -1434,7 +1451,7 @@ In this section I will explain the premise that lead me to this statement and fo
 
 # Relaxing linearity propagation for safe inlining
 
-By the way, there is soemthing that's been nibbling at me for a while but I wasn't sure when to ask about it. Now that I'm writing everything down I think i have a clearer case for it:
+By the way, there is something that's been nibbling at me for a while but I wasn't sure when to ask about it. Now that I'm writing everything down I think i have a clearer case for it:
 
 linearProof : (1 v : Nat) -\> ProofOnNat v
 linearProof Z = Refl 
@@ -2218,7 +2235,9 @@ we can deduce that the meaning of the circle was to represent the head of a stic
 [^2]:	_Type theory_ is the abstract study of type systems, most often in the context of pure, mathematical, logic. When we say “a Type Theory” we mean a specific set of logical rules that can be implemented into a _Type System_
 
 [^3]:	A list is defined as  
-	`` data List a = Nil | Cons a (List a)  
+
+	``data List a = Nil | Cons a (List a)
+	  
 	Which mean a list is either empty (`Nil`) or non-empty (`Cons`) and will contain an element of type `a` and a reference to the tail of the list, which itself might be empty or not. It is customary to write the `Cons` case as `::`, and in fact the official implementation uses the symbol `::` instead of the word `Cons`. It is also customary to represent the empty list by `[]`.
 
 [^4]:	Some version of dependent types might be achievable in other programming languages depending on how much the programmer is ready to indulge in arcane knowledge. But the core strength of Idris is that dependent types are not arcane, they are an integral part of the typing experience.

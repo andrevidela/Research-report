@@ -1,67 +1,3 @@
-# Table of content
-
-- Abstract
-- Introduction
-	- Vocabulary and jargon
-	- Programming recap
-	- Idris and dependent types
-	- Idris and type holes
-		- Simple example
-		- Dependent types example
-		- Holes in Idris
-		- What’s wrong with non-dependent types
-	- idris2 and linear types
-		- Incremental steps
-		- Dropping and picking it up again
-		- Dancing around linear types
-		- Linear intuition
-	- The story begins
-- Quantitative Type Theory in practice
-	- Opening the door to new opportnities
-	- Permtations
-	- Compile-time string concatenation
-	- Invertible functions
-	- Support for non-computational theories
-	- Levitation improvements
-- Context review
-	- Origins
-	- Applications
-	- Cutting edge linear types
-- Section 1: Quantitative Type theory ergonomics
-- Section 2: Performance improvement in Idris2
-	- What's the big idea?
-		- Why mutation
-		- Why QTT and idris2
-		- Why it would work?
-
-	- The implementation ?
-		- % mutate
-		- automatically mutate linear use
-		- automatically dispatch linear calls
-
-	- benchmarks
-		- synthetic benchmarks (fib, update, megaupdate)
-		- compiler benchmarks (run the optimised version of the compiler on things and compare with unoptimised)
-		- real projects (SAT, Game of life, Statebox)
-
-	- Results
-		- synthetic results
-			- No improvements because Chez is too smart (to verify)
-			- check with JS
-		- compiler results
-			- No improvements because the compiler does not make heavy use of linearity
-		- real projects
-
-- Conclusion
-	- Promising but currently limited
-		- limited by linearity use
-		- limited by runtime
-	- solutions
-		- Make more use of linearity (by making linear things the default -\> have a restricted version of Idris
-			- linearity is now super annoying so we need graded modal types
-		- Make use of linearity in the runtime directly (make a reference counted runtime)
-
-
 # Abstract
 
 Idris2 is a programming language featuring Quantitative type theory, a Type Theory centered around tracking _usage quantities_ in addition to dependent types. This is the result of more than 30 years of developement spawned by the work of Girard on Linear logic.
@@ -72,9 +8,9 @@ In this thesis I explore multiple facets of programming through the lens of quan
 
 In this project I will demonstrate different uses and results stemming from a programming practice that allows us to specify how many times each variable is being used. This information is part of the type system, in our case we are tracking if a variable is allowed to be used exactly once, or if it has no restrictions. Such types are called “linear types”. 
 
-As we will see there is a lot more to this story, so as part of this thesis, I will spend some time introducing the topic of dependent types and linear types. After that we will see some example of (new and old) uses for linear types in Idris2. This focus on practical examples will be followed by a context review of the existing body of theoretical work around linear types. Once both the theoretical and practical landscape have been set I will talk about the main two topics of this thesis, the ergonomics of Quantitative Type Theory (QTT, for short) for software development and the performance improvement we can derive from the linearity features of Idris2.
+As we will see there is a lot more to this story, so as part of this thesis, I will spend some time introducing dependent types and linear types. After that we will see some examples of (new and old) uses for linear types in Idris2. This focus on practical examples will be followed by a context review of the existing body of theoretical work around linear types. Once both the theoretical and practical landscape have been set I will delve into the main two topics of this thesis, the ergonomics of Quantitative Type Theory (QTT, for short) for software development and the performance improvement we can derive from the linearity features of Idris2.
 
-The ergonomics chapter will focus on how the current implementation of Idris can be extended, and the step already taken toward those extensions. And the performance chapter will analyse one aspect of performance that can be optimised thanks to clever use of linearity.
+The ergonomics chapter will focus on how the current implementation of Idris can be extended, and the steps already taken toward those extensions. The performance chapter will analyse one aspect of performance that can be optimised thanks to clever use of linearity.
 
 Let us begin slowly and introduce the basic concepts. The following will only make assumptions about basic understanding of imperative and functional programming. 
 
@@ -137,7 +73,7 @@ name
 ```
 
 This simplifies our model because it forbids the complexity related to complex operations like arbitrary memory modification or network access [^1].
-Functional programming describes a programming practice centered around the use of such functions. In addition, traditional functional programming language have a strong emphasis on their type system which allow the types to describe the structure of the values very precisely.
+Functional programming describes a programming practice centered around the use of such functions. In addition, traditional functional programming languages have a strong emphasis on their type system which allows the types to describe the structure of the values very precisely.
 
 During the rest of this thesis we are going to talk about Idris2, a purely functional programming language featuring Quantitiative Type Theory (QTT), a type theory[^2] based around managing resources. But before we talk about QTT itself, we have to explain what is Idris and what are dependent types.
 
@@ -269,7 +205,7 @@ intOrString True = ?hole1
 intOrString False = ?hole2
 ```
 
-Asking again what is in `hole1` get us
+Asking again what is in `hole1` gets us
 
 ```haskell
 hole1 : Int
@@ -291,7 +227,7 @@ intOrString False = "good afternoon"
 
 ### What’s wrong with non-dependent types?
 
-Non-dependent type systems cannot represent the behaviour described by `intOrString` and have to resort to patterns like `Either` [^6] to encapsulates the two possibles cases our program can encounter.
+Non-dependent type systems cannot represent the behaviour described by `intOrString` and have to resort to patterns like `Either` [^6] to encapsulate the two possible cases our program can encounter.
 
 ```haskell
 eitherIntOrString :: Bool -> Either Int String
@@ -322,27 +258,27 @@ intOrString' False = ?hole2
 
 But it does not provide any additional information about the return types to use.
 
-```haskell
------------
-hole1 : Either Int String
+```
+> -----------
+> hole1 : Either Int String
 ```
 
-```haskell
------------
-hole2 : Either Int String
+```
+> -----------
+> hole2 : Either Int String
 ```
 
-In itself using `Either` isn't a problem, however `Either`’s lack of information manifests itself in other ways during programming, take the following program:
+In itself using `Either` isn't a problem, however `Either`’s lack of information manifests itself in other ways during programming; take the following program:
 
 ```haskell
 checkType : Int
 checkType = let intValue = eitherIntOrString True in ?hole
 ```
 
-```haskell
-intValue : Either Int String
----------------
-hole : Int
+```
+> intValue : Either Int String
+> ---------------
+> hole : Int
 ```
 
 The compiler is unable to tell us if this value is an `Int` or a `String`. Despite us _knowing_ that `IntOrString` returns an `Int` when passed `True`, we cannot use this fact to convince the compiler to simplify the type for us. We have to go through a runtime check to ensure that the value we are inspecting is indeed an `Int`:
@@ -390,7 +326,7 @@ increment : (n : Nat) -> Nat
 increment n = S n
 ```
 
-In this case, the name `n` doesn't serve any other purpose than documentation, but our implementation of linear types has one particularity: quantities have to be assigned to a _name_ . Since the argument of `increment` is used exactly once in the body of the function we can update our type signature to assign the quantity `1` to the argument `n`
+In this case, the name `n` doesn't serve any other purpose than documentation, but our implementation of linear types has one particularity: quantities have to be assigned to a _name_ (something we will explore in further details in a later section). Since the argument of `increment` is used exactly once in the body of the function we can update our type signature to assign the quantity `1` to the argument `n`
 
 ```haskell
 --           ┌ We declare `n` to be linear
@@ -436,10 +372,10 @@ drop v = ?drop_rhs
 ```
 
 ```haskell
-0 a : Type
-1 v : a
-------------
-drop_rhs : ()
+> 0 a : Type
+> 1 v : a
+> ------------
+> drop_rhs : ()
 ```
   
 As you can see, each variable is annotated with an additional number on its left, `0` or `1`, that informs us how many times each variable has to be used (If there is no restriction, the usage number is simply left blank, just like our previous examples didn't show any usage numbers).
@@ -519,7 +455,7 @@ copyNat (S n) = let (a, b) = copyNat n in
                     (S a, S b)
 ```
 
-It is worth noticing  that `dropNat` effectively spends `O(n)` doing nothing, while `copyNat` _simulates_ allocation by constructing a new value that is  identical and takes the same space as the original one (albeit very inefficiently, one would expect a memcpy to be `O(1)`, not `O(n)` in the size of the input).
+It is worth noticing  that `dropNat` effectively spends `O(n)` doing nothing, while `copyNat` _simulates_ allocation by constructing a new value that is  identical and takes the same space as the original one (albeit very inefficiently, one would expect a `memcpy` to be `O(1)`, not `O(n)` in the size of the input).
 
 We can encapsulate those functions in the following interfaces:
 
@@ -564,7 +500,7 @@ Going through this exercise would show that this process of tearing apart values
 
 ### Linear intuition
   
-One key tool in progressing in this thesis is to develop an intuition for linear types. Since they are (mostly) not present in other programming languages, it is important to built up this intuition especially in the absence of familiarity with the practice of linear types.
+One key tool in understanding this thesis is to develop an intuition for linear types. Since they are (mostly) not present in other programming languages, it is important to build up this intuition especially in the absence of familiarity with the practice of linear types.
 
 To that end we are going to explore a number of examples that illustrate how linearity can be understood.
 
@@ -841,9 +777,9 @@ It tells us that `n` unifies with `Z` and forces the user to spell out the match
 
 ## The story begins
 
-This conclude our introductory chapter. I suggest you come back to it regularly to brush up on the linear concepts, pay particular attention the “linear intuition” section in order to make sense of _erased_ variables and _linear_ variables. I also want to stress that at the end is a glossary that lists all the important terms and concepts necessary to understand the body of this work. Please feel free to consult it if something is unclear.
+This concludes our introductory chapter. I suggest you come back to it regularly to brush up on the linear concepts, pay particular attention to the “linear intuition” section in order to make sense of _erased_ variables and _linear_ variables. I also want to stress that at the end is a glossary that lists all the important terms and concepts necessary to understand the body of this work. Please feel free to consult it if something is unclear.
 
-In the next section I will start listing and talking about uses of linear types, and what happens when they are combined with dependent types. Some of them were already known, but some of them are also new and delightful.
+In the next section I will start listing and describing uses of linear types, and what happens when they are combined with dependent types. Some of them were already known, but some of them are also new and delightful.
 
 # Quantitative Type Theory in practice
 
@@ -912,7 +848,7 @@ provide (S k) v = let (v1, v2) = copy v
 multiplication : (1 n, m : Nat) -> Nat
 multiplication n m = let (MkDPair n' Refl, ms) = provide n m in mult n' ms
   where
-    mult : (1 n : Nat) -> (1 _ : Vect n Nat) -> Nat
+    mult : (1 n : Nat) -> (1 vs : Vect n Nat) -> Nat
     mult 0 [] = 0
     mult (S k) (m :: x) = m + (mult k x)
 ```
@@ -1451,7 +1387,9 @@ In this section I will explain the premise that lead me to this statement and fo
 
 # Relaxing linearity propagation for safe inlining
 
-By the way, there is something that's been nibbling at me for a while but I wasn't sure when to ask about it. Now that I'm writing everything down I think i have a clearer case for it:
+In the introduction we used _safe inlining_ as an intuition to understand linear variables. We saw that for a variable to be linear means that it can be inlined without any loss of performance. This inlining in turn can be used to perform further optimisations, a-la deforestation.
+
+The rule seem to be that linear variable cannot be _captured_ in the body of a lambda. Indeed if the lambda is bound with linearity other than `1` then the inlined value is 
 
 linearProof : (1 v : Nat) -\> ProofOnNat v
 linearProof Z = Refl 
@@ -2263,7 +2201,7 @@ we can deduce that the meaning of the circle was to represent the head of a stic
 
 	``data NCopies : (n : Nat) -\> (t : Type) -\> (v : t)-\> Type where
 	``  Empty : NCopies Z t v
-	``  More : (1 v : t) -\> (1 _ : NCopies n t v) -\> NCopies (S n) t v
+	``  More : (1 v : t) -\> (1 vs : NCopies n t v) -\> NCopies (S n) t v
 
 	The example given uses `Vect` for brevity and readability, the code quickly becomes unwieldy with equality proofs everywhere, which aren’t the point of the example, nor showcase linear types.
 

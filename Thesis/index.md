@@ -1,14 +1,21 @@
+\title{Exploring the uses of Quantitative Types}
+\maketitle
+
 # Abstract
 
-Idris2 is a programming language featuring Quantitative type theory, a Type Theory centered around tracking _usage quantities_ in addition to dependent types. This is the result of more than 30 years of developement spawned by the work of Girard on Linear logic.
+Idris2 is a programming language featuring Quantitative type theory\cite{qtt}, a Type Theory centered around tracking _usage quantities_ in addition to dependent types. This is the result of more than 30 years of development spawned by the work of Girard on Linear logic\cite{linear-logic}.
 Until Idris2, our understanding of linear types and their uses in dependently-typed programs was hypothetical. However this changes with languages like Idris2, which allow us to explore the semantics of running programs using linear and dependent types. 
 In this thesis I explore multiple facets of programming through the lens of quantitative programming, from ergonomics, to performance. I will present how quantitative annotations can help the programmer write program that precisely match their intension, help the compiler better analyse the program written, and help the output bytecode to run faster.
 
+\newpage
+\setcounter{secnumdepth}{1}
+\tableofcontents
+\newpage
 # Introduction 
 
 In this project I will demonstrate different uses and results stemming from a programming practice that allows us to specify how many times each variable is being used. This information is part of the type system, in our case we are tracking if a variable is allowed to be used exactly once, or if it has no restrictions. Such types are called “linear types”. 
 
-As we will see there is a lot more to this story, so as part of this thesis, I will spend some time introducing dependent types and linear types. After that we will see some examples of (new and old) uses for linear types in Idris2. This focus on practical examples will be followed by a context review of the existing body of theoretical work around linear types. Once both the theoretical and practical landscape have been set I will delve into the main two topics of this thesis, the ergonomics of Quantitative Type Theory (QTT, for short) for software development and the performance improvement we can derive from the linearity features of Idris2.
+As we will see there is a lot more to this story, so as part of this thesis, I will spend some time introducing dependent types and linear types. After that we will see some examples of (new and old) uses for linear types in Idris2. This focus on practical examples will be followed by a context review of the existing body of theoretical work around linear types. Once both the theoretical and practical landscape have been set I will delve into the main two topics of this thesis, the ergonomics of Quantitative Type Theory$\cite{qtt}$ (QTT, for short) for software development and the performance improvement we can derive from the linearity features of Idris2.
 
 The ergonomics chapter will focus on how the current implementation of Idris can be extended, and the steps already taken toward those extensions. The performance chapter will analyse one aspect of performance that can be optimised thanks to clever use of linearity.
 
@@ -1319,9 +1326,15 @@ let 1 array = …
 
 Which could be executed in _constant space complexity_ effectively duplicating the results from deforestation, but in a more general setting since this approach does not make any assumption about the type of the data handled, only that operations are linear and mutations are constant in space.
 
-## Mapping primitive to data types and vice-versa (TODO: Spin this as a motivation for automatically deriving instances, not just Copy and Drop)
+## Mapping primitive to data types and vice-versa 
 
-At the end of the introduction we saw how primitive types are a problem for linearity, because we have no way of constructing them with classical constructors. However, we could define `String` as a list of `Char`, and have `Char` be defined as an 8 bits vector. Using both those definitions our primitive types have now become plain data with regular constructors.
+At the end of the introduction we saw how primitive types are a problem for linearity, because we have no way of constructing them with classical constructors. 
+
+As a reminder, we were trying to implement the functions `copy : (1 _ : a) -> (a, a)` and `drop : (1 _ : a) -> ()` for primitive types such as `String` or `Int`. 
+
+Those types are not defined using the `data` syntax used for other user-defined types. Rather, they are assumed to exist by the compiler and are built using custom functions which are different for each backend. If only `String` and `Int` were defined as plain data types, we could implement functions such as `copy` and `drop`.
+
+It turns out this is possible, we can use a clever encoding that maps plain data types to primitive types and have the compiler “pretend” until the codegen phase where they are substituted by their primitive variants. Just like in _Haskell_, `String` could be represented as a `List` of `Char`. `Char` itself is a primitive type, but the key insight here is to see that itself can be represented as `Vect 8 Bool`. Using both those definitions our primitive types have now become plain data with regular constructors:
 
 ```haskell
 Bit : Type
@@ -1337,9 +1350,11 @@ String : Type
 String = List Char
 ```
 
-This allows us to implement `Copy` and `Drop` as expected. Additionally, since the procedure to implement those instances is very mechanical, it could almost certainly be automatically derived.
+This allows us to implement `Copy` and `Drop` by inheriting the instance from `List` and `Vect`. Additionally, since the procedure to implement those instances is very mechanical, it could almost certainly be automatically derived.
 
-This approach is reminiscent of projects like practical levitation or Typedefs, which describe types and allow operations on the descriptions without modifying the semantics of the structure described, all while being able to map them to primitive version of themselves.
+This approach is reminiscent of projects like practical levitation or Typedefs, which describe data types as data structures. And the benefits of both would translate quite well to our situation, beyond the ability to dance around linearity with primitive types.
+
+Indeed, in both instance, once our data type is represented we can use its structure to infer its properties. For example, if a data type has _type parameters_ then we can generate instance for `Functor`, `Applicative`, etc. If the data type resembles `List Char` then we can replace it by the primitive type `String`. Finally, we can use semantic-preserving operations on our data types in order to optimise their representations in the generated code. For example `data Options = Folder Int | Directory Int` is equivalent to `Vect 33 Bool` which can be represented as an unboxed `Int64` . Even more optimisations could be performed by mapping `Vect` of constant length to buffers of memory of constant size and index through them in `O(1)` instead of `O(n)`.
 
 As the cherry on top, this mapping would allow the coverage checker to infer missing cases accurately for primitive types. Indeed this example should work but the Idris2 compiler is unable to check the coverage of all Strings:
 
@@ -1373,7 +1388,7 @@ fromString [[O,O,O,O,O,O,O,O]] @{IsTrue} = True
 fromString [[O,O,O,O,O,O,I,O]] @{IsFalse} = False
 
 ```
-# Idris2 and multiplicities
+## Idris2 and multiplicities
 
 Linear types allow us to declare variable to be use either `0`, `1` or any number of times. However, we’ve seen this approach is pretty restrictive, we’ve also seen that this limitation has been caught on early on with Bounded Linear Logic. In our case, we’re interested in making program more efficient by avoiding extraneous memory allocation to take place.
   
@@ -1381,17 +1396,58 @@ As we’ve seen in the previous chapter, though those optimisations are promisin
 
 In this section I will explain the premise that lead me to this statement and follow it up with preliminary work done to achieve this goal.
 
-## The problem with runtime garbage collection
+### The problem with runtime garbage collection
 
-## What is reference counting
+_Garbage collection_ generally refers to algorithm of automatic memory management such as _mark & sweep_ or to runtimes using them such as the _Boehm-GC_.
 
-## Linearity and reference counting
+The greatest benefit of garbage collection is that the burden of memory management is completely lifted from the programmer. But this feature is not always good news, the trade-off comes at the expense of predictability and control.
 
-## Alternative semirings and their semantics
+Since the garbage collector runs automatically without any input from the programmer, there is no way to tell how often the garbage collector will run and for how long, just by looking at a program. What’s more, garbage collection does not happen instantly, some algorithm stop the execution of the program for an unknown amount of time in order to reclaim memory. And this process cannot be 
 
-## Steps toward a working implementation
+### What is reference counting
 
-# Relaxing linearity propagation for safe inlining
+### Linearity and reference counting
+
+### Alternative semirings and their semantics
+
+### Steps toward a working implementation
+
+## Relaxing linearity inference
+
+problem: I want to do this
+
+```haskell
+linearProof : (1 v : Nat) -> ProofOnNat v
+linearProof Z = Refl 
+linearProof (S n) = let 0 prf = linearProof n in 
+                        rewrite prf in Refl
+```
+
+It doesn’t work because `prf` is inferred to have linearity `1`.
+
+This should be legal because `n` has been consumed, it just turns out that it produces noting but tha’ts fine.
+
+Similarly, this should work
+
+```haskell
+let 1 x = 1 + 3
+    ω y = f x in
+    (y, y)
+```
+
+Because we use `x` only once, it turns out binding to another linearity shouldn’t be a problem.
+
+Even the contrived example
+
+```haskell
+let 1 x = 1 + 3
+    ω y = (let ω z = f x in \k => z + 2) in
+    (y 3, y 4)
+```
+
+Should work because we only access `x` once, even if we bind its result to a captured variable that will be accessed twice.
+
+This last example it taken from Once Upon a Type which focuses on linearity inference and how to improve it in order to maximise occurrences of safe inlining. More recently, work on linearity inference ([https://arxiv.org/abs/1911.00268](https://arxiv.org/abs/1911.00268) has resumed thanks to Linear haskell ()
 
 In the introduction we used _safe inlining_ as an intuition to understand linear variables. We saw that for a variable to be linear means that it can be inlined without any loss of performance. This inlining in turn can be used to perform further optimisations, a-la deforestation.
 
@@ -1432,7 +1488,7 @@ which duplicates x. So while binding y as linear forcefully deals with that, it 
  
 Did I miss anything or does that sound reasonable?
 
-# 2 Implementation strategy
+# Implementation strategy
 
 In order to gauge how effective in-place mutation would be for linear function I decided to start by adding a keyword that would tell the compiler to perform mutation for variable that are matched, irrespective of their linearity properties.
 
@@ -1602,7 +1658,7 @@ replaceConstructor cName tag (App fc (Ref fc' (DataCon nref t arity) nm) arg) =
 Which checks that for every application of a data constructor if it is the same as the one we matched on, if it is, then the `CCon` instruction is replaced by a `CMut` which will tell the backend to _reuse_ the memory space taken by the argument.
 
 
-# 3 Benchmarks & methodology
+# Benchmarks & methodology
 
 In order to test our performance hypothesis I am going to use a series of programs and run them multiple times under different conditions in order to measure different aspects of performances. Typically, observing how memory usage and runtime varies depending on the optimisation we use.
 
@@ -1804,7 +1860,7 @@ But by virtue of subtyping can still be called with non-linear arguments. Since 
 
 This is why we need our ad-how scoping rule. It ensures the variable isn't shared before calling a linear function. 
 
-# 4 Results
+# Results
   
 In this section I will present the results obtained from the compiler optimisation.  The metodology and the nature of the benchmarks is explained in the “Benchmarks & methodology” section.
 
@@ -1972,7 +2028,7 @@ LState (\x => let v = x (LState (\y => let w = y initial
                                            f w))
                   g v)
 ```
-# 6 Future work
+# Future work
 
 
 ## Enlarging the scope
@@ -2173,6 +2229,9 @@ we can deduce that the meaning of the circle was to represent the head of a stic
 ## Implicit argument
 
 ## Term/Expression/Value
+
+\bibliography{bibliography.bib} 
+\bibliographystyle{ieeetr}
 
 [^1]:	We can recover those features by using patterns like "monad" but it is not the topic of this brief introduction
 

@@ -93,14 +93,14 @@
 \setlength{\emergencystretch}{3em} % prevent overfull lines
 \providecommand{\tightlist}{%
   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
-\setcounter{secnumdepth}{5}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
 \usepackage{pmboxdraw}
 \usepackage{fontspec}
 \setmonofont{Menlo}[]
 \usepackage{fancyvrb}[]
 \fvset{samepage=true, baselinestretch=1, frame=lines}
 \renewcommand{\baselinestretch}{1.2}
-\bibliography{bibliography}
+
 
 
 
@@ -114,26 +114,30 @@
 
 \begin{document}
 
-{
-\setcounter{tocdepth}{3}
-\tableofcontents
-}
+\title{Exploring the uses of Quantitative Types}
+\maketitle
+
 \hypertarget{abstract}{%
 \section{Abstract}\label{abstract}}
 
-Idris2 is a programming language featuring Quantitative type theory, a
-Type Theory centered around tracking \emph{usage quantities} in addition
-to dependent types. This is the result of more than 30 years of
-developement spawned by the work of Girard on Linear logic. Until
-Idris2, our understanding of linear types and their uses in
-dependently-typed programs was hypothetical. However this changes with
-languages like Idris2, which allow us to explore the semantics of
-running programs using linear and dependent types. In this thesis I
-explore multiple facets of programming through the lens of quantitative
-programming, from ergonomics, to performance. I will present how
-quantitative annotations can help the programmer write program that
-precisely match their intension, help the compiler better analyse the
-program written, and help the output bytecode to run faster.
+Idris2 is a programming language featuring Quantitative type
+theory\cite{qtt}, a Type Theory centered around tracking \emph{usage
+quantities} in addition to dependent types. This is the result of more
+than 30 years of development spawned by the work of Girard on Linear
+logic\cite{linear-logic}. Until Idris2, our understanding of linear
+types and their uses in dependently-typed programs was hypothetical.
+However this changes with languages like Idris2, which allow us to
+explore the semantics of running programs using linear and dependent
+types. In this thesis I explore multiple facets of programming through
+the lens of quantitative programming, from ergonomics, to performance. I
+will present how quantitative annotations can help the programmer write
+program that precisely match their intension, help the compiler better
+analyse the program written, and help the output bytecode to run faster.
+
+\newpage
+\setcounter{secnumdepth}{1}
+\tableofcontents
+\newpage
 
 \hypertarget{introduction}{%
 \section{Introduction}\label{introduction}}
@@ -152,9 +156,9 @@ linear types in Idris2. This focus on practical examples will be
 followed by a context review of the existing body of theoretical work
 around linear types. Once both the theoretical and practical landscape
 have been set I will delve into the main two topics of this thesis, the
-ergonomics of Quantitative Type Theory (QTT, for short) for software
-development and the performance improvement we can derive from the
-linearity features of Idris2.
+ergonomics of Quantitative Type Theory\(\cite{qtt}\) (QTT, for short)
+for software development and the performance improvement we can derive
+from the linearity features of Idris2.
 
 The ergonomics chapter will focus on how the current implementation of
 Idris can be extended, and the steps already taken toward those
@@ -2455,18 +2459,34 @@ setting since this approach does not make any assumption about the type
 of the data handled, only that operations are linear and mutations are
 constant in space.
 
-\hypertarget{mapping-primitive-to-data-types-and-vice-versa-todo-spin-this-as-a-motivation-for-automatically-deriving-instances-not-just-copy-and-drop}{%
-\subsection{Mapping primitive to data types and vice-versa (TODO: Spin
-this as a motivation for automatically deriving instances, not just Copy
-and
-Drop)}\label{mapping-primitive-to-data-types-and-vice-versa-todo-spin-this-as-a-motivation-for-automatically-deriving-instances-not-just-copy-and-drop}}
+\hypertarget{mapping-primitive-to-data-types-and-vice-versa}{%
+\subsection{Mapping primitive to data types and
+vice-versa}\label{mapping-primitive-to-data-types-and-vice-versa}}
 
 At the end of the introduction we saw how primitive types are a problem
 for linearity, because we have no way of constructing them with
-classical constructors. However, we could define \texttt{String} as a
-list of \texttt{Char}, and have \texttt{Char} be defined as an 8 bits
-vector. Using both those definitions our primitive types have now become
-plain data with regular constructors.
+classical constructors.
+
+As a reminder, we were trying to implement the functions
+\texttt{copy\ :\ (1\ \_\ :\ a)\ -\textgreater{}\ (a,\ a)} and
+\texttt{drop\ :\ (1\ \_\ :\ a)\ -\textgreater{}\ ()} for primitive types
+such as \texttt{String} or \texttt{Int}.
+
+Those types are not defined using the \texttt{data} syntax used for
+other user-defined types. Rather, they are assumed to exist by the
+compiler and are built using custom functions which are different for
+each backend. If only \texttt{String} and \texttt{Int} were defined as
+plain data types, we could implement functions such as \texttt{copy} and
+\texttt{drop}.
+
+It turns out this is possible, we can use a clever encoding that maps
+plain data types to primitive types and have the compiler ``pretend''
+until the codegen phase where they are substituted by their primitive
+variants. Just like in \emph{Haskell}, \texttt{String} could be
+represented as a \texttt{List} of \texttt{Char}. \texttt{Char} itself is
+a primitive type, but the key insight here is to see that itself can be
+represented as \texttt{Vect\ 8\ Bool}. Using both those definitions our
+primitive types have now become plain data with regular constructors:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -2484,14 +2504,30 @@ plain data with regular constructors.
 \end{Highlighting}
 \end{Shaded}
 
-This allows us to implement \texttt{Copy} and \texttt{Drop} as expected.
+This allows us to implement \texttt{Copy} and \texttt{Drop} by
+inheriting the instance from \texttt{List} and \texttt{Vect}.
 Additionally, since the procedure to implement those instances is very
 mechanical, it could almost certainly be automatically derived.
 
 This approach is reminiscent of projects like practical levitation or
-Typedefs, which describe types and allow operations on the descriptions
-without modifying the semantics of the structure described, all while
-being able to map them to primitive version of themselves.
+Typedefs, which describe data types as data structures. And the benefits
+of both would translate quite well to our situation, beyond the ability
+to dance around linearity with primitive types.
+
+Indeed, in both instance, once our data type is represented we can use
+its structure to infer its properties. For example, if a data type has
+\emph{type parameters} then we can generate instance for
+\texttt{Functor}, \texttt{Applicative}, etc. If the data type resembles
+\texttt{List\ Char} then we can replace it by the primitive type
+\texttt{String}. Finally, we can use semantic-preserving operations on
+our data types in order to optimise their representations in the
+generated code. For example
+\texttt{data\ Options\ =\ Folder\ Int\ \textbar{}\ Directory\ Int} is
+equivalent to \texttt{Vect\ 33\ Bool} which can be represented as an
+unboxed \texttt{Int64} . Even more optimisations could be performed by
+mapping \texttt{Vect} of constant length to buffers of memory of
+constant size and index through them in \texttt{O(1)} instead of
+\texttt{O(n)}.
 
 As the cherry on top, this mapping would allow the coverage checker to
 infer missing cases accurately for primitive types. Indeed this example
@@ -2534,7 +2570,7 @@ treatment of primitives is the culprit.
 \end{Shaded}
 
 \hypertarget{idris2-and-multiplicities}{%
-\section{Idris2 and multiplicities}\label{idris2-and-multiplicities}}
+\subsection{Idris2 and multiplicities}\label{idris2-and-multiplicities}}
 
 Linear types allow us to declare variable to be use either \texttt{0},
 \texttt{1} or any number of times. However, we've seen this approach is
@@ -2555,28 +2591,93 @@ statement and follow it up with preliminary work done to achieve this
 goal.
 
 \hypertarget{the-problem-with-runtime-garbage-collection}{%
-\subsection{The problem with runtime garbage
+\subsubsection{The problem with runtime garbage
 collection}\label{the-problem-with-runtime-garbage-collection}}
 
+\emph{Garbage collection} generally refers to algorithm of automatic
+memory management such as \emph{mark \& sweep} or to runtimes using them
+such as the \emph{Boehm-GC}.
+
+The greatest benefit of garbage collection is that the burden of memory
+management is completely lifted from the programmer. But this feature is
+not always good news, the trade-off comes at the expense of
+predictability and control.
+
+Since the garbage collector runs automatically without any input from
+the programmer, there is no way to tell how often the garbage collector
+will run and for how long, just by looking at a program. What's more,
+garbage collection does not happen instantly, some algorithm stop the
+execution of the program for an unknown amount of time in order to
+reclaim memory. And this process cannot be
+
 \hypertarget{what-is-reference-counting}{%
-\subsection{What is reference
+\subsubsection{What is reference
 counting}\label{what-is-reference-counting}}
 
 \hypertarget{linearity-and-reference-counting}{%
-\subsection{Linearity and reference
+\subsubsection{Linearity and reference
 counting}\label{linearity-and-reference-counting}}
 
 \hypertarget{alternative-semirings-and-their-semantics}{%
-\subsection{Alternative semirings and their
+\subsubsection{Alternative semirings and their
 semantics}\label{alternative-semirings-and-their-semantics}}
 
 \hypertarget{steps-toward-a-working-implementation}{%
-\subsection{Steps toward a working
+\subsubsection{Steps toward a working
 implementation}\label{steps-toward-a-working-implementation}}
 
-\hypertarget{relaxing-linearity-propagation-for-safe-inlining}{%
-\section{Relaxing linearity propagation for safe
-inlining}\label{relaxing-linearity-propagation-for-safe-inlining}}
+\hypertarget{relaxing-linearity-inference}{%
+\subsection{Relaxing linearity
+inference}\label{relaxing-linearity-inference}}
+
+problem: I want to do this
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{linearProof }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ v }\OperatorTok{:} \DataTypeTok{Nat}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{ProofOnNat}\NormalTok{ v}
+\NormalTok{linearProof }\DataTypeTok{Z} \OtherTok{=} \DataTypeTok{Refl} 
+\NormalTok{linearProof (}\DataTypeTok{S}\NormalTok{ n) }\OtherTok{=} \KeywordTok{let} \DecValTok{0}\NormalTok{ prf }\OtherTok{=}\NormalTok{ linearProof n }\KeywordTok{in} 
+\NormalTok{                        rewrite prf }\KeywordTok{in} \DataTypeTok{Refl}
+\end{Highlighting}
+\end{Shaded}
+
+It doesn't work because \texttt{prf} is inferred to have linearity
+\texttt{1}.
+
+This should be legal because \texttt{n} has been consumed, it just turns
+out that it produces noting but tha'ts fine.
+
+Similarly, this should work
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{let} \DecValTok{1}\NormalTok{ x }\OtherTok{=} \DecValTok{1} \OperatorTok{+} \DecValTok{3}
+\NormalTok{    ω y }\OtherTok{=}\NormalTok{ f x }\KeywordTok{in}
+\NormalTok{    (y, y)}
+\end{Highlighting}
+\end{Shaded}
+
+Because we use \texttt{x} only once, it turns out binding to another
+linearity shouldn't be a problem.
+
+Even the contrived example
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{let} \DecValTok{1}\NormalTok{ x }\OtherTok{=} \DecValTok{1} \OperatorTok{+} \DecValTok{3}
+\NormalTok{    ω y }\OtherTok{=}\NormalTok{ (}\KeywordTok{let}\NormalTok{ ω z }\OtherTok{=}\NormalTok{ f x }\KeywordTok{in}\NormalTok{ \textbackslash{}k }\OtherTok{=\textgreater{}}\NormalTok{ z }\OperatorTok{+} \DecValTok{2}\NormalTok{) }\KeywordTok{in}
+\NormalTok{    (y }\DecValTok{3}\NormalTok{, y }\DecValTok{4}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+Should work because we only access \texttt{x} once, even if we bind its
+result to a captured variable that will be accessed twice.
+
+This last example it taken from Once Upon a Type which focuses on
+linearity inference and how to improve it in order to maximise
+occurrences of safe inlining. More recently, work on linearity inference
+(\url{https://arxiv.org/abs/1911.00268} has resumed thanks to Linear
+haskell ()
 
 In the introduction we used \emph{safe inlining} as an intuition to
 understand linear variables. We saw that for a variable to be linear
@@ -2628,7 +2729,7 @@ safely inlinable''
 Did I miss anything or does that sound reasonable?
 
 \hypertarget{implementation-strategy}{%
-\section{2 Implementation strategy}\label{implementation-strategy}}
+\section{Implementation strategy}\label{implementation-strategy}}
 
 In order to gauge how effective in-place mutation would be for linear
 function I decided to start by adding a keyword that would tell the
@@ -2868,7 +2969,7 @@ instruction is replaced by a \texttt{CMut} which will tell the backend
 to \emph{reuse} the memory space taken by the argument.
 
 \hypertarget{benchmarks-methodology}{%
-\section{3 Benchmarks \& methodology}\label{benchmarks-methodology}}
+\section{Benchmarks \& methodology}\label{benchmarks-methodology}}
 
 In order to test our performance hypothesis I am going to use a series
 of programs and run them multiple times under different conditions in
@@ -3242,7 +3343,7 @@ This is why we need our ad-how scoping rule. It ensures the variable
 isn't shared before calling a linear function.
 
 \hypertarget{results}{%
-\section{4 Results}\label{results}}
+\section{Results}\label{results}}
 
 In this section I will present the results obtained from the compiler
 optimisation. The metodology and the nature of the benchmarks is
@@ -3526,7 +3627,7 @@ which once inlined results in
 \end{Shaded}
 
 \hypertarget{future-work}{%
-\section{6 Future work}\label{future-work}}
+\section{Future work}\label{future-work}}
 
 \hypertarget{enlarging-the-scope}{%
 \subsection{Enlarging the scope}\label{enlarging-the-scope}}
@@ -3842,5 +3943,8 @@ of a stick figure, this time from the front.
 
 \hypertarget{termexpressionvalue}{%
 \subsection{Term/Expression/Value}\label{termexpressionvalue}}
+
+\bibliography{bibliography.bib} 
+\bibliographystyle{ieeetr}
 
 \end{document}

@@ -189,12 +189,12 @@ intOrString : (b : Bool) -> if b then Int else String
 intOrString b = ?hole
 ```
 
-Asking the Idris compiler what the hole is supposed to contain we get
+We can then ask the compiler what is the expected type, information provided by the compiler will be shown with a column of `>` on the left side to distinguish it from code. Here is the type we get when asking about our `hole`:
 
 ```haskell
-b : Bool
---------------------------------
-hole : if b then Int else String
+> b : Bool
+> --------------------------------
+> hole : if b then Int else String
 ```
 
 This information does not tell us what value we can use. However it informs us that the type of the value _depends on the value of `b`_ . Therefore, pattern matching [^5] on `b` might give us more insight.
@@ -208,13 +208,13 @@ intOrString False = ?hole2
 Asking again what is in `hole1` gets us
 
 ```haskell
-hole1 : Int
+> hole1 : Int
 ```
 
 and `hole2` gets us
 
 ```haskell
-hole2 : String
+> hole2 : String
 ```
 
 Which we can fill with literal values like `123` or `"good afternoon"`. The complete program would look like this:
@@ -243,9 +243,9 @@ eitherIntOrString b = ?hole
 ```
 
 ```haskell
-b : Bool
-------------------------
-hole : Either Int String
+> b : Bool
+> ------------------------
+> hole : Either Int String
 ```
 
 While this type might be easier to read than `if b then Int else String` it does not tell us how to proceed in order to find a more precise type to fill. We can try pattern matching on `b`:
@@ -258,12 +258,12 @@ intOrString' False = ?hole2
 
 But it does not provide any additional information about the return types to use.
 
-```
+```haskell
 > -----------
 > hole1 : Either Int String
 ```
 
-```
+```haskell
 > -----------
 > hole2 : Either Int String
 ```
@@ -275,7 +275,7 @@ checkType : Int
 checkType = let intValue = eitherIntOrString True in ?hole
 ```
 
-```
+```haskell
 > intValue : Either Int String
 > ---------------
 > hole : Int
@@ -312,7 +312,9 @@ We are going to revisit this concept later as there are more subtleties, especia
 
 ### Incremental steps
 
-Take the following function
+When designing examples, natural numbers are a straightforward data type to turn to. Their definition is extremely simple: `data Nat = Z | S Nat` which means that a `Nat` is either zero `Z` or the successor  of another natural number, `S`.
+  
+Given this definition let us look at the function that increments a natural number:
 
 ```haskell
 increment : Nat -> Nat
@@ -390,7 +392,7 @@ drop v = ()
 ```
 
 ```haskell
-There are 0 uses of linear variable v
+> There are 0 uses of linear variable v
 ```
 
 Which indicates that `v` is supposed to be used but no uses have been found.
@@ -403,10 +405,10 @@ copy v = ?hole
 ```
 
 ```haskell
-0 a : Type
-1 v : a
------------
-hole : (a, a)
+> 0 a : Type
+> 1 v : a
+> -----------
+> hole : (a, a)
 ```
 
 In which we need to use `v` twice but we're only allow to use it once. Using it twice result in this program with this error
@@ -417,7 +419,7 @@ copy v = (v, v)
 ```
 
 ```haskell
-There are 2 uses of linear variable v
+> There are 2 uses of linear variable v
 ```
 
 Interestingly enough, partially implementing our program with a hole gives us an amazing insight
@@ -428,10 +430,10 @@ copy v = (v, ?hole)
 ```
 
 ```haskell
-0 a : Type
-0 v : a
------------
-hole : a
+> 0 a : Type
+> 0 v : a
+> -----------
+> hole : a
 ```
 
 The hole has been updated to reflect the fact that though `v` is in scope, no uses of it are available. Despite that we still need to make up a value of type `a` out of thin air, which is impossible [^7].
@@ -530,13 +532,14 @@ notPossible cake = (eat cake, keep cake)
 This fails with the error
 
 ```haskell
-Error: While processing right hand side of notPossible. There are 2 uses of linear name cake.
-
-    |
-    | notPossible cake = (eat cake, keep cake)
-    |                    ^^^^^^^^^^^^^^^^^^^^^
-
-Suggestion: linearly bounded variables must be used exactly once.
+> Error: While processing right hand side of notPossible.
+>   There are 2 uses of linear name cake.
+> 
+>     |
+>     | notPossible cake = (eat cake, keep cake)
+>     |                    ^^^^^^^^^^^^^^^^^^^^^
+> 
+> Suggestion: linearly bounded variables must be used exactly once.
 ```
 
 A linear variable must be used exactly once, therefore, you must choose between having it, or eating it, but not both.
@@ -577,10 +580,10 @@ let 1 dots = MkDots
 inspecting the hole we get:
 
 ```haskell
- 0 dots : Graph
- 1 drawing : Graph
-------------------------------
-rest : Fun
+>  0 dots : Graph
+>  1 drawing : Graph
+> ------------------------------
+> rest : Fun
 ```
 
 Which indicates that, while we can still _see_ the dots, we cannot do anything with them, they have linearity `0`. However, we ended up with a `drawing` that we can now use! [^8]
@@ -616,7 +619,7 @@ let 1 x = f y in
 ```
 
 ```haskell
-There are 2 uses of linear variable x
+> There are 2 uses of linear variable x
 ```
 
 Conversely, if a program typechecks while using linear variable, then all linear variables can be inlined without loss of performance. What’s more, inlining can provide further opportunities for optimisations down the line. In the following example, while `y` cannot be inlined, `x` can be.
@@ -647,7 +650,7 @@ length [] = Z
 length (_ :: xs) = S (length xs)
 ```
 
-The length of the vector is computed by pattern matching on the vector and recursively counting the length of the tail of the vector and adding `+1` to it (`S`). If the vector is empty, the length returned is zero (`Z`).
+The length of the vector is computed by pattern matching on the vector and recursively counting the length of the tail of the vector and adding `+1` to it (recall the `S` constructor for `Nat`). If the vector is empty, the length returned is zero (`Z`).
 
 Another way to implement the same function in Idris1 (without linear types) was to do the following:
 
@@ -660,11 +663,12 @@ length _ {n} = n
 the `{n}` syntax would bring the value from the _type level_ to the _term level_, effectively making the type of the vector a value that can be used within the program. However doing the same in Idris2 is forbidden:
 
 ```haskell
-Error: While processing right hand side of length. n is not accessible in this context.
-
-    |
-    | length _ {n} = n
-    |                ^
+> Error: While processing right hand side of length. 
+>   n is not accessible in this context.
+> 
+>     |
+>     | length _ {n} = n
+>     |                ^
 ```
 
 It is hard to understand why this is the case just by looking at the type signature `Vect n a -> Nat` and this is because it is not complete. Behind the scenes, the Idris2 compiler is adding implicit arguments [^11] for `n` and `a` and automatically gives them linearity `0`. The full signature looks like this:
@@ -760,17 +764,19 @@ toNat (S n) (IS m) = S (toNat n m)
 Idris2 will not allow this program to compile and will fail with the following error:
 
 ```haskell
-Error: While processing left hand side of toNat. When unifying INat 0 and INat ?n.
-Pattern variable n unifies with: 0.
-
-    |
-    |   IZ : INat Z
-    |             ^
-    |   IS : INat n -> INat (S n)
-    |  toNat n IZ = ?branch
-    |        ^
-
-Suggestion: Use the same name for both pattern variables, since they unify.
+> Error: While processing left hand side of toNat. 
+>   When unifying INat 0 and INat ?n.
+> Pattern variable n unifies with: 0.
+> 
+>     |
+>     |   IZ : INat Z
+>     |             ^
+>     |   IS : INat n -> INat (S n)
+>     |  toNat n IZ = ?branch
+>     |        ^
+> 
+> Suggestion: Use the same name for both pattern variables, since they 
+>   unify.
 ```
 
 It tells us that `n` unifies with `Z` and forces the user to spell out the match. Effectively forcing uninformative matches to be made. A similar error appears if we try the same thing on the second branch, trying to remove `S n`.

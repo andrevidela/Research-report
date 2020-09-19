@@ -675,6 +675,9 @@ used. Three different quantities exist in Idris2 : \texttt{0},
 the body of a function, \texttt{1} means it has to be used exactly once,
 no less, no more. \texttt{ω} means the variable isn't subject to any
 usage restrictions, just like other (non-linear) programming languages.
+In Idris2, \texttt{ω} is implicit, when no quantity is specified, it is
+assumed to be unrestricted. This is why in the examples until now we
+have not seen any usage quantities.
 
 We are going to revisit this concept later as there are more subtleties,
 especially about the \texttt{0} usage. For now we are going to explore
@@ -718,7 +721,7 @@ particularity: quantities have to be assigned to a \emph{name}
 (something we will explore in further details in a later section). Since
 the argument of \texttt{increment} is used exactly once in the body of
 the function we can update our type signature to assign the quantity
-\texttt{1} to the argument \texttt{n}
+\texttt{1} to the argument \texttt{n}:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -732,10 +735,12 @@ the function we can update our type signature to assign the quantity
 \end{Highlighting}
 \end{Shaded}
 
-Additionally, Idris2 feature pattern matching and the rules of linearity
-also apply to each variable that was bound when matching on it. That is,
-if the value we are matching is linear then we need to use the pattern
-variables linearly.
+The compiler will now check that \texttt{n} is used exactly once.
+
+Additionally, Idris2 features pattern matching and the rules of
+linearity also apply to each variable that was bound when matching on
+it. That is, if the value we are matching is linear then we need to use
+the pattern variables linearly.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -752,9 +757,9 @@ variables linearly.
 \end{Shaded}
 
 In this last example we match on \texttt{S} and bind the argument of
-\texttt{S} to the variable \texttt{n}. Since the original argument was
-linear, \texttt{n} is linear too and is indeed used later with
-\texttt{sum\ n\ m}.
+\texttt{S} (the predecessor) to the variable \texttt{n}. Since the
+original argument was linear, \texttt{n} is linear too and is indeed
+used later with \texttt{sum\ n\ m}.
 
 \hypertarget{dropping-and-picking-it-up-again}{%
 \subsubsection{Dropping and picking it up
@@ -771,6 +776,9 @@ cannot be expressed :
 \NormalTok{copy }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ v }\OperatorTok{:}\NormalTok{ a) }\OtherTok{{-}\textgreater{}}\NormalTok{ (a, a)}
 \end{Highlighting}
 \end{Shaded}
+
+Here, the first function aims to ignore the argument and the second
+duplicates its argument and packages it in a pair.
 
 We can explore what is wrong with those functions by trying to implement
 them and making use of holes.
@@ -823,7 +831,7 @@ get the following:
 Which indicates that \texttt{v} is supposed to be used but no uses have
 been found.
 
-Similarly for \texttt{copy} we have
+Similarly for \texttt{copy} we have:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -842,7 +850,7 @@ Similarly for \texttt{copy} we have
 \end{Shaded}
 
 In which we need to use \texttt{v} twice but we're only allow to use it
-once. Using it twice result in this program with this error
+once. Using it twice result in this program with this error:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -858,7 +866,7 @@ once. Using it twice result in this program with this error
 \end{Shaded}
 
 Interestingly enough, partially implementing our program with a hole
-gives us an amazing insight
+gives us an amazing insight:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1463,7 +1471,47 @@ QTT.
 \subsection{Opening the door to new
 opportunities}\label{opening-the-door-to-new-opportunities}}
 
-The door protocol lol
+Protocol descriptions and dependent types work marvellously well. State
+machines can be represented by data types and their index can ensure we
+compose them in ways that make sense.
+
+\begin{itemize}
+\tightlist
+\item
+  I should have the dependent door protocol in Idris 1 *
+\end{itemize}
+
+Linear types can help make those check even easier:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+
+\KeywordTok{data} \DataTypeTok{DoorState} \OtherTok{=} \DataTypeTok{Openned} \OperatorTok{|} \DataTypeTok{Closed}
+
+\KeywordTok{data} \DataTypeTok{Door} \OperatorTok{:}\NormalTok{ (state }\OperatorTok{:} \DataTypeTok{DoorState}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Type} \KeywordTok{where}
+  \DataTypeTok{MkDoor} \OperatorTok{:} \DataTypeTok{Door} \DataTypeTok{Closed}
+  \DataTypeTok{Open} \OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{Door} \DataTypeTok{Closed}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Door} \DataTypeTok{Openned}
+  \DataTypeTok{Close} \OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{Door} \DataTypeTok{Openned}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Door} \DataTypeTok{Closed}
+  \DataTypeTok{Enjoy} \OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{Door} \DataTypeTok{Openned}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Door} \DataTypeTok{Openned}
+
+\KeywordTok{infixr} \DecValTok{1} \OperatorTok{\&\textgreater{}}
+
+\NormalTok{(}\OperatorTok{\&\textgreater{}}\NormalTok{) }\OperatorTok{:}\NormalTok{ ((}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:}\NormalTok{ a) }\OtherTok{{-}\textgreater{}}\NormalTok{ b) }\OtherTok{{-}\textgreater{}}\NormalTok{ ((}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:}\NormalTok{ b) }\OtherTok{{-}\textgreater{}}\NormalTok{ c) }\OtherTok{{-}\textgreater{}}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:}\NormalTok{ a) }\OtherTok{{-}\textgreater{}}\NormalTok{ c}
+\NormalTok{(}\OperatorTok{\&\textgreater{}}\NormalTok{) f g x }\OtherTok{=}\NormalTok{ g (f x)}
+
+\NormalTok{doorProtocol }\OperatorTok{:}\NormalTok{ (}\DataTypeTok{Door} \DataTypeTok{Closed}\NormalTok{) }\OtherTok{{-}\textgreater{}}\NormalTok{ ((}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{Door} \DataTypeTok{Openned}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Door} \DataTypeTok{Closed}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Door} \DataTypeTok{Closed}
+\NormalTok{doorProtocol door op }\OtherTok{=}\NormalTok{ op (}\DataTypeTok{Open}\NormalTok{ door)}
+
+\NormalTok{main }\OperatorTok{:} \DataTypeTok{IO}\NormalTok{ ()}
+\NormalTok{main }\OtherTok{=} \KeywordTok{do}
+  \KeywordTok{let}\NormalTok{ p }\OtherTok{=}\NormalTok{ doorProtocol }\DataTypeTok{MkDoor}\NormalTok{ (}\DataTypeTok{Enjoy} \OperatorTok{\&\textgreater{}} \DataTypeTok{Close} \OperatorTok{\&\textgreater{}} \DataTypeTok{Open} \OperatorTok{\&\textgreater{}} \DataTypeTok{Enjoy} \OperatorTok{\&\textgreater{}} \DataTypeTok{Enjoy} \OperatorTok{\&\textgreater{}} \DataTypeTok{Close}\NormalTok{)}
+  \FunctionTok{pure}\NormalTok{ ()}
+\end{Highlighting}
+\end{Shaded}
+
+In this example, instead of monadic composition we use plain
+\emph{funtion composition} in order to ensure that our protocol obeys
+the rules of our protocol, that is: The door must always end up closed.
 
 \hypertarget{limitations-and-solutions-for-quantitative-types}{%
 \subsection{limitations and solutions for quantitative
@@ -2264,7 +2312,7 @@ interesting relation between data/codata and resource management (linear
 infinite streams?).
 
 \hypertarget{practical-affine-types}{%
-\subsection{Practical affine types}\label{practical-affine-types}}
+\subsubsection{Practical affine types}\label{practical-affine-types}}
 
 What does it mean to have access to linear and affine types \emph{in
 practice}? Indeed, most the results we've talked about develop a theory
@@ -2288,7 +2336,7 @@ the existing writing or reading experience of programs. A result that we
 well certainly attempt to reproduce in Idris2.
 
 \hypertarget{linear-haskell-2017}{%
-\subsection{Linear Haskell 2017}\label{linear-haskell-2017}}
+\subsubsection{Linear Haskell 2017}\label{linear-haskell-2017}}
 
 Haskell already benefits from a plethora of big and small extensions,
 they are so prevalent that they became a meme in the community: every
@@ -2622,6 +2670,30 @@ counting}\label{linearity-and-reference-counting}}
 \subsubsection{Alternative semirings and their
 semantics}\label{alternative-semirings-and-their-semantics}}
 
+Quantitative type theory track usage through a generic semirings, any
+implementation of QTT can use any semiring for it to function. Idris2
+uses the following semiring:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{data} \DataTypeTok{ZeroOneOmega} \OtherTok{=} \DataTypeTok{Rig0} \OperatorTok{|} \DataTypeTok{Rig1} \OperatorTok{|} \DataTypeTok{RigW}
+
+\NormalTok{rigPlus }\OperatorTok{:} \DataTypeTok{ZeroOneOmega} \OtherTok{{-}\textgreater{}} \DataTypeTok{ZeroOneOmega} \OtherTok{{-}\textgreater{}} \DataTypeTok{ZeroOneOmega}
+\NormalTok{rigPlus }\DataTypeTok{Rig0}\NormalTok{ a }\OtherTok{=}\NormalTok{ a}
+\NormalTok{rigPlus a }\DataTypeTok{Rig0} \OtherTok{=}\NormalTok{ a}
+\NormalTok{rigPlus }\DataTypeTok{Rig1}\NormalTok{ a }\OtherTok{=} \DataTypeTok{RigW}
+\NormalTok{rigPlus a }\DataTypeTok{Rig1} \OtherTok{=} \DataTypeTok{RigW}
+\NormalTok{rigPlus }\DataTypeTok{RigW} \DataTypeTok{RigW} \OtherTok{=} \DataTypeTok{RigW}
+
+\NormalTok{rigMult }\OperatorTok{:} \DataTypeTok{ZeroOneOmega} \OtherTok{{-}\textgreater{}} \DataTypeTok{ZeroOneOmega} \OtherTok{{-}\textgreater{}} \DataTypeTok{ZeroOneOmega}
+\NormalTok{rigMult }\DataTypeTok{Rig0}\NormalTok{ \_ }\OtherTok{=} \DataTypeTok{Rig0}
+\NormalTok{rigMult \_ }\DataTypeTok{Rig0} \OtherTok{=} \DataTypeTok{Rig0}
+\NormalTok{rigMult }\DataTypeTok{Rig1}\NormalTok{ a }\OtherTok{=}\NormalTok{ a}
+\NormalTok{rigMult a }\DataTypeTok{Rig1} \OtherTok{=}\NormalTok{ a}
+\NormalTok{rigMult }\DataTypeTok{RigW} \DataTypeTok{RigW} \OtherTok{=} \DataTypeTok{RigW}
+\end{Highlighting}
+\end{Shaded}
+
 \hypertarget{steps-toward-a-working-implementation}{%
 \subsubsection{Steps toward a working
 implementation}\label{steps-toward-a-working-implementation}}
@@ -2728,20 +2800,214 @@ safely inlinable''
 
 Did I miss anything or does that sound reasonable?
 
-\hypertarget{implementation-strategy}{%
-\section{Implementation strategy}\label{implementation-strategy}}
+\hypertarget{performance-improvement-using-linear-types}{%
+\section{Performance Improvement using linear
+types}\label{performance-improvement-using-linear-types}}
 
-In order to gauge how effective in-place mutation would be for linear
-function I decided to start by adding a keyword that would tell the
-compiler to perform mutation for variable that are matched, irrespective
-of their linearity properties.
+This section aims to answer the question ``what performance improvement
+can we get by using linear types \emph{today}?''
 
-While this results in unsafe programs (since arbitrary mutation breaks
-referential transparency) , when used carefully in our benchmarks it
-will allow use to test how promising linearity improvements might be.
+Idris2 already allows to define linear functions, but despite the extra
+information that the argument cannot be used twice, the compiler does
+not perform any special optimisation for linear types. One obvious
+observation one can make is that once a linear value has been consumed,
+its memory space can be reclaimed, or reused. In practice this manifests
+this way:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{isTrue }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:}\NormalTok{ a) }\OtherTok{{-}\textgreater{}}\NormalTok{ (f }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:}\NormalTok{ a) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Bool}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{String}
+\NormalTok{isTrue value predicate}
+\CommentTok{{-}{-}                 ┌ We can free \textasciigrave{}value\textasciigrave{} after this}
+\CommentTok{{-}{-}               ╭─┴─╮}
+  \OtherTok{=} \KeywordTok{if}\NormalTok{ predicate value }\KeywordTok{then} \StringTok{"It\textquotesingle{}s true!"}
+                       \KeywordTok{else} \StringTok{"Fake news."}
+\end{Highlighting}
+\end{Shaded}
+
+The value \texttt{value} of type \texttt{a} can be free immediately
+after being called by \texttt{predicate}. Indeed, it's been used,
+therefore it cannot be used again, which means its memory space won't
+ever be accessed again. Freeing memory might not sound very exciting but
+the benefit is that we do not need to wait for the garbage collector to
+notice our value can be freed. Removing the reliance on garbage
+collection is a huge step toward predictable performance.
+
+The safe-update mechanism is similar:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{data} \DataTypeTok{Numbers} \OtherTok{=} \DataTypeTok{Inc} \DataTypeTok{Nat} \OperatorTok{|} \DataTypeTok{Dec} \DataTypeTok{Nat}
+
+\NormalTok{update }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{Numbers}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Numbers}
+\NormalTok{update (}\DataTypeTok{Inc}\NormalTok{ n) }\OtherTok{=} \DataTypeTok{Inc}\NormalTok{ (}\DataTypeTok{S}\NormalTok{ n)}
+\NormalTok{update (}\DataTypeTok{Dec} \DataTypeTok{Z}\NormalTok{) }\OtherTok{=} \DataTypeTok{Dec} \DataTypeTok{Z}
+\NormalTok{update (}\DataTypeTok{Dec}\NormalTok{ (}\DataTypeTok{S}\NormalTok{ n)) }\OtherTok{=} \DataTypeTok{Dec}\NormalTok{ n}
+\end{Highlighting}
+\end{Shaded}
+
+We have data type with two cases, and update checks which case we have
+and then incrementing or decrementing the \texttt{Nat} value.
+
+This function should perform in constant space (\texttt{O(1)}) but
+currently, the Idris compiler always allocates new values when a
+constructor is called. In addition, the old value is now ready to be
+freed but we have to wait on the garbage collector to catch it.
+
+Unfortunately, we cannot simply implement the free and update feature in
+order to see what kind of performance improvement we can get out of
+linear types. This is due to a feature of Idris2: subtyping.
+
+\hypertarget{linear-function-subtyping}{%
+\subsection{Linear function subtyping}\label{linear-function-subtyping}}
+
+In order to make the interplay between unrestricted and linear functions
+easier, Idris2 features subtyping on functions. As a refresher,
+subtyping allows a function to accept another type than the one that it
+has been specified with, as long as the other type is a subtype of the
+original one. In the following example we are going to assume we have
+access to two types, \texttt{A} and \texttt{B} and \texttt{B} is a
+subtype of \texttt{A}, noted with \texttt{B\ \textless{}:\ A}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+
+\NormalTok{f }\OperatorTok{:} \DataTypeTok{A} \OtherTok{{-}\textgreater{}} \DataTypeTok{A}
+
+\NormalTok{g }\OperatorTok{:} \DataTypeTok{B} \OtherTok{{-}\textgreater{}} \DataTypeTok{B}
+
+\CommentTok{{-}{-} assume we have B \textless{}: A}
+
+\KeywordTok{let}\NormalTok{ a }\OperatorTok{:} \DataTypeTok{A} \OtherTok{=}\NormalTok{ …}
+\NormalTok{    b }\OperatorTok{:} \DataTypeTok{B} \OtherTok{=}\NormalTok{ … }
+\NormalTok{    y1 }\OtherTok{=}\NormalTok{ f a }\CommentTok{{-}{-} expected}
+\NormalTok{    y2 }\OtherTok{=}\NormalTok{ f b }\CommentTok{{-}{-} b is a subtype, it\textquotesingle{}s valid}
+\NormalTok{    no }\OtherTok{=}\NormalTok{ g a }\CommentTok{{-}{-} a is a supertype of b, invalid}
+ \KeywordTok{in} \OperatorTok{?}\NormalTok{rest}
+\end{Highlighting}
+\end{Shaded}
+
+In Idris2, types cannot have a subtyping relation, except function
+types. This is useful for higher-order functions such as map defined
+non-linearly:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{map} \OperatorTok{:}\NormalTok{ (f }\OperatorTok{:}\NormalTok{ a }\OtherTok{{-}\textgreater{}}\NormalTok{ b) }\OtherTok{{-}\textgreater{}} \DataTypeTok{List}\NormalTok{ a }\OtherTok{{-}\textgreater{}} \DataTypeTok{List}\NormalTok{ b}
+\NormalTok{linearMap }\OperatorTok{:}\NormalTok{ (f }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:}\NormalTok{ a) }\OtherTok{{-}\textgreater{}}\NormalTok{ b) }\OtherTok{{-}\textgreater{}}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{List}\NormalTok{ a) }\OtherTok{{-}\textgreater{}} \DataTypeTok{List}\NormalTok{ b}
+\end{Highlighting}
+\end{Shaded}
+
+Those functions do the same things but won't typecheck the same way.
+Given an unrestricted \texttt{f} the second function will refuse to
+typecheck. Whereas feeding a linear function to \texttt{map} will
+compile correctly.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{inc }\OperatorTok{:} \DataTypeTok{Nat} \OtherTok{{-}\textgreater{}} \DataTypeTok{Nat}
+
+\NormalTok{linInc }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{Nat}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Nat}
+
+\CommentTok{{-}{-} success everything unrestricted}
+\FunctionTok{map}\NormalTok{ inc [}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{,}\DecValTok{3}\NormalTok{] }
+
+\CommentTok{{-}{-} success because got unrestricted and expected linear}
+\FunctionTok{map}\NormalTok{ linInc [}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{,}\DecValTok{3}\NormalTok{]}
+
+\CommentTok{{-}{-} fail because inc is unrestricted but linMap expected linear}
+\NormalTok{linearMap inc [}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{,}\DecValTok{3}\NormalTok{]}
+
+\CommentTok{{-}{-} success because everything is linear}
+\NormalTok{linearMap linInc [}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{,}\DecValTok{3}\NormalTok{]}
+\end{Highlighting}
+\end{Shaded}
+
+This is because linear functions are considered to be a subtype of
+unrestricted functions. In formal notation it means
+\texttt{((1\ \_\ :\ a)\ -\textgreater{}\ b)\ \textless{}:\ (a\ -\textgreater{}\ b)}.
+This details is extremely relevant for our optimisation because it means
+that \emph{linearity does not guarantee uniqueness}, which is the
+property we are interested in when performing those optimisations. In
+the following example we show how this breaks down our assumption of
+safe updates
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{update }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{Nat}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Nat}
+
+\KeywordTok{do} \KeywordTok{let}\NormalTok{ list1 }\OtherTok{=}\NormalTok{ [}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{,}\DecValTok{3}\NormalTok{]}
+   \KeywordTok{let}\NormalTok{ list2 }\OtherTok{=}\NormalTok{ list1}
+\NormalTok{   printLn }\OperatorTok{$} \FunctionTok{map}\NormalTok{ update list1}
+\NormalTok{   printLn list2}
+\end{Highlighting}
+\end{Shaded}
+
+This program typechecks, even if we are using a linear function in an
+unrestricted setting. If the update was performed we should expect the
+output to be:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\OperatorTok{\textgreater{}}\NormalTok{ [}\DecValTok{2}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{4}\NormalTok{]}
+\OperatorTok{\textgreater{}}\NormalTok{ [}\DecValTok{2}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{4}\NormalTok{]}
+\end{Highlighting}
+\end{Shaded}
+
+Instead of the (correct) output:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\OperatorTok{\textgreater{}}\NormalTok{ [}\DecValTok{2}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{4}\NormalTok{]}
+\OperatorTok{\textgreater{}}\NormalTok{ [}\DecValTok{1}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{3}\NormalTok{]}
+\end{Highlighting}
+\end{Shaded}
+
+This suggests that our intuition that linear functions can be use for
+safe updates and safe memory frees is not restrictive enough. We need an
+additional level of restriction to ensure \emph{uniqueness} of the
+values instead of linearity.
+
+\hypertarget{restricting-the-scope-of-linear-optimisations}{%
+\subsection{Restricting the scope of linear
+optimisations}\label{restricting-the-scope-of-linear-optimisations}}
+
+Since linearity is not enough to ensure uniqueness, we are going to add
+an additional restriction: We can only mutate a variable if it has been
+instanciated within in the immediate surrounding scope of the program.
+In the following example, \texttt{update} will perform an in-place
+mutation because it has been called with a variable that and been
+created in scope.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{update }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:}\NormalTok{ a) }\OtherTok{{-}\textgreater{}}\NormalTok{ a}
+
+\KeywordTok{let} \DecValTok{1}\NormalTok{ v }\OtherTok{= a ::}\NormalTok{ b }\KeywordTok{in}
+\NormalTok{    update v}
+\end{Highlighting}
+\end{Shaded}
+
+This ensure uniqueness because the linearity of the function prevents
+the variable from having been shared before it's been used with
+\texttt{update}.
+
+The changes to the Idris AST are as follow:
+
+\begin{itemize}
+\tightlist
+\item
+  Allow constructor to know if they are bound linearly
+\item
+  Allow linear functions to mutate constructors that are bound linearly
+\item
+  Add a new instruction to the backend AST in order to mutate values
+\end{itemize}
+
+Those steps are still insufficient however
 
 \hypertarget{implementation-details}{%
-\subsection{Implementation details}\label{implementation-details}}
+\subsubsection{Implementation details}\label{implementation-details}}
 
 The goal is to be able to write this program
 
@@ -2801,7 +3067,7 @@ directly instead of mutating a new copy of it.
 There is however a very important limitation:
 
 \hypertarget{we-only-mutate-uses-of-the-constructor-we-are-matching-on}{%
-\subsubsection{We only mutate uses of the constructor we are matching
+\paragraph{We only mutate uses of the constructor we are matching
 on}\label{we-only-mutate-uses-of-the-constructor-we-are-matching-on}}
 
 The following program would see no mutation
@@ -2844,7 +3110,7 @@ carefully design our benchmarks to make use of it. Which brings us to
 the next section
 
 \hypertarget{mutating-branches}{%
-\subsection{Mutating branches}\label{mutating-branches}}
+\subsubsection{Mutating branches}\label{mutating-branches}}
 
 For this to work we need to add a new constructor to the AST that
 represents \emph{compiled} programs \texttt{CExp}. We add the
@@ -2875,7 +3141,7 @@ this to keep the semantics of the existing assumption about constructing
 new values.
 
 \hypertarget{reference-nightmare}{%
-\subsection{Reference nightmare}\label{reference-nightmare}}
+\subsubsection{Reference nightmare}\label{reference-nightmare}}
 
 There is however an additional details that isn't as easy to implement
 and this is related to getting a reference to the term we are mutating.
@@ -2969,7 +3235,7 @@ instruction is replaced by a \texttt{CMut} which will tell the backend
 to \emph{reuse} the memory space taken by the argument.
 
 \hypertarget{benchmarks-methodology}{%
-\section{Benchmarks \& methodology}\label{benchmarks-methodology}}
+\subsection{Benchmarks \& methodology}\label{benchmarks-methodology}}
 
 In order to test our performance hypothesis I am going to use a series
 of programs and run them multiple times under different conditions in
@@ -3010,7 +3276,7 @@ linear types. Here is one possible course of action:
 \end{itemize}
 
 \hypertarget{synthetic-benchmarks}{%
-\subsection{Synthetic benchmarks}\label{synthetic-benchmarks}}
+\subsubsection{Synthetic benchmarks}\label{synthetic-benchmarks}}
 
 Synthetic benchmarks are designed to show off a particular effect of a
 particular implementation. They are not representative of real world
@@ -3020,7 +3286,7 @@ designed 3 benchmarks which are all expected to highlight our
 optimisation in different ways.
 
 \hypertarget{fibonnaci}{%
-\subsection{Fibonnaci}\label{fibonnaci}}
+\subsubsection{Fibonnaci}\label{fibonnaci}}
 
 One cannot have a benchmark suite without computing fibonacci, in this
 benchmark suite we are going to tweak the typical fibonacci
@@ -3030,7 +3296,7 @@ mutation instead. Because of this we are going to look at three variants
 of the same program.
 
 \hypertarget{traditional-fibonacci}{%
-\subsubsection{Traditional Fibonacci}\label{traditional-fibonacci}}
+\paragraph{Traditional Fibonacci}\label{traditional-fibonacci}}
 
 This version is the one you would expect from a traditional
 implementation in a functional programming language
@@ -3054,7 +3320,7 @@ heap-allocated. If our optimisation works perfectly, we expect to reach
 the same performance signature as this implementation.
 
 \hypertarget{allocating-fibonacci}{%
-\subsubsection{Allocating Fibonacci}\label{allocating-fibonacci}}
+\paragraph{Allocating Fibonacci}\label{allocating-fibonacci}}
 
 This version of Fibonacci does allocate a new value for each call of the
 \texttt{update} function. We expect this version to perform worse than
@@ -3082,7 +3348,7 @@ storage takes more time than mutating values.
 \end{Shaded}
 
 \hypertarget{mutating-fibonacci}{%
-\subsubsection{Mutating Fibonacci}\label{mutating-fibonacci}}
+\paragraph{Mutating Fibonacci}\label{mutating-fibonacci}}
 
 This version is almost the same as the previous one except our
 \texttt{update} function should now avoid allocating any memory, while
@@ -3114,7 +3380,7 @@ this version to have a similar performance profile as the first one
 \end{Shaded}
 
 \hypertarget{real-world-benchmarks}{%
-\subsection{Real-world benchmarks}\label{real-world-benchmarks}}
+\subsubsection{Real-world benchmarks}\label{real-world-benchmarks}}
 
 For our real world benchmarks we are going to use whatever is available
 to us. Since the ecosystem is still small we only have a handful of
@@ -3126,7 +3392,7 @@ programs:
 \item
   The Idris2 compiler itself
 \item
-  A Sat solver \#\#\# The Idris2 compiler as benchmark
+  A Sat solver \#\#\#\# The Idris2 compiler as benchmark
 \end{itemize}
 
 The Idris2 compiler itself has the benefit of being a large scale
@@ -3137,7 +3403,7 @@ optimisation can be performed often enough, where and if it results in
 tangible performance improvements.
 
 \hypertarget{a-simple-sat-solver-as-benchmark}{%
-\subsubsection{A simple SAT solver as
+\paragraph{A simple SAT solver as
 benchmark}\label{a-simple-sat-solver-as-benchmark}}
 
 Sat solvers themselves aren't necessarily considered ``real-world''
@@ -3153,7 +3419,7 @@ versions of other programs that were traditionally reserved to
 imperative, memory unsafe programming languages.
 
 \hypertarget{measurements}{%
-\section{Measurements}\label{measurements}}
+\subsection{Measurements}\label{measurements}}
 
 The benchmarks were run with a command link script written in idris
 itself which takes a source folder and recursively traverses it in order
@@ -3165,7 +3431,7 @@ like minimum, maximum, mean and variance along with arrays for plotting
 our results on a graph.
 
 \hypertarget{idris-bench}{%
-\subsection{Idris-bench}\label{idris-bench}}
+\subsubsection{Idris-bench}\label{idris-bench}}
 
 Idris-bench is our benchmarking program and can be found at
 \url{https://github.com/andrevidela/idris-bench}.
@@ -3204,7 +3470,7 @@ Idris-bench takes the following arguments:
 \end{itemize}
 
 \hypertarget{idris-stats}{%
-\subsection{Idris-stats}\label{idris-stats}}
+\subsubsection{Idris-stats}\label{idris-stats}}
 
 Once our results have been generated we are going to analyse them by
 computing the minimum time, maximum time, mean and variance of the
@@ -3235,7 +3501,7 @@ the square difference with the mean divided by the number of samples.
 \[ \operatorname{Var}(X) = \frac{1}{n} \sum_{i=1}^n (x_i - \mu)^2 \]
 
 \hypertarget{expected-results}{%
-\subsection{Expected results}\label{expected-results}}
+\subsubsection{Expected results}\label{expected-results}}
 
 Our expectation is that our programs will run fasters for 2 reasons: -
 Allocation is slower than mutation - Mutation avoids short lived
@@ -3267,7 +3533,7 @@ trade-off when execution need to be guaranteed to run within a small
 time-frame.
 
 \hypertarget{running-the-benchmarks}{%
-\section{Running the benchmarks}\label{running-the-benchmarks}}
+\subsection{Running the benchmarks}\label{running-the-benchmarks}}
 
 All the benchmarks were run on a laptop with the following specs: -
 Intel core-i5 8257U (8th gen), 256KB L2 cache, 6MB L3 cache - 16Gb of
@@ -3282,75 +3548,15 @@ all under control (like ambient temperature, other programs running,
 etc). Because of this I've disabled turbo boost on this machine and run
 all benchmarks at a steady 1.4Ghz.
 
-\hypertarget{the-performance-hypothesis}{%
-\section{The performance hypothesis}\label{the-performance-hypothesis}}
-
-Using mutation in an isolated case did not result in any performance
-improvement, even with pathological code that would typically showcase
-the Benedict of such benchmarks, no improvements were found.
-
-My best hypothesis is that the Chez optimiser is smart enough to detect
-those cases and perform the optimisation were looking for before using
-having to do it.
-
-While the chez backend is not intended to be the only backend for Idris
-2 out goal isn't to make the runtime worse in order to show any
-improvement.
-
-The next step is then to perform the optimisation automatically rather
-than manually on a large scale program such as the Idris 2 compiler
-itself.
-
-\hypertarget{performing-the-optimization-automatically}{%
-\section{Performing the optimization
-automatically}\label{performing-the-optimization-automatically}}
-
-We want to optimise this case
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\KeywordTok{let} \DecValTok{1}\NormalTok{ v }\OtherTok{= a ::}\NormalTok{ b }\KeywordTok{in}
-\NormalTok{    update v}
-\end{Highlighting}
-\end{Shaded}
-
-The key observation is that a value \texttt{v} is constructed and bound
-linearly \emph{and} its only use is performed in-scope.
-
-Because we \emph{know} it won't be used later, we can mutate this value
-instead of creating a new copy within the body of \texttt{update} and
-return the mutated reference instead of returning a newly allocated
-value.
-
-However \texttt{update} might also be used in situations where it's
-argument isn't unique, for example update can be defined non-linearly
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{update }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{List} \DataTypeTok{Nat}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{List} \DataTypeTok{Nat}
-\NormalTok{update [] }\OtherTok{=}\NormalTok{ []}
-\NormalTok{update (}\OtherTok{x ::}\NormalTok{ xs) }\OtherTok{=} \DataTypeTok{S}\OtherTok{ x ::}\NormalTok{ xs}
-\end{Highlighting}
-\end{Shaded}
-
-But by virtue of subtyping can still be called with non-linear
-arguments. Since a shared value can \emph{also} be used exactly once, no
-invariant is broken. However, this breaks our performance fix since we
-cannot simply mutation whenever we deal with a linear function. We have
-to be sure that linearity implies uniqueness.
-
-This is why we need our ad-how scoping rule. It ensures the variable
-isn't shared before calling a linear function.
-
 \hypertarget{results}{%
-\section{Results}\label{results}}
+\subsubsection{Results}\label{results}}
 
 In this section I will present the results obtained from the compiler
 optimisation. The metodology and the nature of the benchmarks is
 explained in the ``Benchmarks \& methodology'' section.
 
 \hypertarget{results1-fibonacci}{%
-\subsection{Results1: Fibonacci}\label{results1-fibonacci}}
+\subsubsection{Results1: Fibonacci}\label{results1-fibonacci}}
 
 Out first test suite runs the benchmark on our 3 fibonacci variants. As
 a refresher they are as follow: - The first one is implemented
@@ -3370,7 +3576,7 @@ as a greater variance in the results rather than a strictly smaller
 mean.
 
 \hypertarget{the-results}{%
-\subsubsection{The results}\label{the-results}}
+\paragraph{The results}\label{the-results}}
 
 Here are there results of running our benchmarks 100 times in a row:
 
@@ -3460,7 +3666,7 @@ Takes 0.13 seconds to run despite doing nothing. This time is the
 startup time and can go up to 0.3 seconds.
 
 \hypertarget{results-2-fibonacci-without-startup-time}{%
-\subsection{Results 2: Fibonacci without startup
+\subsubsection{Results 2: Fibonacci without startup
 time}\label{results-2-fibonacci-without-startup-time}}
 
 In order to remove the startup time we are going to change the emitted
@@ -3505,7 +3711,7 @@ unable to perform such optimization with our mix of pure and mutating
 code.
 
 \hypertarget{results-3-fibonacci-without-startup-time-small-loop}{%
-\subsection{Results 3: Fibonacci without startup time, small
+\subsubsection{Results 3: Fibonacci without startup time, small
 loop}\label{results-3-fibonacci-without-startup-time-small-loop}}
 
 In order to test the JIT hypothesis we are going to run the same test,
@@ -3552,7 +3758,7 @@ stack size and the program aborts. When the stack size is increased the
 program segfaults.
 
 \hypertarget{safe-inlining}{%
-\section{Safe inlining}\label{safe-inlining}}
+\subsection{Safe inlining}\label{safe-inlining}}
 
 As we've seen in the context review, one of the use-cases for linear
 types is to detect where control flow allows for safe inlining of
@@ -3629,6 +3835,12 @@ which once inlined results in
 \hypertarget{future-work}{%
 \section{Future work}\label{future-work}}
 
+Work never ends and progress instils progress, while a lot of ground has
+been covered, exploring the forest of all knowledge not only yields
+results, it uncovers new paths to explore. This section outlines
+additional work that could be done in order to ease the use of linear
+types as well as make use of them for additional functionality.
+
 \hypertarget{enlarging-the-scope}{%
 \subsection{Enlarging the scope}\label{enlarging-the-scope}}
 
@@ -3659,9 +3871,9 @@ function call that returns itself a constructor.
 One implementation strategy would be to wait for the compiler to inline
 those definitions and then run our optimiser without further changes.
 
-Another optimisation would be to aggressively follow references to see
-if they result in plain data constructors and replace the entire call
-chain by the constructor itself, and then run our optimisation.
+Another optimisation would be to follow references to see if they result
+in plain data constructors and replace the entire call chain by the
+constructor itself, and then run our optimisation.
 
 While both those strategies are valid they incur a cost in terms of
 complexity and compile time that may not be worth the effort in terms of
@@ -3840,6 +4052,60 @@ print statement without getting a linearity error:
 
 \hypertarget{conclusion}{%
 \section{Conclusion}\label{conclusion}}
+
+I have learned a lot during this master project. Not only about linear
+types, quantitative types, graded modal types, containers, categories,
+optimisation techniques, benchmarking, program safety, compiler design
+and implementation, etc.
+
+I also learned about myself and how I best approach research topics.
+Research is not an activity to carry out alone, it is not a mindless
+job, and it is not limited to the ivory tower that is higher education.
+I learned that I do my best research work when I embrace my nature of
+being easily distracted by shining new research topics. I would never
+have understood graded modalities if I wasn't distracted by semirings. I
+would never have understood semirings if I wasn't distracted by porting
+some code to Idris2. I would have never started porting code to Idris2
+if I wasn't looking for an escape from writing test for my performance
+improvements.
+
+While this behaviour is dangerous, in that it can result in nothing of
+value produced, it also taught me the importance of having a strong and
+reliable support group. Friends, both in research and otherwise, focus
+the mind, which results in a more focused work. Finally, research is not
+something one can \emph{tune out of}, thoughts linger, ideas sprawl out
+of control and new connections are drawn during every event of daily
+life. I have discovered that sharing my research through teaching has
+been an extremely effective mean to contextualise my work and to put
+boundaries between personal and research life.
+
+As for linear types, just like me, they still have a long way to go. The
+work displayed here is only a minuscule sliver of what can be done, and
+needs to be done, for them to become commercially significant. Just like
+the main two topics of this thesis, I think the main areas linear types
+need to improve are ergonomics and performance. They are two pain points
+that functional programming has failed to fix, while other programming
+language have been successful basing their entire value proposition upon
+them.
+
+Ergonomics have made huge strives forward with interactive development
+environment like we find in Idris, Agda or Coq. But their gimmicks
+cannot sustain the behemoth of features that commercially successful
+programming languages showcase. Linear types won't turn the balance
+around, but they will help in some important aspects: ensuring APIs
+contracts and protocols are respected, showing those information in the
+type, and therefore in the documentation, help the compiler generate
+more helpful error messages, and help guide new users navigate complex
+programs by being explicit about usage rules that were left unwritten
+before.
+
+Until recently, it wasn't clear how the concept of performance could be
+approached and studied in functional programming. We did not have a way
+to get a hold of it. But just like we did not have a way to get a hold
+onto side-effect until monads, I strongly suspect linear types (and its
+variants) will allow us to turn performance from an abstract concept
+into a concrete term in a programming language, just like \texttt{IO} is
+a concrete term in functional programming languages.
 
 \hypertarget{appendices-glossary-and-definitions}{%
 \section{Appendices: Glossary and

@@ -105,6 +105,7 @@
 
 
 
+
 \ifluatex
   \usepackage{selnolig}  % disable illegal ligatures
 \fi
@@ -156,9 +157,9 @@ linear types in Idris2. This focus on practical examples will be
 followed by a context review of the existing body of theoretical work
 around linear types. Once both the theoretical and practical landscape
 have been set I will delve into the main two topics of this thesis, the
-ergonomics of Quantitative Type Theory\(\cite{qtt}\) (QTT, for short)
-for software development and the performance improvement we can derive
-from the linearity features of Idris2.
+ergonomics of Quantitative Type Theory\cite{qtt}\cite{nuttin} (QTT, for
+short) for software development and the performance improvement we can
+derive from the linearity features of Idris2.
 
 The ergonomics chapter will focus on how the current implementation of
 Idris can be extended, and the steps already taken toward those
@@ -295,8 +296,9 @@ have to explain what is Idris and what are dependent types.
 \hypertarget{idris-and-dependent-types}{%
 \subsection{Idris and dependent types}\label{idris-and-dependent-types}}
 
-Before we jump into Idris2, allow me to introduce Idris, its
-predecessor. Idris is a programming language featuring dependent types.
+Before we jump into Idris2, allow me to introduce Idris\cite{idris1},
+its predecessor. Idris is a programming language featuring dependent
+types.
 
 A way to understand dependent types is to think of the programming
 language as having \emph{first class types}, that is, types are values,
@@ -481,7 +483,10 @@ implementation by a hole we have the following:
 We can then ask the compiler what is the expected type, information
 provided by the compiler will be shown with a column of
 \texttt{\textgreater{}} on the left side to distinguish it from code.
-Here is the type we get when asking about our \texttt{hole}:
+When the compiler tells us about holes, its will display the variables
+available in the immediate scope of the hole above a horizontal bar, and
+the ``goal'' under the horizontal bar. Here is the type we get when
+asking about our \texttt{hole}:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -493,13 +498,14 @@ Here is the type we get when asking about our \texttt{hole}:
 
 This information does not tell us what value we can use. However it
 informs us that the type of the value \emph{depends on the value of
-\texttt{b}} . Therefore, pattern matching \footnote{Idris has an
-  interactive mode that allows the pattern matching to be done
-  automatically by hitting a simple key stroke which will generate the
-  code in the snippet automatically. This won't be showcased here, as it
-  is not an Idris development tutorial, but one can read more about it
-  in \emph{Type Driven Development in Idris} by Edwin Brady.} on
-\texttt{b} might give us more insight.
+\texttt{b}} . Therefore, pattern matching on \texttt{b} might give us
+more insight. It is worth noting that Idris has an interactive mode that
+allows the pattern matching to be done automatically by hitting a simple
+key stroke which will generate the code in the snippet automatically.
+This won't be showcased here, as it is not an Idris development
+tutorial, but this approach has already been put to use and proven
+effective in other programming languages with proof-assistant
+features\cite{tdd}\cite{agda_interactive}. Back to the example:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -609,7 +615,8 @@ during programming; take the following program:
 \begin{Shaded}
 \begin{Highlighting}[]
 \NormalTok{checkType }\OperatorTok{:} \DataTypeTok{Int}
-\NormalTok{checkType }\OtherTok{=} \KeywordTok{let}\NormalTok{ intValue }\OtherTok{=}\NormalTok{ eitherIntOrString }\DataTypeTok{True} \KeywordTok{in} \OperatorTok{?}\NormalTok{hole}
+\NormalTok{checkType }\OtherTok{=} \KeywordTok{let}\NormalTok{ intValue }\OtherTok{=}\NormalTok{ eitherIntOrString }\DataTypeTok{True} 
+             \KeywordTok{in} \OperatorTok{?}\NormalTok{hole}
 \end{Highlighting}
 \end{Shaded}
 
@@ -621,7 +628,11 @@ during programming; take the following program:
 \end{Highlighting}
 \end{Shaded}
 
-The compiler is unable to tell us if this value is an \texttt{Int} or a
+In this program we create the variable \texttt{intValue} by assigning it
+to the result of the function call to \texttt{eitherIntOrString} with
+the argument \texttt{True}. When we ask for the type of \texttt{Hole} we
+see that we are expected to return an \texttt{Int} The compiler is
+unable to tell us if \texttt{intValue} contains an \texttt{Int} or a
 \texttt{String}. Despite us \emph{knowing} that \texttt{IntOrString}
 returns an \texttt{Int} when passed \texttt{True}, we cannot use this
 fact to convince the compiler to simplify the type for us. We have to go
@@ -657,35 +668,590 @@ are:
 
 None of which are ideal nor replicate the functionality of the dependent
 version we saw before. This is why dependent types are desirable, they
-help: - Avoid needless runtime checks. - The compiler better understand
-the semantics of the program. - Inform the programmer by communicating
-precisely which types are expected.
+help:
+
+\begin{itemize}
+\tightlist
+\item
+  Avoid needless runtime checks.
+\item
+  The compiler better understand the semantics of the program.
+\item
+  Inform the programmer by communicating precisely which types are
+  expected.
+\end{itemize}
 
 This concludes our short introduction to dependent types and I hope
 you've been convinced of their usefulness. In the next section we are
 going to talk about linear types.
 
+\hypertarget{the-story-begins}{%
+\subsection{The story begins}\label{the-story-begins}}
+
+This concludes our introductory chapter, we've laid out the ground work
+for what's to come with Idris and linear types. Dependent types are a
+thesis topic in themselves but this introduction should be enough to
+give you a general idea. In the next section I am going to present the
+existing literature surrounding the topic of this thesis: linear and
+quantitative types. Those research documents should steer us toward the
+goal of this thesis, exploring the uses of quantitative types for
+real-world programs, explaining their limitations and proposing ways of
+getting around them, and designing and implementing use cases for them
+within the Idris2 compiler.
+
+I also want to stress that at the end is a glossary that lists all the
+important terms and concepts necessary to understand the body of this
+work. Please feel free to consult it if something is unclear.
+
+\newpage
+
+\hypertarget{context-review}{%
+\section{Context Review}\label{context-review}}
+
+In this context review, I will comment on the existing literature about
+linear types and present it through three lenses: The first aims to tell
+the origin story of linear types and their youthful promises. The second
+will focus on the current understanding of their application for
+real-world use. And the last one will focus on the latest theoretical
+developments that linear types spun up.
+
+\hypertarget{origins}{%
+\subsection{Origins}\label{origins}}
+
+Linear types were first introduced by J-Y. Girard in his
+1987\cite{linear-logic} publication simply named \emph{Linear logic} .
+In this text he introduces the idea of restricting the application of
+the weakening rule and contraction rule from intuitionistic logic in
+order to allow to statement to be managed as \emph{resources}. Linear
+terms once used cannot be referred again, premises cannot be duplicated
+and contexts cannot be extended. This restriction was informed by the
+necessity real-world computational restriction, in particular accessing
+information concurrently.
+
+One of the pain points mentioned was the inability to restrict usages to
+something more sophisticated than ``used exactly once''. Linear
+variables could be promoted to their unrestricted variants with the
+exponential operator (\texttt{!}) but it removes any benefit we get from
+linearity. A limitation that will be revisited in the follow-up paper:
+Bounded linear logic.
+
+It is worth noting that, already at this stage, memory implication were
+considered. Typically the exponential operator was understood as being
+similar to ``long term storage'' of a variable such that it could be
+reused in the future, whereas linear variable were stored in short-term
+memory to be reclaimed, like a register or a stack.
+
+The follow up paper, \emph{Bounded linear logic}\cite{bll} improves the
+expressivity of linear logic while keeping its benefits:
+intuitionistic-compatible logic that is computationally relevant. The
+key difference with linear logic is that weakening rules are
+\emph{bounded} by a finite value such that each value can be used as
+many time as the bound allows. In addition, some typing rules might
+allow it to \emph{waste} resources by \emph{underusing} the variable,
+hinting that affine types might bring some concrete benefits to our
+programming model.
+
+As before, there is no practical application of this in terms of
+programming language. However this brings up the first step toward a
+managing \emph{quantities} in the language. An idea that will be
+explored again later with
+Granule\cite{granule}\cite{effect_coeffects_grading}\cite{graded_monads_rings}\cite{monads_and_effects}
+and Quantitative Type Theory.
+
+\hypertarget{applications}{%
+\subsection{Applications}\label{applications}}
+
+Soon after the development of linear types, they appeared in a paper
+aimed at optimising away redundant allocations when manipulating lists:
+The deforestation algorithm.
+
+Deforestation\cite{deforestations} is an algorithm designed to avoid
+extraneous allocation when performing list operations in a programming
+language close to System-F. The assumption that operations on lists must
+be linear was made to avoid duplicating operations. If a program was
+non-linear, the optimisation would duplicate each of the computation
+associated with the non-linear variable, making the resulting program
+less efficient.
+
+While deforestation itself might not be the algorithm that we want to
+implement today, it is likely we can come up with a similar set of
+optimisation rules in Idris2 that rely on linearity.
+
+In this case linearity avoid duplicating computation, this idea was
+again investigated in \emph{Once upon a Type}\cite{once_upon_a_type}
+which formalises the detection of linear variables and uses this
+information for safe inlining. Indeed arbitrarily inlining functions
+might result in duplicated computation. We've seen an example of this
+earlier:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{let}\NormalTok{ x }\OtherTok{=}\NormalTok{ f y }\KeywordTok{in}
+\NormalTok{    (x, x)}
+\end{Highlighting}
+\end{Shaded}
+
+Where inlining into \texttt{(f\ x,\ f\ x)} duplicates the work done by
+\texttt{f}.
+
+Beside inlining and mutation, another way to use linear types for
+performance is memory space mutation. \emph{Linear types can change the
+world}\cite{linear_update} show that Linear types can be used for
+in-place update and mutation instead of relying on copying. They provide
+a safe API to update values by relying on the linearity of the argument
+being used.
+
+However the weakness of this result is that the API exposed to the
+programmer relies on nested continuations when traversing nested data
+types. Which is largely seen as undesirable user experience. \emph{Is
+there a use for linear logic}\cite{linear-use} makes similar claims and
+introduces a concept of types with a \emph{unique} pointer to them. This
+restriction for unique pointers is something we are going to encounter
+again during this thesis.
+
+The memory management benefits from linear types do not stop here, in
+\emph{~Reference counting as a computational interpretation of linear
+logic~}\cite{linear_ref_count}, linear types are shown to correspond to
+, this paper shows that a simple calculus augmented with memory
+management primitives can make use of linearity in order to control
+memory allocation and deallocation using linear types. While the
+calculus itself isn't very ergonomic to use for programming, one could
+imagine using it as a backend for a reference counted runtime.
+
+\emph{Practical affine types}\cite{practical_affine} aims to answer
+``What does it mean to have access to linear and affine types \emph{in
+practice}''? Indeed, most the results we've talked about develop a
+theory for linear types using a variant of linear logic, and then
+present a toy language to showcase their contribution. However this does
+not teach us how they would interact and manifest in existing programs
+or in existing software engineering workflows. Do we see emerging new
+programming patterns? Is the user experience improved or diminished? In
+what regards is the code different to read and write? How is code
+organised and sharedAll those questions can only be answered by a fully
+fledged implementation of a programming language equipped to interact
+with existing systems.
+
+Practical affine types show that their implementation for linear+affine
+types allow to express common operations in concurrent programs without
+any risk of data races. They note that typical stateful protocols should
+also be implementable since their language is a strict superset of other
+which already provided protocol implementations. Those two results hint
+at us that linear types in a commercially-relevant programming language
+would provide us with additional guarantees without impeding on the
+existing writing or reading experience of programs.
+
+Haskell already benefits from a plethora of big and small extensions,
+they are so powerful that combining them results in some extremely
+useful, though quite unergonomic, implementation of dependent
+types\cite{hasochism}. Linear Haskell\cite{linear_haskell} is notable in
+that it extends the type system to allow linear functions to be defined.
+It introduces the linear arrow \texttt{-o} which declares a function to
+be linear. Because of Haskell's laziness, linearity doesn't mean ``will
+be used exactly once'' but rather ``\emph{if it is used}, then it will
+be used exactly once''.
+
+This addition to the language was motivated by a concern for safe APIs,
+typically when dealing with unsafe or low-level code. Linear types allow
+to expose an API that cannot be misused while keeping the same level of
+expressivity and being completely backwards compatible. This backward
+compatibility is in part allowed thanks to parametric linearity, the
+ability to abstract over linearity annotations. And in part due to the
+approach of making \emph{function arrows} linear instead of \emph{types}
+themselves.
+
+Linearity on the type has the benefit that values themselves can be
+marked linear, which would enforce their uniqueness. But often comes at
+the cost of splitting our context in two\cite{lightweight_linear_types}
+between linear values and non-linear values which makes is unsuitable
+for a dependent type theory in which both types and terms live in the
+same context.
+
+\hypertarget{cutting-edge-linear-types}{%
+\subsection{Cutting edge linear types}\label{cutting-edge-linear-types}}
+
+Granule is a language that features \emph{quantitative reasoning via
+graded modal types}. They even have indexed types to boot! This effort
+is the result of years of research in the domain of effect, co-effect,
+resource-aware calculus and co-monadic computation. Granule itself makes
+heavy use of \emph{graded monads} (Katsuma, Orchard et al.~2016) which
+allow to precisely annotate co-effects in the type system. This enables
+the program to model \emph{resource management} at the type-level.
+What's more, graded monads provide an algebraic structure to
+\emph{combine and compose} those co-effects. This way, linearity can not
+only be modelled but also \emph{mixed-in} with other interpretations of
+resources. While this multiplies the opportunities in resource tracking,
+this approach hasn't received the treatment it deserves with regards to
+performance and tracking runtime complexity.
+
+Up until now we have not addressed the main requirement of our
+programming language: We intend to use \emph{both} dependent types
+\emph{and} linear types within the same language. However, no satisfying
+theory came until\_I got plentty o nuttin\_\cite{nuttin} and its
+descendant, \emph{Quantitative type theory} \cite{qtt}, came to fill the
+gap. Previous attempt by noted that linear types should be unrestricted
+in intuitionistic declarations but kept the original design to split
+linear and intuitionistic contexts. So in order to allow full dependent
+types, two changes were made: - Dependent typing can only use
+\emph{erased} variables - Multiplicities are tracked on the
+\emph{binder} \footnote{A Binder associates a value to a name.
+  \texttt{let\ n\ =\ 3\ in\ \ldots{}} \emph{binds} the value \texttt{3}
+  to the name \texttt{n}. Named arguments are also \emph{binders}.}rather
+than being a feature of type of a variable. While this elegantly merges
+the capabilities of a Martin-Löf-style type theory\cite{martin-lof} and
+Linear Logic\cite{linear-logic}, the proposed result does not touch upon
+potential performance improvement that such a language could
+feature\cite{store_indices}. However it has the potential to bring
+together Linear types and dependent types in a way that allows precise
+resource tracking and strong performance guarantees. Resource tracking
+through semirings is not a novel idea, but has been explored through the
+lens of and explicit comonadic computation
+\cite{quantitative_coeffects}\cite{monad_or_comonad}\cite{effect_coeffects_grading}\cite{parametric_effects}\cite{coeffect_computation}
+instead of dependent linear type systems.
+
+Unfortunately, this approach does not solve every long standing problems
+of computer science like having the univalence axioms be a theorem in
+the language like cubical agda\cite{cubical_agda} does. Interestingly
+enough, cubical type theory and homotopy type theory display a problem
+that could be solved in Idris2 very easily: They are non-computational.
+Which means they simply could be restricted to \emph{erased}
+multiplicity such that they are enforce by the compiler to never appear
+at runtime.
+
+Since this approach has already been tried in Agda\cite{agda}, maybe
+Idris2 should be extended with Observational Type Theory \cite{ott} in
+order to also solve the problem of functional extensionality. Which
+would greatly improve the range of programs Idris2 can write as we see
+with Idris-CT\cite{idris-ct} which require to postulate function
+extensionality for a lot of their proofs.
+
+\hypertarget{counting-immutable-beans}{%
+\subsubsection{Counting immutable
+beans}\label{counting-immutable-beans}}
+
+As we've seen, linearity has strong ties with resource and memory
+management, including reference counting. Though \emph{Counting
+immutable beans} does not concern itself with linearity per se, it
+mentions the benefits of \emph{reference counting} as a memory
+management strategy for purely functional programs. Indeed, while
+reference counting has, for a long time, been disregarded in favor of
+runtime garbage collectors, it now has proven to be commercially viable
+in languages like Swift or Python. The specific results presented here
+are focused on the performance benefits in avoiding unnecessary copies
+and reducing the amount of increment and decrement operation when
+manipulating the reference count at runtime. It turns out the concept of
+``borrowing'' a value without changing it reference count closely
+matches a linear type system with graded modalities. Indeed as long as
+the modality is finite and greater than 1 there is no need to decrement
+the reference count. Here is an illustration of this idea
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{f }\OperatorTok{:}\NormalTok{ (}\DecValTok{2}\NormalTok{ v }\OperatorTok{:} \DataTypeTok{Int}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Int}
+\NormalTok{f v }\OtherTok{=} \KeywordTok{let} \DecValTok{1}\NormalTok{ val1 }\OtherTok{=}\NormalTok{ operation v }\CommentTok{{-}{-} operation borrow v, no need for dec}
+          \DecValTok{1}\NormalTok{ val2 }\OtherTok{=}\NormalTok{ operation v }\CommentTok{{-}{-} we ran out of ses for v, dec here}
+       \KeywordTok{in}\NormalTok{ val1 }\OperatorTok{+}\NormalTok{ val2}
+\end{Highlighting}
+\end{Shaded}
+
+In our example, since \texttt{v}could be shared prior to the calling of
+\texttt{f} we cannot prove that v can be freed, we can only decrement
+its reference count. However, by inspecting the reference count we could
+in addition reuse our assumption about ``mutating unique linear
+variables'' and either reclaim the space or reuse it in-place.
+
+\hypertarget{innovative-uses-of-linear-types}{%
+\subsection{Innovative uses of linear
+types}\label{innovative-uses-of-linear-types}}
+
+In this final section of the context review I will present some
+interesting uses for linear types in a bit more detail.
+
+\hypertarget{opening-the-door-to-new-opportunities}{%
+\subsubsection{Opening the door to new
+opportunities}\label{opening-the-door-to-new-opportunities}}
+
+Protocol descriptions and dependent types work marvellously well. State
+machines can be represented by data types and their index can ensure we
+compose them in ways that make sense.
+
+As a reminder of how state machines can be encoded in Idris1, here is a
+simple door protocol in Idris 1 using \emph{indexed monads}
+\cite{parameterised_computation} were the indices behave like a Hoare
+Triple. An approach that's been put to practice in \emph{State machines
+all the way down}\cite{state_machines} and gives rise to our example:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{data} \DataTypeTok{DoorState} \OtherTok{=} \DataTypeTok{Open} \OperatorTok{|} \DataTypeTok{Closed}
+
+\KeywordTok{data} \DataTypeTok{Door} \OperatorTok{:} \DataTypeTok{Type} \OtherTok{{-}\textgreater{}} \DataTypeTok{DoorState} \OtherTok{{-}\textgreater{}} \DataTypeTok{DoorState} \OtherTok{{-}\textgreater{}} \DataTypeTok{Type} \KeywordTok{where} 
+    \DataTypeTok{Open} \OperatorTok{:} \DataTypeTok{Door}\NormalTok{ () }\DataTypeTok{Closed} \DataTypeTok{Open}
+    \DataTypeTok{Close} \OperatorTok{:} \DataTypeTok{Door}\NormalTok{ () }\DataTypeTok{Open} \DataTypeTok{Closed}
+    \DataTypeTok{Play} \OperatorTok{:} \DataTypeTok{Door}\NormalTok{ () }\DataTypeTok{Open} \DataTypeTok{Openned}
+    \DataTypeTok{Pure} \OperatorTok{:}\NormalTok{ ty }\OtherTok{{-}\textgreater{}} \DataTypeTok{Door}\NormalTok{ ty state state}
+\NormalTok{    (}\OperatorTok{\textgreater{}\textgreater{}=}\NormalTok{) }\OperatorTok{:} \DataTypeTok{Door}\NormalTok{ a state1 state2 }\OtherTok{{-}\textgreater{}}
+\NormalTok{             (a }\OtherTok{{-}\textgreater{}} \DataTypeTok{Door}\NormalTok{ b state2 state3) }\OtherTok{{-}\textgreater{}}
+             \DataTypeTok{Door}\NormalTok{ b state1 state3}
+\end{Highlighting}
+\end{Shaded}
+
+This allows the door protocol to be expressed with a function with the
+following type:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{doorProtocol }\OperatorTok{:} \DataTypeTok{Door}\NormalTok{ () }\DataTypeTok{Closed} \DataTypeTok{Closed}
+\end{Highlighting}
+\end{Shaded}
+
+This indicates that the door starts closed and ends closed. One issue
+with this approach is that it constrains us to a free-monadic style
+implementation where we need to write and interpreter for our monadic
+program and we cannot mix other protocols within is without changing the
+\texttt{Door} data type.
+
+Implementing the same protocol using linear type is much easier:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+
+\KeywordTok{data} \DataTypeTok{DoorState} \OtherTok{=} \DataTypeTok{Open} \OperatorTok{|} \DataTypeTok{Closed}
+
+\KeywordTok{data} \DataTypeTok{Door} \OperatorTok{:}\NormalTok{ (state }\OperatorTok{:} \DataTypeTok{DoorState}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Type} \KeywordTok{where}
+  \DataTypeTok{MkDoor} \OperatorTok{:} \DataTypeTok{Door} \DataTypeTok{Closed}
+  \DataTypeTok{Open} \OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{Door} \DataTypeTok{Closed}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Door} \DataTypeTok{Open}
+  \DataTypeTok{Close} \OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{Door} \DataTypeTok{Open}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Door} \DataTypeTok{Closed}
+  \DataTypeTok{Play} \OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{Door} \DataTypeTok{Open}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Door} \DataTypeTok{Open}
+
+\NormalTok{operateDoor }\OperatorTok{:}\NormalTok{ (op }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{Door} \DataTypeTok{Closed}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Door} \DataTypeTok{Closed}\NormalTok{)}
+           \OtherTok{{-}\textgreater{}} \DataTypeTok{Door} \DataTypeTok{Closed}
+\NormalTok{operateDoor op }\OtherTok{=}\NormalTok{ op }\DataTypeTok{MkDoor}
+\end{Highlighting}
+\end{Shaded}
+
+In this example, instead of monadic composition we use plain
+\emph{function composition} in order to ensure that our protocol obeys
+the rules of our protocol, that is: The door starts open and ends
+closed.
+
+This verifies the protocol because it forces the \texttt{op} function to
+make use of the provided door. The client of the API has no choice but
+to manipulate the existing door until the protocol is over.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{{-}{-} doesn\textquotesingle{}t typecheck because door is ignored.}
+\NormalTok{operateDoor (\textbackslash{}door }\OtherTok{=\textgreater{}} \DataTypeTok{MkDoor}\NormalTok{) }
+\end{Highlighting}
+\end{Shaded}
+
+We can now define program simply by combining our door operations:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{infixr} \DecValTok{1} \OperatorTok{\&\textgreater{}}
+
+\CommentTok{{-}{-} Sequential linear function composition.}
+\NormalTok{(}\OperatorTok{\&\textgreater{}}\NormalTok{) }\OperatorTok{:}\NormalTok{ ((}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:}\NormalTok{ a) }\OtherTok{{-}\textgreater{}}\NormalTok{ b) }\OtherTok{{-}\textgreater{}} 
+\NormalTok{       ((}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:}\NormalTok{ b) }\OtherTok{{-}\textgreater{}}\NormalTok{ c) }\OtherTok{{-}\textgreater{}} 
+\NormalTok{        (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:}\NormalTok{ a) }\OtherTok{{-}\textgreater{}}\NormalTok{ c}
+\NormalTok{(}\OperatorTok{\&\textgreater{}}\NormalTok{) f g x }\OtherTok{=}\NormalTok{ g (f x)}
+
+\NormalTok{connectDoor }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{Door} \DataTypeTok{Closed}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Door} \DataTypeTok{Closed}
+\NormalTok{connectDoor }\OtherTok{=} \DataTypeTok{Play} \OperatorTok{\&\textgreater{}} \DataTypeTok{Close} \OperatorTok{\&\textgreater{}} \DataTypeTok{Open} \OperatorTok{\&\textgreater{}} \DataTypeTok{Play} \OperatorTok{\&\textgreater{}} \DataTypeTok{Play} \OperatorTok{\&\textgreater{}} \DataTypeTok{Close}
+\end{Highlighting}
+\end{Shaded}
+
+This also makes combining other protocols trivial, assume we have
+another protocol to connect to the internet and is characterised by the
+signature
+\texttt{connect\ :\ (1\ \_\ :\ Socket\ Open)\ -\textgreater{}\ Socked\ Closed}
+we can take the product of the two \texttt{connect} functions and
+interleave their arguments:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{connectProd }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:}\NormalTok{ (}\DataTypeTok{Socket} \DataTypeTok{Open}\NormalTok{, }\DataTypeTok{Door} \DataTypeTok{Open}\NormalTok{)) }
+           \OtherTok{{-}\textgreater{}}\NormalTok{ (}\DataTypeTok{Socket} \DataTypeTok{Closed}\NormalTok{, }\DataTypeTok{Door} \DataTypeTok{Closed}\NormalTok{)}
+\NormalTok{connectProd (socket, door) }\OtherTok{=} 
+  \KeywordTok{let}\NormalTok{ openDoor }\OtherTok{=} \DataTypeTok{Open}\NormalTok{ door}
+\NormalTok{      socket\textquotesingle{} }\OtherTok{=}\NormalTok{ send }\StringTok{"message"}\NormalTok{ socket}
+\NormalTok{      door\textquotesingle{} }\OtherTok{=} \DataTypeTok{Enjoy}\NormalTok{ openDoor }\KeywordTok{in}
+\NormalTok{      (close socket\textquotesingle{}, }\DataTypeTok{Close}\NormalTok{ door\textquotesingle{})}
+\end{Highlighting}
+\end{Shaded}
+
+Which is much more natural than having to rewrite our door protocol and
+rewrite our interpreter for the operations of the protocol.
+
+\hypertarget{more-granular-dependencies}{%
+\subsubsection{More granular
+dependencies}\label{more-granular-dependencies}}
+
+While our previous example has only be mildly successful, there exist a
+language that can express our idea, and that is \emph{Granule}.
+
+Granule is a programming language with \emph{graded modal types}, types
+which rely on \emph{graded modalities}. Those are annotation that span a
+\emph{range} of different values in order to describe each type. Those
+values can themselves be paired up together and combined in order to
+represent even more complex behaviour than our linear multiplication.
+For now, let us stick to multiplication and see what a future version of
+Idris supporting graded modalities could look like.
+
+Granule's syntax is very close to Idris, Agda and Haskell, however,
+linearity in \emph{Granule} is the default so there is nothing to
+specify for a linear variable. In addition, \texttt{Nat} is not a
+\texttt{Type} in \emph{Granule} but a \emph{modality}, which means, in
+order to work with \texttt{Nat} and write dependencies between them we
+will create a data type indexed on \texttt{Nat}:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{data} \DataTypeTok{INat}\NormalTok{ (n }\OperatorTok{:} \DataTypeTok{Nat}\NormalTok{) }\KeywordTok{where}
+  \DataTypeTok{Z} \OperatorTok{:} \DataTypeTok{INat} \DecValTok{0}\NormalTok{;}
+  \DataTypeTok{S} \OperatorTok{:} \DataTypeTok{INat}\NormalTok{ n }\OtherTok{{-}\textgreater{}} \DataTypeTok{INat}\NormalTok{ (n }\OperatorTok{+} \DecValTok{1}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+This allows us to write the add function as follows:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{linearAdd }\OperatorTok{:} \KeywordTok{forall}\NormalTok{ \{n m }\OperatorTok{:} \DataTypeTok{Nat}\NormalTok{\} }\OperatorTok{.} \DataTypeTok{INat}\NormalTok{ n }\OtherTok{{-}\textgreater{}} \DataTypeTok{INat}\NormalTok{ m }\OtherTok{{-}\textgreater{}} \DataTypeTok{INat}\NormalTok{ (n }\OperatorTok{+}\NormalTok{ m)}
+\NormalTok{linearAdd }\DataTypeTok{Z}\NormalTok{ m }\OtherTok{=}\NormalTok{ m;}
+\NormalTok{linearAdd (}\DataTypeTok{S}\NormalTok{ n) m }\OtherTok{=} \DataTypeTok{S}\NormalTok{ (linearAdd n m)}
+\end{Highlighting}
+\end{Shaded}
+
+If we were to omit the \texttt{m} in the first branch and write
+\texttt{linearAdd\ Z\ m\ =\ Z} we would get the error:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\OperatorTok{\textgreater{}} \DataTypeTok{Linearity} \FunctionTok{error}\OperatorTok{:}\NormalTok{ multiplication}\OperatorTok{.}\NormalTok{gr}\OperatorTok{:}
+\OperatorTok{\textgreater{}} \DataTypeTok{Linear}\NormalTok{ variable }\OtherTok{\textasciigrave{}m\textasciigrave{}}\NormalTok{ is never used}\OperatorTok{.}
+\end{Highlighting}
+\end{Shaded}
+
+Which is what we expect.
+
+Now that we have indexed \texttt{Nat} we can try again our
+\texttt{multiplication} function:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{multiplication }\OperatorTok{:} \KeywordTok{forall}\NormalTok{ \{n m }\OperatorTok{:} \DataTypeTok{Nat}\NormalTok{\} }\OperatorTok{.} \DataTypeTok{INat}\NormalTok{ n }\OtherTok{{-}\textgreater{}}\NormalTok{ (}\DataTypeTok{INat}\NormalTok{ m) [n] }\OtherTok{{-}\textgreater{}} \DataTypeTok{INat}\NormalTok{ (n }\OperatorTok{*}\NormalTok{ m)}
+\NormalTok{multiplication }\DataTypeTok{Z}\NormalTok{ [m] }\OtherTok{=} \DataTypeTok{Z}\NormalTok{;}
+\NormalTok{multiplication (}\DataTypeTok{S}\NormalTok{ n) [m] }\OtherTok{=}\NormalTok{ linearAdd m (multiplication n m)}
+\end{Highlighting}
+\end{Shaded}
+
+As you can see, we annotate the second argument of the type signature
+with \texttt{{[}n{]}} which indicates that the modality of the second
+argument depends on the value of the first argument. This syntax repeats
+in the implementation where the second argument \texttt{m} has to be
+``unboxed'' using the \texttt{{[}m{]}} syntax which will tell the
+compiler to correctly infer the usage allowed by the indexed modality.
+In the first branch there are \texttt{0} uses available, and in the
+second there are \texttt{n\ +\ 1} uses available.
+
+While \emph{Granule} doesn't have dependent types, indexed types are
+enough to implement interesting programs such as multiplication. More
+recent developments have made progress toward implementing full type
+dependency between quantities and terms in the language.
+
+\hypertarget{invertible-functions}{%
+\subsubsection{Invertible functions}\label{invertible-functions}}
+
+Yet another use of linearity that I have not seen mentioned very often
+is to use them for \emph{invertible functions}. That is functions that
+have a counterpart that can undo their actions. Such functions are
+extremely common in practice but aren't usually described in terms of
+their ability to be undone. Here are a couple example
+
+\begin{itemize}
+\tightlist
+\item
+  Addition and subtraction
+\item
+  \texttt{::} and \texttt{tail}
+\item
+  serialisation/deserialisation
+\end{itemize}
+
+The paper about Sparcl\cite{invertible_functions} goes into details
+about how to implement a language that features invertible functions,
+they introduce a new (postscript) type constructor
+\texttt{•\ :\ Type\ -\textgreater{}\ Type} that indicate that the type
+in argument is invertible. Invertible functions are declared as linear
+functions \texttt{A•\ -o\ B•}\footnote{The lollipop arrow
+  \texttt{a\ -o\ b} is equivalent to our linear functions
+  \texttt{(1\ \_\ :\ a)\ -\textgreater{}\ b}}. Invertible functions can
+be called to make progress one way or the other given some data using
+the \texttt{fwd} and \texttt{bwd} primitives:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{fwd }\OperatorTok{:}\NormalTok{ (}\DataTypeTok{A}\NormalTok{• }\OperatorTok{{-}}\NormalTok{o }\DataTypeTok{B}\NormalTok{•) }\OtherTok{{-}\textgreater{}} \DataTypeTok{A} \OtherTok{{-}\textgreater{}} \DataTypeTok{B}
+\NormalTok{bwd }\OperatorTok{:}\NormalTok{ (}\DataTypeTok{A}\NormalTok{• }\OperatorTok{{-}}\NormalTok{o }\DataTypeTok{B}\NormalTok{•) }\OtherTok{{-}\textgreater{}} \DataTypeTok{B} \OtherTok{{-}\textgreater{}} \DataTypeTok{A}
+\end{Highlighting}
+\end{Shaded}
+
+Invertible functions aren't necessarily total, For example
+\texttt{bwd\ (+\ 1)\ Z} will result in a runtime error. This is because
+of the nature of invertible functions: the \texttt{+\ 1} functions
+effectively adds a \texttt{S} layer to the given data. In order to undo
+this operation we need to \emph{peel off} a \texttt{S} from the data.
+But \texttt{Z} doesn't have a \texttt{S} constructor surrounding it,
+resulting in an error.
+
+Those type of runtime errors can be avoided in Idris by adding a new
+implicit predicate that ensure the data is of the correct format:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{bwd }\OperatorTok{:}\NormalTok{ (f }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{A}\NormalTok{•) }\OtherTok{{-}\textgreater{}} \DataTypeTok{B}\NormalTok{•) }\OtherTok{{-}\textgreater{}}\NormalTok{ (v }\OperatorTok{:} \DataTypeTok{B}\NormalTok{) }\OtherTok{{-}\textgreater{}}\NormalTok{ \{prf }\OperatorTok{:}\NormalTok{ v }\OtherTok{=}\NormalTok{ fwd f x)\} }\OtherTok{{-}\textgreater{}} \DataTypeTok{A}
+\end{Highlighting}
+\end{Shaded}
+
+This ensures that we only take values of \texttt{B} that come from a
+\texttt{fwd} operation, that is, it only accepts data that has been
+correctly build instead of abitrary data. If we were to translate this
+into our nat example it would look like this:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{undo}\OperatorTok{+}\DecValTok{1} \OperatorTok{:}\NormalTok{ (n }\OperatorTok{:} \DataTypeTok{Nat}\NormalTok{) }\OtherTok{{-}\textgreater{}}\NormalTok{ \{prf }\OperatorTok{:}\NormalTok{ n }\OtherTok{=} \DataTypeTok{S}\NormalTok{ k\} }\OtherTok{{-}\textgreater{}} \DataTypeTok{Nat}
+\end{Highlighting}
+\end{Shaded}
+
+Which ensures that the argument is a \texttt{S} of \texttt{k} for any
+\texttt{k}.
+
 \hypertarget{idris2-and-linear-types}{%
-\subsection{Idris2 and linear types}\label{idris2-and-linear-types}}
+\section{Idris2 and linear types}\label{idris2-and-linear-types}}
 
-Idris2 takes things further and introduces \emph{linear types} in its
-type system, allowing us to define how many times a variable will be
-used. Three different quantities exist in Idris2 : \texttt{0},
-\texttt{1} and \texttt{ω}. \texttt{0} means the value cannot be used in
-the body of a function, \texttt{1} means it has to be used exactly once,
-no less, no more. \texttt{ω} means the variable isn't subject to any
-usage restrictions, just like other (non-linear) programming languages.
-In Idris2, \texttt{ω} is implicit, when no quantity is specified, it is
-assumed to be unrestricted. This is why in the examples until now we
-have not seen any usage quantities.
+We've seen in the introduction how Idris features dependent types and
+some basic demonstrations about how to use them. Idris2 takes things
+further and introduces \emph{linear types} in its type system, allowing
+us to define how many times a variable will be used. Three different
+quantities exist in Idris2 : \texttt{0}, \texttt{1} and \texttt{ω}.
+\texttt{0} means the value cannot be used in the body of a function,
+\texttt{1} means it has to be used exactly once, no less, no more.
+\texttt{ω} means the variable isn't subject to any usage restrictions,
+just like other (non-linear) programming languages. In Idris2,
+\texttt{ω} is implicit, when no quantity is specified and left blank, it
+is assumed to be unrestricted. This is why we have not seen any usage
+quantities during the introduction.
 
-We are going to revisit this concept later as there are more subtleties,
-especially about the \texttt{0} usage. For now we are going to explore
-some examples of linear functions and linear types, starting with very
-simple functions such as incrementing numbers.
+We are going to revisit every usage quantities later as there are more
+subtleties, especially about the \texttt{0} usage. For now we are going
+to explore some examples of linear functions and linear types, starting
+with very simple functions such as incrementing numbers.
 
 \hypertarget{incremental-steps}{%
-\subsubsection{Incremental steps}\label{incremental-steps}}
+\subsection{Incremental steps}\label{incremental-steps}}
 
 When designing examples, natural numbers are a straightforward data type
 to turn to. Their definition is extremely simple:
@@ -762,7 +1328,7 @@ original argument was linear, \texttt{n} is linear too and is indeed
 used later with \texttt{sum\ n\ m}.
 
 \hypertarget{dropping-and-picking-it-up-again}{%
-\subsubsection{Dropping and picking it up
+\subsection{Dropping and picking it up
 again}\label{dropping-and-picking-it-up-again}}
 
 Obviously this programming discipline does not allow us to express every
@@ -805,7 +1371,7 @@ variable has to be used (If there is no restriction, the usage number is
 simply left blank, just like our previous examples didn't show any usage
 numbers).
 
-As you can see we need to use \texttt{v} (since it marked with
+As you can see we need to use \texttt{v} (since it is marked with
 \texttt{1}) but we are only allowed to return \texttt{()}. This would be
 solved if we had a function of type
 \texttt{(1\ v\ :\ a)\ -\textgreater{}\ ()} to consume the value and
@@ -898,7 +1464,7 @@ about those limitations and how to overcome them in the ``limitations
 and solutions for quantitative types'' section.
 
 \hypertarget{dancing-around-linear-types}{%
-\subsubsection{Dancing around linear
+\subsection{Dancing around linear
 types}\label{dancing-around-linear-types}}
 
 Linear values cannot be duplicated or ignored, but provided we know how
@@ -906,18 +1472,18 @@ the values are constructed, we can work hard enough to tear them apart
 and build them back up. This allows us to dance around the issue of
 ignoring and duplicating linear variables by exploiting pattern matching
 in order to implement functions such as
-\texttt{copy\ :\ (1\ \_\ :\ a)\ \textasciigrave{}-\textgreater{}\ (a,\ a)}
-and \texttt{drop\ :\ (1\ \_\ :\ a)\ -\textgreater{}\ ()}
+\texttt{copy\ :\ (1\ v\ :\ a)\ \textasciigrave{}-\textgreater{}\ (a,\ a)}
+and \texttt{drop\ :\ (1\ v\ :\ a)\ -\textgreater{}\ ()}.
 
 The next snippet show how to implement those for \texttt{Nat}:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{dropNat }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{Nat}\NormalTok{) }\OtherTok{{-}\textgreater{}}\NormalTok{ ()}
+\NormalTok{dropNat }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ v }\OperatorTok{:} \DataTypeTok{Nat}\NormalTok{) }\OtherTok{{-}\textgreater{}}\NormalTok{ ()}
 \NormalTok{dropNat }\DataTypeTok{Z} \OtherTok{=}\NormalTok{ ()}
 \NormalTok{dropNat (}\DataTypeTok{S}\NormalTok{ n) }\OtherTok{=}\NormalTok{ dropNat n}
 
-\NormalTok{copyNat }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{Nat}\NormalTok{) }\OtherTok{{-}\textgreater{}}\NormalTok{ (}\DataTypeTok{Nat}\NormalTok{, }\DataTypeTok{Nat}\NormalTok{)}
+\NormalTok{copyNat }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ v }\OperatorTok{:} \DataTypeTok{Nat}\NormalTok{) }\OtherTok{{-}\textgreater{}}\NormalTok{ (}\DataTypeTok{Nat}\NormalTok{, }\DataTypeTok{Nat}\NormalTok{)}
 \NormalTok{copyNat }\DataTypeTok{Z} \OtherTok{=}\NormalTok{ (}\DataTypeTok{Z}\NormalTok{, }\DataTypeTok{Z}\NormalTok{)}
 \NormalTok{copyNat (}\DataTypeTok{S}\NormalTok{ n) }\OtherTok{=} \KeywordTok{let}\NormalTok{ (a, b) }\OtherTok{=}\NormalTok{ copyNat n }\KeywordTok{in}
 \NormalTok{                    (}\DataTypeTok{S}\NormalTok{ a, }\DataTypeTok{S}\NormalTok{ b)}
@@ -936,10 +1502,10 @@ We can encapsulate those functions in the following interfaces:
 \begin{Shaded}
 \begin{Highlighting}[]
 \NormalTok{interface }\DataTypeTok{Drop}\NormalTok{ a }\KeywordTok{where}
-    \FunctionTok{drop} \OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:}\NormalTok{ a) }\OtherTok{{-}\textgreater{}}\NormalTok{ ()}
+    \FunctionTok{drop} \OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ v }\OperatorTok{:}\NormalTok{ a) }\OtherTok{{-}\textgreater{}}\NormalTok{ ()}
 
 \NormalTok{interface }\DataTypeTok{Copy}\NormalTok{ a }\KeywordTok{where}
-\NormalTok{    copy }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:}\NormalTok{ a) }\OtherTok{{-}\textgreater{}}\NormalTok{ (a, a)}
+\NormalTok{    copy }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ v }\OperatorTok{:}\NormalTok{ a) }\OtherTok{{-}\textgreater{}}\NormalTok{ (a, a)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -956,10 +1522,10 @@ additional types.
 \KeywordTok{data} \DataTypeTok{Tree}\NormalTok{ a }\OtherTok{=} \DataTypeTok{Leaf}\NormalTok{ a }\OperatorTok{|} \DataTypeTok{Branch}\NormalTok{ a (}\DataTypeTok{Tree}\NormalTok{ a) (}\DataTypeTok{Tree}\NormalTok{ a)}
 
 \NormalTok{interface }\DataTypeTok{Drop}\NormalTok{ a }\KeywordTok{where}
-    \FunctionTok{drop} \OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:}\NormalTok{ a) }\OtherTok{{-}\textgreater{}}\NormalTok{ ()}
+    \FunctionTok{drop} \OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ v }\OperatorTok{:}\NormalTok{ a) }\OtherTok{{-}\textgreater{}}\NormalTok{ ()}
 
 \NormalTok{interface }\DataTypeTok{Copy}\NormalTok{ a }\KeywordTok{where}
-\NormalTok{    copy }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:}\NormalTok{ a) }\OtherTok{{-}\textgreater{}}\NormalTok{ (a, a)}
+\NormalTok{    copy }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ v }\OperatorTok{:}\NormalTok{ a) }\OtherTok{{-}\textgreater{}}\NormalTok{ (a, a)}
 
 \DataTypeTok{Drop}\NormalTok{ a }\OtherTok{=\textgreater{}} \DataTypeTok{Drop}\NormalTok{ (}\DataTypeTok{List}\NormalTok{ a) }\KeywordTok{where}
 \NormalTok{    copy ls }\OtherTok{=} \OperatorTok{?}\NormalTok{drop\_list\_impl}
@@ -987,7 +1553,7 @@ access to their constructors nor structure. A solution to this problem
 will be provided in the section ``QTT ergonomics''
 
 \hypertarget{linear-intuition}{%
-\subsubsection{Linear intuition}\label{linear-intuition}}
+\subsection{Linear intuition}\label{linear-intuition}}
 
 One key tool in understanding this thesis is to develop an intuition for
 linear types. Since they are (mostly) not present in other programming
@@ -998,14 +1564,14 @@ To that end we are going to explore a number of examples that illustrate
 how linearity can be understood.
 
 \hypertarget{you-cant-have-your-cake-and-eat-it-too}{%
-\paragraph{You can't have your cake and eat it
+\subsubsection{You can't have your cake and eat it
 too}\label{you-cant-have-your-cake-and-eat-it-too}}
 
 Imagine this procedure
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{eat }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ c }\OperatorTok{:} \DataTypeTok{Cake}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Full}
+\NormalTok{eat }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ cake }\OperatorTok{:} \DataTypeTok{Cake}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Full}
 \NormalTok{eat (}\DataTypeTok{MkCake}\NormalTok{ ingredients) }\OtherTok{=}\NormalTok{ digest ingredients}
 \end{Highlighting}
 \end{Shaded}
@@ -1014,7 +1580,7 @@ This allows you to eat your cake. Now imagine this other one:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{keep }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ c }\OperatorTok{:} \DataTypeTok{Cake}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Cake}
+\NormalTok{keep }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ cake }\OperatorTok{:} \DataTypeTok{Cake}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Cake}
 \NormalTok{keep cake }\OtherTok{=}\NormalTok{ cake}
 \end{Highlighting}
 \end{Shaded}
@@ -1024,7 +1590,7 @@ definitions, you can't both \emph{have} your cake \emph{and eat it too}:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{notPossible }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ c }\OperatorTok{:} \DataTypeTok{Cake}\NormalTok{) }\OtherTok{{-}\textgreater{}}\NormalTok{ (}\DataTypeTok{Full}\NormalTok{, }\DataTypeTok{Cake}\NormalTok{)}
+\NormalTok{notPossible }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ cake }\OperatorTok{:} \DataTypeTok{Cake}\NormalTok{) }\OtherTok{{-}\textgreater{}}\NormalTok{ (}\DataTypeTok{Full}\NormalTok{, }\DataTypeTok{Cake}\NormalTok{)}
 \NormalTok{notPossible cake }\OtherTok{=}\NormalTok{ (eat cake, keep cake)}
 \end{Highlighting}
 \end{Shaded}
@@ -1051,13 +1617,13 @@ Note that removing every linearity annotation makes the program compile:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{eat }\OperatorTok{:}\NormalTok{ (c }\OperatorTok{:} \DataTypeTok{Cake}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Full}
+\NormalTok{eat }\OperatorTok{:}\NormalTok{ (cake }\OperatorTok{:} \DataTypeTok{Cake}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Full}
 \NormalTok{eat (}\DataTypeTok{MkCake}\NormalTok{ ingredients) }\OtherTok{=}\NormalTok{ digest ingredients}
 
-\NormalTok{keep }\OperatorTok{:}\NormalTok{ (c }\OperatorTok{:} \DataTypeTok{Cake}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Cake}
+\NormalTok{keep }\OperatorTok{:}\NormalTok{ (cake }\OperatorTok{:} \DataTypeTok{Cake}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Cake}
 \NormalTok{keep cake }\OtherTok{=}\NormalTok{ cake}
 
-\NormalTok{nowPossible }\OperatorTok{:}\NormalTok{ (c }\OperatorTok{:} \DataTypeTok{Cake}\NormalTok{) }\OtherTok{{-}\textgreater{}}\NormalTok{ (}\DataTypeTok{Full}\NormalTok{, }\DataTypeTok{Cake}\NormalTok{)}
+\NormalTok{nowPossible }\OperatorTok{:}\NormalTok{ (cake }\OperatorTok{:} \DataTypeTok{Cake}\NormalTok{) }\OtherTok{{-}\textgreater{}}\NormalTok{ (}\DataTypeTok{Full}\NormalTok{, }\DataTypeTok{Cake}\NormalTok{)}
 \NormalTok{nowPossible cake }\OtherTok{=}\NormalTok{ (eat cake, keep cake)}
 \end{Highlighting}
 \end{Shaded}
@@ -1067,7 +1633,7 @@ no restriction in usage, and we can have as much cake as we want and
 keep it too.
 
 \hypertarget{drawing-unexpected-parallels}{%
-\paragraph{Drawing unexpected
+\subsubsection{Drawing unexpected
 parallels}\label{drawing-unexpected-parallels}}
 
 Take the following picture:
@@ -1113,7 +1679,7 @@ up with a \texttt{drawing} that we can now use! \footnote{You will
   this is because the goal of this exercise is to have fun.}
 
 \hypertarget{safe-inlining-with-1}{%
-\paragraph{Safe inlining with 1}\label{safe-inlining-with-1}}
+\subsubsection{Safe inlining with 1}\label{safe-inlining-with-1}}
 
 Linear variables have to be used exactly once, no less, no more. An
 extremely nice property this gives us can be summarised with the
@@ -1198,7 +1764,8 @@ The result of inlining \texttt{x} would be as follows \footnote{This
 \end{Shaded}
 
 \hypertarget{erased-runtime-for-0}{%
-\paragraph{Erased runtime for 0}\label{erased-runtime-for-0}}
+\subsubsection{\texorpdfstring{Erased runtime for
+\texttt{0}}{Erased runtime for 0}}\label{erased-runtime-for-0}}
 
 In Idris2, variables can also be annotated with linearity \texttt{0},
 this means that the value is \emph{inaccessible} and cannot be used. But
@@ -1286,13 +1853,13 @@ the program. We can use them to convince the compiler that some
 invariants hold, but we cannot allocate any memory for them during the
 execution of our program.
 
-Finally, another subtlety is that erased variable can actually appear
-inside the body of function, but only in position where they are
-arguments to functions with \texttt{0} usage. Such functions are:
-
 \hypertarget{arguments-annotated-with-0}{%
-\subparagraph{\texorpdfstring{Arguments annotated with
+\paragraph{\texorpdfstring{Arguments annotated with
 \texttt{0}}{Arguments annotated with 0}}\label{arguments-annotated-with-0}}
+
+Finally, another subtlety is that erased variable can actually appear
+inside the body of function, but only in position where they are allowed
+are arguments to functions with \texttt{0} usage. Such functions are:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1309,11 +1876,11 @@ arguments to functions with \texttt{0} usage. Such functions are:
 Here the recursive call uses \texttt{n} which has linearity \texttt{0},
 but this is allowed because the first argument of \texttt{toNat} takes
 an argument of linearity \texttt{0}. In other words, \texttt{n} cannot
-be consumed, but \texttt{toNat} does not consume it's first argument
+be consumed, but \texttt{toNat} does not consume its first argument
 anyways, so all is good.
 
 \hypertarget{rewrites}{%
-\subparagraph{Rewrites}\label{rewrites}}
+\paragraph{Rewrites}\label{rewrites}}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1325,7 +1892,7 @@ anyways, so all is good.
 Rewriting a type does not consume the proof.
 
 \hypertarget{type-signatures}{%
-\subparagraph{Type signatures}\label{type-signatures}}
+\paragraph{Type signatures}\label{type-signatures}}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1342,7 +1909,7 @@ Even if \texttt{n} appears in the body of the function, appearing in a
 type signature does not count as a use.
 
 \hypertarget{no-branching-with-0}{%
-\paragraph{No branching with 0}\label{no-branching-with-0}}
+\subsubsection{No branching with 0}\label{no-branching-with-0}}
 
 In general, we cannot match on erased variables, there is however an
 exception to this rule. Whenever matching on a variable \emph{does not}
@@ -1437,21 +2004,7 @@ to spell out the match. Effectively forcing uninformative matches to be
 made. A similar error appears if we try the same thing on the second
 branch, trying to remove \texttt{S\ n}.
 
-\hypertarget{the-story-begins}{%
-\subsection{The story begins}\label{the-story-begins}}
-
-This concludes our introductory chapter. I suggest you come back to it
-regularly to brush up on the linear concepts, pay particular attention
-to the ``linear intuition'' section in order to make sense of
-\emph{erased} variables and \emph{linear} variables. I also want to
-stress that at the end is a glossary that lists all the important terms
-and concepts necessary to understand the body of this work. Please feel
-free to consult it if something is unclear.
-
-In the next section I will start listing and describing uses of linear
-types, and what happens when they are combined with dependent types.
-Some of them were already known, but some of them are also new and
-delightful.
+\newpage
 
 \hypertarget{quantitative-type-theory-in-practice}{%
 \section{Quantitative Type Theory in
@@ -1460,130 +2013,11 @@ practice}\label{quantitative-type-theory-in-practice}}
 QTT is still a recent development and because of its young age, it has
 not seen wide spread use in commercial applications. The Idris2 compiler
 itself stands as the most popular example of a complex program that
-showcases uses for QTT and quantitative types. For this reason, while
-this section does not provide any concrete contributions, I thought it
-was warranted to list some new, innovative and unexpected uses for
-linear types and QTT.
-
-\hypertarget{opening-the-door-to-new-opportunities}{%
-\subsection{Opening the door to new
-opportunities}\label{opening-the-door-to-new-opportunities}}
-
-Protocol descriptions and dependent types work marvellously well. State
-machines can be represented by data types and their index can ensure we
-compose them in ways that make sense.
-
-As a reminder of how state machines ca be encoded in Idris1, here is a
-simple door protocol in Idris 1 using \emph{indexed monads} (citation by
-atkey?)
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\KeywordTok{data} \DataTypeTok{DoorState} \OtherTok{=} \DataTypeTok{Open} \OperatorTok{|} \DataTypeTok{Closed}
-
-\KeywordTok{data} \DataTypeTok{Door} \OperatorTok{:} \DataTypeTok{Type} \OtherTok{{-}\textgreater{}} \DataTypeTok{DoorState} \OtherTok{{-}\textgreater{}} \DataTypeTok{DoorState} \OtherTok{{-}\textgreater{}} \DataTypeTok{Type} \KeywordTok{where} 
-    \DataTypeTok{Open} \OperatorTok{:} \DataTypeTok{Door}\NormalTok{ () }\DataTypeTok{Closed} \DataTypeTok{Open}
-    \DataTypeTok{Close} \OperatorTok{:} \DataTypeTok{Door}\NormalTok{ () }\DataTypeTok{Open} \DataTypeTok{Closed}
-    \DataTypeTok{Play} \OperatorTok{:} \DataTypeTok{Door}\NormalTok{ () }\DataTypeTok{Open} \DataTypeTok{Openned}
-    \DataTypeTok{Pure} \OperatorTok{:}\NormalTok{ ty }\OtherTok{{-}\textgreater{}} \DataTypeTok{Door}\NormalTok{ ty state state}
-\NormalTok{    (}\OperatorTok{\textgreater{}\textgreater{}=}\NormalTok{) }\OperatorTok{:} \DataTypeTok{Door}\NormalTok{ a state1 state2 }\OtherTok{{-}\textgreater{}}
-\NormalTok{             (a }\OtherTok{{-}\textgreater{}} \DataTypeTok{Door}\NormalTok{ b state2 state3) }\OtherTok{{-}\textgreater{}}
-             \DataTypeTok{Door}\NormalTok{ b state1 state3}
-\end{Highlighting}
-\end{Shaded}
-
-This allows the door protocol to be expressed with a function with the
-following type:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{doorProtocol }\OperatorTok{:} \DataTypeTok{Door}\NormalTok{ () }\DataTypeTok{Closed} \DataTypeTok{Closed}
-\end{Highlighting}
-\end{Shaded}
-
-This indicates that the door starts closed and ends closed. One issue
-with this approach is that it constrains us to a free-monadic style
-implementation where we need to write and interpreter for our monadic
-program and we cannot mix other protocols within is without changing the
-\texttt{Door} data type.
-
-Implementing the same protocol using linear type is much easier:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-
-\KeywordTok{data} \DataTypeTok{DoorState} \OtherTok{=} \DataTypeTok{Open} \OperatorTok{|} \DataTypeTok{Closed}
-
-\KeywordTok{data} \DataTypeTok{Door} \OperatorTok{:}\NormalTok{ (state }\OperatorTok{:} \DataTypeTok{DoorState}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Type} \KeywordTok{where}
-  \DataTypeTok{MkDoor} \OperatorTok{:} \DataTypeTok{Door} \DataTypeTok{Closed}
-  \DataTypeTok{Open} \OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{Door} \DataTypeTok{Closed}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Door} \DataTypeTok{Open}
-  \DataTypeTok{Close} \OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{Door} \DataTypeTok{Open}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Door} \DataTypeTok{Closed}
-  \DataTypeTok{Play} \OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{Door} \DataTypeTok{Open}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Door} \DataTypeTok{Open}
-
-\KeywordTok{infixr} \DecValTok{1} \OperatorTok{\&\textgreater{}}
-
-\CommentTok{{-}{-} Sequential linear function composition.}
-\NormalTok{(}\OperatorTok{\&\textgreater{}}\NormalTok{) }\OperatorTok{:}\NormalTok{ ((}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:}\NormalTok{ a) }\OtherTok{{-}\textgreater{}}\NormalTok{ b) }\OtherTok{{-}\textgreater{}} 
-\NormalTok{       ((}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:}\NormalTok{ b) }\OtherTok{{-}\textgreater{}}\NormalTok{ c) }\OtherTok{{-}\textgreater{}} 
-\NormalTok{        (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:}\NormalTok{ a) }\OtherTok{{-}\textgreater{}}\NormalTok{ c}
-\NormalTok{(}\OperatorTok{\&\textgreater{}}\NormalTok{) f g x }\OtherTok{=}\NormalTok{ g (f x)}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{operateDoor }\OperatorTok{:}\NormalTok{ (op }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{Door} \DataTypeTok{Closed}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Door} \DataTypeTok{Closed}\NormalTok{)}
-           \OtherTok{{-}\textgreater{}} \DataTypeTok{Door} \DataTypeTok{Closed}
-\NormalTok{operateDoor op }\OtherTok{=}\NormalTok{ op }\DataTypeTok{MkDoored}
-\end{Highlighting}
-\end{Shaded}
-
-In this example, instead of monadic composition we use plain
-\emph{function composition} in order to ensure that our protocol obeys
-the rules of our protocol, that is: The door starts open and ends
-closed.
-
-This verifies the protocol because it forces the \texttt{op} function to
-make use of the provided door. The client of the API has no choice but
-to manipulate the existing door until the protocol is over.
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\CommentTok{{-}{-} doesn\textquotesingle{}t typecheck because door is ignored.}
-\NormalTok{operateDoor (\textbackslash{}door }\OtherTok{=\textgreater{}} \DataTypeTok{MkDoor}\NormalTok{) }
-\end{Highlighting}
-\end{Shaded}
-
-We can now define program simply by combining our door operations:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{connectDoor }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{Door} \DataTypeTok{Closed}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Door} \DataTypeTok{Closed}
-\NormalTok{connectDoor }\OtherTok{=} \DataTypeTok{Play} \OperatorTok{\&\textgreater{}} \DataTypeTok{Close} \OperatorTok{\&\textgreater{}} \DataTypeTok{Open} \OperatorTok{\&\textgreater{}} \DataTypeTok{Play} \OperatorTok{\&\textgreater{}} \DataTypeTok{Play} \OperatorTok{\&\textgreater{}} \DataTypeTok{Close}
-\end{Highlighting}
-\end{Shaded}
-
-This also makes combining other protocols trivial, assume we have
-another protocol to connect to the internet and is characterized by the
-signature
-\texttt{connect\ :\ (1\ \_\ :\ Socket\ Open)\ -\textgreater{}\ Socked\ Closed}
-we can take the product of the two \texttt{connect} functions and
-interleave their arguments:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{connectProd }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:}\NormalTok{ (}\DataTypeTok{Socket} \DataTypeTok{Open}\NormalTok{, }\DataTypeTok{Door} \DataTypeTok{Open}\NormalTok{)) }
-           \OtherTok{{-}\textgreater{}}\NormalTok{ (}\DataTypeTok{Socket} \DataTypeTok{Closed}\NormalTok{, }\DataTypeTok{Door} \DataTypeTok{Closed}\NormalTok{)}
-\NormalTok{connectProd (socket, door) }\OtherTok{=} 
-  \KeywordTok{let}\NormalTok{ openDoor }\OtherTok{=} \DataTypeTok{Open}\NormalTok{ door}
-\NormalTok{      socket\textquotesingle{} }\OtherTok{=}\NormalTok{ send }\StringTok{"message"}\NormalTok{ socket}
-\NormalTok{      door\textquotesingle{} }\OtherTok{=} \DataTypeTok{Enjoy}\NormalTok{ openDoor }\KeywordTok{in}
-\NormalTok{      (close socket\textquotesingle{}, }\DataTypeTok{Close}\NormalTok{ door\textquotesingle{})}
-\end{Highlighting}
-\end{Shaded}
-
-Which is much more natural than having to rewrite our Door protocol and
-rewrite our interpreter functions.
+showcases uses for QTT and quantitative types. Linear types already
+benefit from a body of work that showcase their uses
+\cite{linear_diff}\cite{linear_types_update}\cite{linear_types_session}\cite{linear_types_subst}\cite{actor_channels}\cite{linear_race}\cite{linear_use}\cite{once_upon_a_type}\cite{deforestations},
+but one of the goals of this thesis was to list and discover some new
+and innovative uses for linear types and QTT.
 
 \hypertarget{limitations-and-solutions-for-quantitative-types}{%
 \subsection{limitations and solutions for quantitative
@@ -1709,94 +2143,18 @@ up this dependency allows us to write the following program:
 Which is a lot simpler and achieves the same goal, it even has the same
 performance characteristics.
 
-\hypertarget{more-granular-dependencies}{%
-\subsubsection{More granular
-dependencies}\label{more-granular-dependencies}}
-
-While our previous example has only be mildly successful, there exist a
-language that can express our idea, and that is \emph{Granule}.
-
-Granule is a programming language with \emph{graded modal types}, types
-which rely on \emph{graded modalities}. Those are annotation that span a
-\emph{range} of different values in order to describe each type. Those
-values can themselves be paired up together and combined in order to
-represent even more complex behaviour than our linear multiplication.
-For now, let us stick to multiplication and see what a future version of
-Idris supporting graded modalities could look like.
-
-Granule's syntax is very close to Idris, Agda and Haskell, however,
-linearity in \emph{Granule} is the default so there is nothing to
-specify for a linear variable. In addition, \texttt{Nat} is not a
-\texttt{Type} in \emph{Granule} but a \emph{modality}, which means, in
-order to work with \texttt{Nat} and write dependencies between them we
-will create a data type indexed on \texttt{Nat}:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\KeywordTok{data} \DataTypeTok{INat}\NormalTok{ (n }\OperatorTok{:} \DataTypeTok{Nat}\NormalTok{) }\KeywordTok{where}
-  \DataTypeTok{Z} \OperatorTok{:} \DataTypeTok{INat} \DecValTok{0}\NormalTok{;}
-  \DataTypeTok{S} \OperatorTok{:} \DataTypeTok{INat}\NormalTok{ n }\OtherTok{{-}\textgreater{}} \DataTypeTok{INat}\NormalTok{ (n }\OperatorTok{+} \DecValTok{1}\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-This allows us to write the add function as follows:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{linearAdd }\OperatorTok{:} \KeywordTok{forall}\NormalTok{ \{n m }\OperatorTok{:} \DataTypeTok{Nat}\NormalTok{\} }\OperatorTok{.} \DataTypeTok{INat}\NormalTok{ n }\OtherTok{{-}\textgreater{}} \DataTypeTok{INat}\NormalTok{ m }\OtherTok{{-}\textgreater{}} \DataTypeTok{INat}\NormalTok{ (n }\OperatorTok{+}\NormalTok{ m)}
-\NormalTok{linearAdd }\DataTypeTok{Z}\NormalTok{ m }\OtherTok{=}\NormalTok{ m;}
-\NormalTok{linearAdd (}\DataTypeTok{S}\NormalTok{ n) m }\OtherTok{=} \DataTypeTok{S}\NormalTok{ (linearAdd n m)}
-\end{Highlighting}
-\end{Shaded}
-
-If we were to omit the \texttt{m} in the first branch and write
-\texttt{linearAdd\ Z\ m\ =\ Z} we would get the error:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\OperatorTok{\textgreater{}} \DataTypeTok{Linearity} \FunctionTok{error}\OperatorTok{:}\NormalTok{ multiplication}\OperatorTok{.}\NormalTok{gr}\OperatorTok{:}
-\OperatorTok{\textgreater{}} \DataTypeTok{Linear}\NormalTok{ variable }\OtherTok{\textasciigrave{}m\textasciigrave{}}\NormalTok{ is never used}\OperatorTok{.}
-\end{Highlighting}
-\end{Shaded}
-
-Which is what we expect.
-
-Now that we have indexed \texttt{Nat} we can try again our
-\texttt{multiplication} function:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{multiplication }\OperatorTok{:} \KeywordTok{forall}\NormalTok{ \{n m }\OperatorTok{:} \DataTypeTok{Nat}\NormalTok{\} }\OperatorTok{.} \DataTypeTok{INat}\NormalTok{ n }\OtherTok{{-}\textgreater{}}\NormalTok{ (}\DataTypeTok{INat}\NormalTok{ m) [n] }\OtherTok{{-}\textgreater{}} \DataTypeTok{INat}\NormalTok{ (n }\OperatorTok{*}\NormalTok{ m)}
-\NormalTok{multiplication }\DataTypeTok{Z}\NormalTok{ [m] }\OtherTok{=} \DataTypeTok{Z}\NormalTok{;}
-\NormalTok{multiplication (}\DataTypeTok{S}\NormalTok{ n) [m] }\OtherTok{=}\NormalTok{ linearAdd m (multiplication n m)}
-\end{Highlighting}
-\end{Shaded}
-
-As you can see, we annotate the second argument of the type signature
-with \texttt{{[}n{]}} which indicates that the modality of the second
-argument depends on the value of the first argument. This syntax repeats
-in the implementation where the second argument \texttt{m} has to be
-``unboxed'' using the \texttt{{[}m{]}} syntax which will tell the
-compiler to correctly infer the usage allowed by the indexed modality.
-In the first branch there are \texttt{0} uses available, and in the
-second there are \texttt{n\ +\ 1} uses available.
-
-While \emph{Granule} doesn't have dependent types, indexed types are
-enough to implement interesting programs such as multiplication. More
-recent developments have made progress toward implementing full type
-dependency between quantities and terms in the language.
-
 \hypertarget{permutations}{%
 \subsection{Permutations}\label{permutations}}
 
 During my time on this Master program I was also working for a
 commercial company using Idris for their business: Statebox.
 
-One of their project is a validator for petri-nets and petri-net
-executions: \href{https://github.com/statebox/fsm-oracle}{FSM-oracle}.
-While the technical details of this projects are outside the scope of
-this text, there is one aspect of it that is fundamentally linked with
-linear types, and that is the concept of permutation.
+One of their project is a validator for petri-nets\cite{petri-nets} and
+petri-net executions:
+\href{https://github.com/statebox/fsm-oracle}{FSM-oracle}. While the
+technical details of this projects are outside the scope of this text,
+there is one aspect of it that is fundamentally linked with linear
+types, and that is the concept of permutation.
 
 FSM-Oracle describes petri-nets using
 \href{http://www.zanasi.com/fabio/files/paperCALCO19b.pdf}{\emph{hypergraphs}}
@@ -1974,21 +2332,23 @@ automatically generate the code as part of a derived interface.
 \hypertarget{levitation-improvements}{%
 \subsection{Levitation improvements}\label{levitation-improvements}}
 
-The gentle art of levitation\cite{levitation} shows that a dependently
-typed language has enough resources to describe all indexed data types
-with only a few constructors. The ability to define types as a language
-library rather than a language features allows a great deal of
-introspection which in turns allows a realm of possibilities. Indeed, we
-can now define operations on those data types that will preserve the
+\emph{The gentle art of levitation}\cite{levitation} shows that a
+dependently typed language has enough resources to describe all indexed
+data types with only a few constructors. The ability to define types as
+a language library rather than a language features allows a great deal
+of introspection which in turns allows a realm of possibilities. Indeed,
+we can now define operations on those data types that will preserve the
 semantics of the type but make the representation more efficient. We can
 generate interface implementations for them automatically. And we can
-use them to construct new types out of nothing, including
-representations for primitive types such as \texttt{Int} or
-\texttt{String}.
+use them to construct new types out of existing
+ones\cite{category_of_containers}\cite{delta_for_data}\cite{indexed_containers},
+including representations for primitive types such as \texttt{Int} or
+\texttt{String}, an approach that's been proven effective with
+Typedefs\cite{typedefs}.
 
-The practical guide to levitation \cite{guide_to_levitation} shows that
-those features are plagued by multiple shortcomings: the verbosity of
-the definitions not only make the data declaration hard to write and
+\emph{The practical guide to levitation}\cite{guide_to_levitation} shows
+that those features are plagued by multiple shortcomings: the verbosity
+of the definitions not only make the data declaration hard to write and
 read, it makes the compiler spend a lot of time constructing and
 checking those terms and it has trouble identifying what is a type
 parameter or what is an index.
@@ -2049,7 +2409,7 @@ this situation
 
 by allowing string literal to include expressions \emph{inline} and
 leave the compiler to build the expected string concatenation. One
-example of string interpolation syntax would look like this
+example of string interpolation syntax would look like this:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -2187,307 +2547,66 @@ shared before, therefore the string cannot be replaced at compile time.
 The string \texttt{name} has been consumed and the core will therefore
 perform a runtime concatenation.
 
-\hypertarget{invertible-functions}{%
-\subsection{Invertible functions}\label{invertible-functions}}
+\newpage
 
-Yet another use of linearity appears when trying to define invertible
-functions, that is functions that have a counterpart that can undo their
-actions. Such functions are extremely common in practice but aren't
-usually described in terms of their ability to be undone. Here are a
-couple example
+\hypertarget{quantitative-type-theory-and-programming-ergonomics}{%
+\section{Quantitative Type Theory and Programming
+ergonomics}\label{quantitative-type-theory-and-programming-ergonomics}}
 
-\begin{itemize}
-\tightlist
-\item
-  Addition and substraction
-\item
-  \texttt{::} and \texttt{tail}
-\item
-  serialisation/deserialisation
-\end{itemize}
+Idris2 features both linear and dependent types, providing programmers
+with the tools to write elegant and correct software\cite{dtt_edwin},
+while ensuring performance. In this thesis I am going to reuse the
+intuition originally suggested by
+\cite{once_upon_a_type}\cite{linear_update}\textbackslash cite\{linear\_types\_update\cite{linear_use}
+and rephrase it as
 
-The paper about sparcl\cite{invertible_functions} goes into details
-about how to implement a language that features invertible functions,
-they introduce a new (postscript) type constructor
-\texttt{•\ :\ Type\ -\textgreater{}\ Type} that indicate that the type
-in argument is invertible. Invertible functions are declared as linear
-functions \texttt{A•\ -o\ B•}\footnote{The lollipop arrow
-  \texttt{a\ -o\ b} is equivalent to our linear functions
-  \texttt{(1\ \_\ :\ a)\ -\textgreater{}\ b}}. Invertible functions can
-be called to make progress one way or the other given some data using
-the \texttt{fwd} and \texttt{bwd} primitives:
+\begin{quote}
+If you own a linear variable and it is not shared, you can freely mutate
+it
+\end{quote}
+
+This somewhat mimics Rust's \cite{rust} model of ownership where
+variables are free to be mutated as long as they are uniquely owned. But
+differs in that it does not make use of \emph{uniqueness} but rather
+uses linearity as a proxy for it.
+
+This idea can be illustrated with the following example:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{fwd }\OperatorTok{:}\NormalTok{ (}\DataTypeTok{A}\NormalTok{• }\OperatorTok{{-}}\NormalTok{o }\DataTypeTok{B}\NormalTok{•) }\OtherTok{{-}\textgreater{}} \DataTypeTok{A} \OtherTok{{-}\textgreater{}} \DataTypeTok{B}
-\NormalTok{bwd }\OperatorTok{:}\NormalTok{ (}\DataTypeTok{A}\NormalTok{• }\OperatorTok{{-}}\NormalTok{o }\DataTypeTok{B}\NormalTok{•) }\OtherTok{{-}\textgreater{}} \DataTypeTok{B} \OtherTok{{-}\textgreater{}} \DataTypeTok{A}
+\KeywordTok{let} \DecValTok{1}\NormalTok{ v }\OtherTok{:} \DataTypeTok{Int} \FunctionTok{=} \DecValTok{3}
+    \DecValTok{1}\NormalTok{ v\textquotesingle{} }\OtherTok{:} \DataTypeTok{Int} \FunctionTok{=}\NormalTok{ v }\FunctionTok{+} \DecValTok{17}
+ \KeywordTok{in}\NormalTok{ print v\textquotesingle{}}
 \end{Highlighting}
 \end{Shaded}
 
-Invertible functions aren't necessarily total, For example
-\texttt{bwd\ (+\ 1)\ Z} will result in a runtime error. This is because
-of the nature of invertible functions: the \texttt{+\ 1} functions
-effectively adds a \texttt{S} layer to the given data. In order to undo
-this operation we need to \emph{peel off} a \texttt{S} from the data.
-But \texttt{Z} doesn't have a \texttt{S} constructor surrounding it,
-resulting in an error.
+The bound variable \texttt{v} was created locally and is \emph{linear}
+advertising a use of \texttt{1}. Then, the function \texttt{+\ 17} makes
+use of it and puts the result in a variable
+\texttt{v\textquotesingle{}}. This new variable does not need to
+allocate more memory and can simply reuse the one allocated for
+\texttt{v}, effectively mutating the memory space occupied by
+\texttt{v\textquotesingle{}} without losing the immutable semantics we
+expect.
 
-Those type of runtime errors can be avoided in Idris by adding a new
-implicit predicate that ensure the data is of the correct format:
+As one can see this does away with the continuation while reaping the
+benefits of in-place mutation awarded by our linear property. In
+addition, this innocuous could be expanded to more complex examples like
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{bwd }\OperatorTok{:}\NormalTok{ (f }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{A}\NormalTok{•) }\OtherTok{{-}\textgreater{}} \DataTypeTok{B}\NormalTok{•) }\OtherTok{{-}\textgreater{}}\NormalTok{ (v }\OperatorTok{:} \DataTypeTok{B}\NormalTok{) }\OtherTok{{-}\textgreater{}}\NormalTok{ \{prf }\OperatorTok{:}\NormalTok{ v }\OtherTok{=}\NormalTok{ fwd f x)\} }\OtherTok{{-}\textgreater{}} \DataTypeTok{A}
+\KeywordTok{let} \DecValTok{1}\NormalTok{ array }\FunctionTok{=}\NormalTok{ …}
+    \DecValTok{1}\NormalTok{ array\textquotesingle{} }\FunctionTok{=}\NormalTok{ map f array}
+    \DecValTok{1}\NormalTok{ array\textquotesingle{}\textquotesingle{} }\FunctionTok{=}\NormalTok{ map g array\textquotesingle{}}
+ \KeywordTok{in}\NormalTok{ sum array\textquotesingle{}\textquotesingle{}}
 \end{Highlighting}
 \end{Shaded}
 
-This ensures that we only take values of \texttt{B} that come from a
-\texttt{fwd} operation, that is, it only accepts data that has been
-correctly build instead of abitrary data. If we were to translate this
-into our nat example it would look like this:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{undo}\OperatorTok{+}\DecValTok{1} \OperatorTok{:}\NormalTok{ (n }\OperatorTok{:} \DataTypeTok{Nat}\NormalTok{) }\OtherTok{{-}\textgreater{}}\NormalTok{ \{prf }\OperatorTok{:}\NormalTok{ n }\OtherTok{=} \DataTypeTok{S}\NormalTok{ k\} }\OtherTok{{-}\textgreater{}} \DataTypeTok{Nat}
-\end{Highlighting}
-\end{Shaded}
-
-Which ensures that the argument is a \texttt{S} of \texttt{k} for any
-\texttt{k}.
-
-\hypertarget{context-review}{%
-\section{Context Review}\label{context-review}}
-
-In this context review, will enumerate and comment on the existing
-literature about linear types and related topics. In order to give
-context to this research project I will present it through three lenses:
-The first aims to tell the origin story of linear types and their
-youthful promises. The second will focus on the current understanding of
-their application for real-world use. And the last one will focus on the
-latest theoretical developments that linear types spun up.
-
-\hypertarget{origins}{%
-\subsection{Origins}\label{origins}}
-
-Linear types were first introduced by J-Y. Girard in his 1987
-publication simply named \emph{Linear logic} . In this text he
-introduces the idea of restricting the application of the weakening rule
-and contraction rule from intuitionistic logic in order to allow to
-statement to be managed as \emph{resources}. Linear terms once used
-cannot be referred again, premises cannot be duplicated and contexts
-cannot be extended. This restriction was informed by the necessity
-real-world computational restriction, in particular accessing
-information concurrently.
-
-One of the pain points mentioned was the inability to restrict usages to
-something more sophisticated than ``used exactly once''. Linear
-variables could be promoted to their unrestricted variants with the
-exponential operator (\texttt{!}) but that removes any benefit we get
-from linearity. A limitation that will be revisited in the follow-up
-paper: Bounded linear logic.
-
-It is worth noting that, already at this stage, memory implication were
-considered, typically the exponential operator was understood as being
-similar to ``long term storage'' of a variable such that it could be
-reused in the future.
-
-\hypertarget{bounded-linear-logic-girard-1991}{%
-\subsubsection{Bounded Linear Logic, Girard
-1991}\label{bounded-linear-logic-girard-1991}}
-
-Bounded linear logic improves the expressivity of linear logic while
-keeping its benefits: intuitionnistic-compatible logic that is
-computationally relevant. The key difference with linear logic is that
-weakening rules are \emph{bounded} by a finite value such that each
-value can be used as many time as the bound allows. In addition, some
-typing rules might allow it to \emph{waste} resources by\_underusing\_
-the variable, hinting that affine types might bring some concrete
-benefits to our programming model.
-
-As before, there is no practical application of this in terms of
-programming language, at least not that I could find. However this
-brings up the first step toward a managing \emph{quantities} and
-complexity in the language. An idea that will be explored again later
-with Granule and Quantitative Type Theory.
-
-NOTE: (I should re-read this one to find more about the expected uses at
-the time)
-
-\hypertarget{applications}{%
-\subsection{Applications}\label{applications}}
-
-Soon after the development of linear types, they appeared in a paper
-aimed at optimising away redundant allocations when manipulating lists:
-The deforestation algorithm.
-
-Deforestation (Wadler ref) is a small algorithm proposed to avoid
-extranious allocation when performing list operations in a programming
-language close to System-F. The assumption that operations on lists must
-be linear was made to avoid duplicating operations. If a program was
-non-linear, the optimisation would duplicate each of the computation
-associated with the non-linear variable, making the resulting program
-less efficient.
-
-While deforestation itself might not be the algorithm that we want to
-implement today, it is likely we can come up with a similar, or even
-better, set of optimisation rules in idris2 by relying on linearity. In
-this case linearity avoid duplicating computation, this idea was again
-investigated in ``Once upon a Type'' which formalises the detection of
-linear variables and uses this information for safe inlining. Indeed
-arbitrarily inlining functions might result in duplicated computation
-(just like in the deforestation algorithm). Beside inlining and
-mutation, another way to use linear types for performance is memory
-space mutation.
-
-Linear types ca change the world (Walder 1991) show that Linear types
-can be used for in-place update and mutation instead of relying on
-copying. And they both provide programming API that make use of linear
-defintions and linear data in order to showcase where and how the code
-differ in both performance and API.
-
-However the weakness of this result is that the API exposed to the
-programmer relies on a continuation, which is largely seen as
-unacceptable user experience (ask your local javascript developer what
-they think of ``callback hell''). However, we can probably reuse the
-ideas proposed there and rephrase them in the context of Idris2 in order
-to provide a more user-friendly API for this feature, maybe even make it
-transparent for the user. This API problem carries over to another way
-linear types can be useful: Memory management and reference counting.
-
-It turns out that linear types can also be used to replace entirely the
-memory management system, this paper shows that a simple calculus
-augmented with memory management primitives can make use of linearity in
-order to control memory allocation and deallocation using linear types.
-
-This breakthrough is not without compromises either. The calculus is
-greatly simplified for modern standards and the amount of manual labour
-required from the developper to explicitly share a value is jarring in
-this day and age. What's more, it is not clear how to merge this
-approach with modern implementation of linearity (such a Quantitative
-Type Theory). While this paper seems quite far removed from our end goal
-of a transparent but powerful memory optimisation it suggest some
-interesting relation between data/codata and resource management (linear
-infinite streams?).
-
-\hypertarget{practical-affine-types}{%
-\subsubsection{Practical affine types}\label{practical-affine-types}}
-
-What does it mean to have access to linear and affine types \emph{in
-practice}? Indeed, most the results we've talked about develop a theory
-for linear types using a variant of linear logic, and then present a toy
-language to showcase their contribution. However this does not teach us
-how they would interact and manifest in existing programs or in existing
-software engineering workflows. Do we see emerging new programming
-patterns? Is the user experience improved or diminished? In what regards
-is the code different to read and write? All those questions can only be
-answered by a fully fledged implementation of a progrmming language
-equiped to interact with existing systems.
-
-Practical affine types show that their implementation for linear+affine
-types allow to express common operations in concurent programs without
-any risk of data races. They note that typical stateful protocols should
-also be implementatble since their language is a strict superset of
-other which already provided protocol implementations. Those two results
-hint at us that linear types in a commercially-relevant programming
-language would provide us with additional guarantees without impeding on
-the existing writing or reading experience of programs. A result that we
-well certainly attempt to reproduce in Idris2.
-
-\hypertarget{linear-haskell-2017}{%
-\subsubsection{Linear Haskell 2017}\label{linear-haskell-2017}}
-
-Haskell already benefits from a plethora of big and small extensions,
-they are so prevalent that they became a meme in the community: every
-file must begin with a page of language extension declarations. Linear
-Haskell is notable in that it extends the type system to allow linear
-functions to be defined. It introduces the linear arrow \texttt{-o}
-which declares a function to be linear. Because of Haskell's laziness,
-linearity doesn't mean ``will be used exactly once'' but rather
-``\emph{if} it is used, then it will be used exactly once''.
-
-This addition to the language was motivated by a concern for safe APIs,
-typically when dealing with unsafe or low-level code. Linear types allow
-to expose an API that cannot be misused while keeping the same level of
-expressivity and being completely backwards compatible. This backward
-compatibility is in part allowed thanks to parametric linearity, the
-ability to abstract over linearity annotations.
-
-\hypertarget{cutting-edge-linear-types}{%
-\subsection{Cutting edge linear types}\label{cutting-edge-linear-types}}
-
-Granule is a language that features \emph{quantitative reasoning via
-graded modal types}. They even have indexed types to boot! This effort
-is the result of years of research in the domain of effect, co-effect,
-resource-aware calculus and co-monadic computation. Granule itself makes
-heavy use of \emph{graded monads} (Katsuma, Orchard et al.~2016) which
-allow to precisely annotate co-effects in the type system. This enables
-the program to model \emph{resource management} at the type-level.
-What's more, graded monads provide an algebraic structure to
-\emph{combine and compose} those co-effects. This way, linearity can not
-only be modelled but also \emph{mixed-in} with other interpretations of
-resources. While this multiplies the opportunities in resource tracking,
-this approach hasn't received the treatment it deserves with regards to
-performance and tracking runtime complexity.
-
-\hypertarget{quantitative-type-theory-atkey-2016}{%
-\subsubsection{Quantitative type theory, Atkey
-2016}\label{quantitative-type-theory-atkey-2016}}
-
-Up until now we have not addressed the main requirement of our
-programming language: We intend to use \emph{both} dependent types
-\emph{and} linear types within the same language. However, such a theory
-was left unexplored until\_I got plentty o nuttin\_ from McBride and its
-descendant, \emph{Quantitative type theory}, came to fill the gap. While
-other proposal talked about the subject, they mostly implement
-\emph{indexed} types instead of \emph{fully dependent} types. In order
-to allow full dependent types, two changes were made: - Dependent typing
-can only use \emph{erased} variables - Multiplicities are tracked on the
-\emph{binder} \footnote{A Binder associates a value to a name.
-  \texttt{let\ n\ =\ 3\ in\ \ldots{}} \emph{binds} the value \texttt{3}
-  to the name \texttt{n}. Named arguments are also \emph{binders}.}rather
-than being a feature of each value or of the function arrow (our beloved
-lollipop arrow \texttt{-o}) While this elegantly merges the capabilities
-of a Martin-Löf-style type theory (intuitionistic type theory, Per
-Martin-Löf, 1984) and Linear Logic, the proposed result does not touch
-upon potential performance improvement that such a language could
-feature. However it has the potential to bring together Linear types and
-dependent types in a way that allows precise resource tracking and
-strong performance guarantees.
-
-\hypertarget{counting-immutable-beans}{%
-\subsubsection{Counting immutable
-beans}\label{counting-immutable-beans}}
-
-As we've seen, linearity has strong ties with resource and memory
-management, including reference counting. Though \emph{Counting
-immutable beans} does not concern itself with linearity per se, it
-mentions the benefits of \emph{reference counting} as a memory
-management strategy for purely functional programs. Indeed, while
-reference counting has, for a long time, been disregarded in favor of
-runtime garbage collectors, it now has proven to be commercially viable
-in languages like Swift or Python. The specific results presented here
-are focused on the performance benefits in avoiding unnecessary copies
-and reducing the amount of increment and decrement operation when
-manipulating the reference count at runtime. It turns out the concept of
-``borrowing'' a value without changing it reference count closely
-matches a linear type system with graded modalities. Indeed as long as
-the modality is finite and greater than 1 there is no need to decrement
-the reference count. Here is an illustration of this idea
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{f }\OperatorTok{:}\NormalTok{ (}\DecValTok{2}\NormalTok{ v }\OperatorTok{:} \DataTypeTok{Int}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Int}
-\NormalTok{f v }\OtherTok{=} \KeywordTok{let} \DecValTok{1}\NormalTok{ val1 }\OtherTok{=}\NormalTok{ operation v }\CommentTok{{-}{-} operation borrow v, no need for dec}
-          \DecValTok{1}\NormalTok{ val2 }\OtherTok{=}\NormalTok{ operation v }\CommentTok{{-}{-} we ran out of ses for v, dec here}
-       \KeywordTok{in}\NormalTok{ val1 }\OperatorTok{+}\NormalTok{ val2}
-\end{Highlighting}
-\end{Shaded}
-
-In our example, since \texttt{v}could be shared prior to the calling of
-\texttt{f} we cannot prove that v can be freed, we can only decrement
-its reference count. However, by inspecting the reference count we could
-in addition reuse our assumption about ``mutating unique linear
-variables'' and either reclaim the space or reuse it in-place.
+Which could be executed in \emph{constant space complexity} effectively
+duplicating the results from deforestation, but in a more general
+setting since this approach does not make any assumption about the type
+of the data handled, only that operations are linear and mutations are
+constant in space.
 
 \hypertarget{mapping-primitive-to-data-types-and-vice-versa}{%
 \subsection{Mapping primitive to data types and
@@ -2620,9 +2739,9 @@ In this section I will explain the premise that lead me to this
 statement and follow it up with preliminary work done to achieve this
 goal.
 
-\hypertarget{the-problem-with-runtime-garbage-collection}{%
-\subsubsection{The problem with runtime garbage
-collection}\label{the-problem-with-runtime-garbage-collection}}
+\hypertarget{the-problem-with-runtime-garbage-collection-wip}{%
+\subsubsection{The problem with runtime garbage collection
+(WIP)}\label{the-problem-with-runtime-garbage-collection-wip}}
 
 \emph{Garbage collection} generally refers to algorithm of automatic
 memory management such as \emph{mark \& sweep} or to runtimes using them
@@ -2640,17 +2759,13 @@ garbage collection does not happen instantly, some algorithm stop the
 execution of the program for an unknown amount of time in order to
 reclaim memory. And this process cannot be
 
-\hypertarget{what-is-reference-counting}{%
-\subsubsection{What is reference
-counting}\label{what-is-reference-counting}}
+\hypertarget{what-is-reference-counting-wip}{%
+\subsubsection{What is reference counting
+(WIP)}\label{what-is-reference-counting-wip}}
 
-\hypertarget{linearity-and-reference-counting}{%
-\subsubsection{Linearity and reference
-counting}\label{linearity-and-reference-counting}}
-
-\hypertarget{alternative-semirings-and-their-semantics}{%
-\subsubsection{Alternative semirings and their
-semantics}\label{alternative-semirings-and-their-semantics}}
+\hypertarget{alternative-semirings-and-their-semantics-wip}{%
+\subsubsection{Alternative semirings and their semantics
+(WIP)}\label{alternative-semirings-and-their-semantics-wip}}
 
 Quantitative type theory track usage through a generic semirings, any
 implementation of QTT can use any semiring for it to function. Idris2
@@ -2676,13 +2791,224 @@ uses the following semiring:
 \end{Highlighting}
 \end{Shaded}
 
+\hypertarget{putting-everything-together-linearity-and-reference-counting-wip}{%
+\subsubsection{Putting everything together: Linearity and reference
+counting
+(WIP)}\label{putting-everything-together-linearity-and-reference-counting-wip}}
+
+The idea of mapping linear usage to reference counting isn't new
+\cite{linear_ref_count}, but with QTT, we can have a much greater
+control over the semantics of the semiring we use in order to make it
+correspond precisely with the behaviour of our runtime.
+
 \hypertarget{steps-toward-a-working-implementation}{%
 \subsubsection{Steps toward a working
 implementation}\label{steps-toward-a-working-implementation}}
 
-\hypertarget{relaxing-linearity-inference}{%
-\subsection{Relaxing linearity
-inference}\label{relaxing-linearity-inference}}
+The first and easier step toward a working implementation of this idea
+is to extend the Idris2 compiler to support alternative multiplicities.
+The current Idris2 compiler uses
+\texttt{data\ RigCount\ =\ Rig0\ \textbar{}\ Rig1\ \textbar{}\ RigW} for
+linearity \texttt{0}, \texttt{1}, \texttt{ω} respectively. In order to
+support a different semiring we need to abstract over the operations of
+semirings and update the existing codebase to make use of them instead
+of relying on our definition of \texttt{RigCount}.
+
+A \texttt{Semiring} is defined as follows:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{interface }\DataTypeTok{Semiring}\NormalTok{ a }\KeywordTok{where}
+\NormalTok{  (}\OperatorTok{|+|}\NormalTok{) }\OperatorTok{:}\NormalTok{ a }\OtherTok{{-}\textgreater{}}\NormalTok{ a }\OtherTok{{-}\textgreater{}}\NormalTok{ a}
+\NormalTok{  plusNeutral }\OperatorTok{:}\NormalTok{ a}
+\NormalTok{  (}\OperatorTok{|*|}\NormalTok{) }\OperatorTok{:}\NormalTok{ a }\OtherTok{{-}\textgreater{}}\NormalTok{ a }\OtherTok{{-}\textgreater{}}\NormalTok{ a}
+\NormalTok{  timesNeutral }\OperatorTok{:}\NormalTok{ a}
+\end{Highlighting}
+\end{Shaded}
+
+Where \texttt{plusNeutral} is the neutral element for
+\texttt{\textbar{}+\textbar{}} and \texttt{timesNeutral} is the neutral
+element for \texttt{\textbar{}*\textbar{}}.
+\texttt{\textbar{}+\textbar{}} and \texttt{\textbar{}*\textbar{}} are
+binary functions which distribute as expected.
+
+This change is quite disruptive since it forbids us to pattern match on
+\texttt{RigCount} and instead forces us to be entirely generic on the
+multiplicity we use. Signatures like:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{linearCheck }\OperatorTok{:} \DataTypeTok{RigCount} \OtherTok{{-}\textgreater{}} \DataTypeTok{RigCount} \OtherTok{{-}\textgreater{}} \DataTypeTok{Bool}
+\end{Highlighting}
+\end{Shaded}
+
+Become:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{linearCheck }\OperatorTok{:} \DataTypeTok{Semiring}\NormalTok{ r }\OtherTok{=\textgreater{}}\NormalTok{ r }\OtherTok{{-}\textgreater{}}\NormalTok{ r }\OtherTok{{-}\textgreater{}} \DataTypeTok{Bool}
+\end{Highlighting}
+\end{Shaded}
+
+In order to recover the functionality from pattern matching we introduce
+an eliminator for \texttt{Semiring}:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{elimSemi }\OperatorTok{:}\NormalTok{ (}\DataTypeTok{Semiring}\NormalTok{ a, }\DataTypeTok{Eq}\NormalTok{ a) }\OtherTok{=\textgreater{}}\NormalTok{ (zero }\OperatorTok{:}\NormalTok{ b) }\OtherTok{{-}\textgreater{}}\NormalTok{ (one }\OperatorTok{:}\NormalTok{ b) }\OtherTok{{-}\textgreater{}}\NormalTok{ (a }\OtherTok{{-}\textgreater{}}\NormalTok{ b) }\OtherTok{{-}\textgreater{}}\NormalTok{ a }\OtherTok{{-}\textgreater{}}\NormalTok{ b}
+\NormalTok{elimSemi zero one other r \{a\} }\OtherTok{=}
+  \KeywordTok{if}\NormalTok{ r }\OperatorTok{==}\NormalTok{ Semiring.plusNeutral \{a\}}
+     \KeywordTok{then}\NormalTok{ zero}
+     \KeywordTok{else} \KeywordTok{if}\NormalTok{ r }\OperatorTok{==}\NormalTok{ Semiring.timesNeutral \{a\}}
+             \KeywordTok{then}\NormalTok{ one}
+             \KeywordTok{else}\NormalTok{ other r}
+\end{Highlighting}
+\end{Shaded}
+
+As well as a series of helper functions:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{isErased }\OperatorTok{:}\NormalTok{ (}\DataTypeTok{Semiring}\NormalTok{ a, }\DataTypeTok{Eq}\NormalTok{ a) }\OtherTok{=\textgreater{}}\NormalTok{ a }\OtherTok{{-}\textgreater{}} \DataTypeTok{Bool}
+\NormalTok{isErased }\OtherTok{=}\NormalTok{ elimSemi }\DataTypeTok{True} \DataTypeTok{False}\NormalTok{ (}\FunctionTok{const} \DataTypeTok{False}\NormalTok{)}
+
+\NormalTok{isLinear }\OperatorTok{:}\NormalTok{ (}\DataTypeTok{Semiring}\NormalTok{ a, }\DataTypeTok{Eq}\NormalTok{ a) }\OtherTok{=\textgreater{}}\NormalTok{ a }\OtherTok{{-}\textgreater{}} \DataTypeTok{Bool}
+\NormalTok{isLinear }\OtherTok{=}\NormalTok{ elimSemi }\DataTypeTok{False} \DataTypeTok{True}\NormalTok{ (}\FunctionTok{const} \DataTypeTok{False}\NormalTok{)}
+
+\NormalTok{isRigOther }\OperatorTok{:}\NormalTok{ (}\DataTypeTok{Semiring}\NormalTok{ a, }\DataTypeTok{Eq}\NormalTok{ a) }\OtherTok{=\textgreater{}}\NormalTok{ a }\OtherTok{{-}\textgreater{}} \DataTypeTok{Bool}
+\NormalTok{isRigOther }\OtherTok{=}\NormalTok{ elimSemi }\DataTypeTok{False} \DataTypeTok{False}\NormalTok{ (}\FunctionTok{const} \DataTypeTok{True}\NormalTok{)}
+
+\NormalTok{branchZero }\OperatorTok{:}\NormalTok{ (}\DataTypeTok{Semiring}\NormalTok{ a, }\DataTypeTok{Eq}\NormalTok{ a) }\OtherTok{=\textgreater{}} \DataTypeTok{Lazy}\NormalTok{ b }\OtherTok{{-}\textgreater{}} \DataTypeTok{Lazy}\NormalTok{ b }\OtherTok{{-}\textgreater{}}\NormalTok{ a }\OtherTok{{-}\textgreater{}}\NormalTok{ b}
+\NormalTok{branchZero yes no rig }\OtherTok{=} \KeywordTok{if}\NormalTok{ isErased rig }\KeywordTok{then}\NormalTok{ yes }\KeywordTok{else}\NormalTok{ no}
+
+\NormalTok{branchOne }\OperatorTok{:}\NormalTok{ (}\DataTypeTok{Semiring}\NormalTok{ a, }\DataTypeTok{Eq}\NormalTok{ a) }\OtherTok{=\textgreater{}} \DataTypeTok{Lazy}\NormalTok{ b }\OtherTok{{-}\textgreater{}} \DataTypeTok{Lazy}\NormalTok{ b }\OtherTok{{-}\textgreater{}}\NormalTok{ a }\OtherTok{{-}\textgreater{}}\NormalTok{ b}
+\NormalTok{branchOne yes no rig }\OtherTok{=} \KeywordTok{if}\NormalTok{ isLinear rig }\KeywordTok{then}\NormalTok{ yes }\KeywordTok{else}\NormalTok{ no}
+
+\NormalTok{branchVal }\OperatorTok{:}\NormalTok{ (}\DataTypeTok{Semiring}\NormalTok{ a, }\DataTypeTok{Eq}\NormalTok{ a) }\OtherTok{=\textgreater{}} \DataTypeTok{Lazy}\NormalTok{ b }\OtherTok{{-}\textgreater{}} \DataTypeTok{Lazy}\NormalTok{ b }\OtherTok{{-}\textgreater{}}\NormalTok{ a }\OtherTok{{-}\textgreater{}}\NormalTok{ b}
+\NormalTok{branchVal yes no rig }\OtherTok{=} \KeywordTok{if}\NormalTok{ isRigOther rig }\KeywordTok{then}\NormalTok{ yes }\KeywordTok{else}\NormalTok{ no}
+\end{Highlighting}
+\end{Shaded}
+
+But this is still not enough since the compiler also makes assumptions
+about \emph{ordering} within the multiplicity. In the following program,
+we check that multiplicities are compatible by checking if the left one
+is smaller than the right one.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+
+\NormalTok{rigSafe }\OperatorTok{:} \DataTypeTok{RigCount} \OtherTok{{-}\textgreater{}} \DataTypeTok{RigCount} \OtherTok{{-}\textgreater{}} \DataTypeTok{Core}\NormalTok{ ()}
+\NormalTok{  rigSafe }\DataTypeTok{Rig1} \DataTypeTok{RigW} \OtherTok{=}\NormalTok{ throw }
+\NormalTok{    (}\DataTypeTok{LinearMisuse}\NormalTok{ fc }\OperatorTok{!}\NormalTok{(getFullName x) }\DataTypeTok{Rig1} \DataTypeTok{RigW}\NormalTok{)}
+    \CommentTok{{-}{-} \textasciigrave{}x\textasciigrave{} comes from the enclosing scope}
+\NormalTok{rigSafe }\DataTypeTok{Rig0} \DataTypeTok{RigW} \OtherTok{=}\NormalTok{ throw}
+\NormalTok{    (}\DataTypeTok{LinearMisuse}\NormalTok{ fc }\OperatorTok{!}\NormalTok{(getFullName x) }\DataTypeTok{Rig0} \DataTypeTok{RigW}\NormalTok{)}
+\NormalTok{rigSafe }\DataTypeTok{Rig0} \DataTypeTok{Rig1} \OtherTok{=}\NormalTok{ throw }
+\NormalTok{    (}\DataTypeTok{LinearMisuse}\NormalTok{ fc }\OperatorTok{!}\NormalTok{(getFullName x) }\DataTypeTok{Rig0} \DataTypeTok{Rig1}\NormalTok{)}
+\NormalTok{rigSafe \_ \_ }\OtherTok{=} \FunctionTok{pure}\NormalTok{ ()}
+\end{Highlighting}
+\end{Shaded}
+
+The same program can be refactored using an ordering on the semiring we
+use:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{rigSafe }\OperatorTok{:} \DataTypeTok{Semiring}\NormalTok{ r }\OtherTok{=\textgreater{}}\NormalTok{ r }\OtherTok{{-}\textgreater{}}\NormalTok{ r }\OtherTok{{-}\textgreater{}} \DataTypeTok{Core}\NormalTok{ ()}
+\NormalTok{rigSafe lhs rhs }\OtherTok{=} 
+\NormalTok{  when (lhs }\OperatorTok{\textless{}}\NormalTok{ rhs)}
+\NormalTok{       (throw (}\DataTypeTok{LinearMisuse}\NormalTok{ fc }\OperatorTok{!}\NormalTok{(getFullName x) lhs rhs))}
+\end{Highlighting}
+\end{Shaded}
+
+Semirings in general do not enforce an order and we do not want to add
+too many restrictions to our multiplicity types to avoid making it less
+flexible than it needs. Typically, if affine types were to be
+implemented using intervals, we could not rely on a \emph{total
+order}\footnote{A \emph{total order} is an ordering for which every
+  value is related to every other value.} since some intervals cannot be
+compared with each others. For example \texttt{{[}3..5{]}} and
+\texttt{{[}0..4{]}} are not directly related to each other. For this
+reason we are going to use a \texttt{Preorder} which only requires
+equality to be valid for some pairs of values and requires transitivity
+and associativity to hold. In Idris2 this is formulated as:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{interface }\DataTypeTok{Preorder}\NormalTok{ a }\KeywordTok{where}
+\NormalTok{  (}\OperatorTok{\textless{}=}\NormalTok{) }\OperatorTok{:}\NormalTok{ a }\OtherTok{{-}\textgreater{}}\NormalTok{ a }\OtherTok{{-}\textgreater{}} \DataTypeTok{Maybe} \DataTypeTok{Bool}
+\NormalTok{  preorderRefl }\OperatorTok{:}\NormalTok{ \{x }\OperatorTok{:}\NormalTok{ a\} }\OtherTok{{-}\textgreater{}}\NormalTok{ x }\OperatorTok{\textless{}=}\NormalTok{ x }\OtherTok{=} \DataTypeTok{Just} \DataTypeTok{True}
+\NormalTok{  preorderTrans }\OperatorTok{:}\NormalTok{ \{x, y, z }\OperatorTok{:}\NormalTok{ a\} }\OtherTok{{-}\textgreater{}}\NormalTok{ x }\OperatorTok{\textless{}=}\NormalTok{ y }\OtherTok{=} \DataTypeTok{Just} \DataTypeTok{True} \OtherTok{{-}\textgreater{}}\NormalTok{ y }\OperatorTok{\textless{}=}\NormalTok{ z }\OtherTok{=} \DataTypeTok{Just} \DataTypeTok{True} \OtherTok{{-}\textgreater{}}\NormalTok{ x }\OperatorTok{\textless{}=}\NormalTok{ z }\OtherTok{=} \DataTypeTok{Just} \DataTypeTok{True}
+\end{Highlighting}
+\end{Shaded}
+
+For engineering reasons this is not exactly the version used in the
+Idris2 compiler but this should not detract from the observation that
+pure semirings are not enough.
+
+Finally, there is one last missing piece and that is a default value. In
+a lot of the existing implementation \texttt{RigW} is used as a default
+value when generating new values with unknown linearity. This is because
+Idris2 is \emph{unrestricted by default} instead of \emph{linear by
+default} in our case, the default value has a very neat property: it is
+greater or equal to every other values of the semiring. In technical
+term, in addition to having a semiring and a preorder we also need our
+multiplicity type to have a \emph{top} value, which means we are
+actually dealing with a \emph{meet semi-lattice}.
+
+Top is easily defined as follows:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{interface }\DataTypeTok{Preorder}\NormalTok{ a }\OtherTok{=\textgreater{}} \DataTypeTok{Top}\NormalTok{ a }\KeywordTok{where}
+\NormalTok{  top }\OperatorTok{:}\NormalTok{ a}
+  \CommentTok{{-}{-} top absolves everything else}
+\NormalTok{  topAbs }\OperatorTok{:}\NormalTok{ \{x }\OperatorTok{:}\NormalTok{ a\} }\OtherTok{{-}\textgreater{}}\NormalTok{ x }\OperatorTok{\textless{}=}\NormalTok{ top }\OtherTok{=} \DataTypeTok{Just} \DataTypeTok{True}
+\end{Highlighting}
+\end{Shaded}
+
+Now that we finally have all the pieces required by the Idris2 compiler
+we can replace every occurrence of \texttt{Rig0}, \texttt{Rig1} and
+\texttt{RigW} by our generic implementation of semirings.
+
+\hypertarget{next-steps}{%
+\subsubsection{Next Steps}\label{next-steps}}
+
+This exercise was particularly informative in teaching us what is
+\emph{really needed} in practice to build up a programming language
+based on QTT. \emph{Meet semi-lattice} aren't mentioned in Quantitative
+Type Theory\cite{qtt} but they appear in Granule \cite{granule} while
+this is not entirely surprising it is noteworthy that both approach
+reach the same conclusion: ordered semirings are the foundation of a
+sound implantation of a calculus with quantities into a useful
+programming language.
+
+This implementation is only the first step into extended the language
+for full reference counting without garbage collection, in the meantime,
+there are a lot of intermediate steps. And additionally, now that the
+seal is broken on multiple types of multiplicities, nothing stops us
+from implementing different multiplicities for Idris2 and see what
+happens. We can now discover semantics for semirings, rather than use
+different semirings to reach different semantics. Granule already has
+products, intervals, access variables and natural numbers in addition to
+linearity as their multiplicity. It would be interesting to see what
+matrices, or polynomials offer in terms of semantics as a resource
+tracking semiring.
+
+The immediate next step for this project is to repeat this experiment
+(generalizing some aspect of the compiler) but with linearity checking
+rather than semirings. Indeed given an implementation of infinite Nats
+as a semiring, we should be able to replace our previous semiring by the
+new one and enjoy the benefits in terms of added functionality.
+
+Unfortunately, while the compiler accepts Nat-multiplicity programs, it
+keeps the semantics of \texttt{0}, \texttt{1}, \texttt{ω} because
+everything bigger than 1 is considered unrestricted In the linearity
+checker.
+
+\hypertarget{relaxing-linearity-inference-wip}{%
+\subsection{Relaxing linearity inference
+(WIP)}\label{relaxing-linearity-inference-wip}}
 
 problem: I want to do this
 
@@ -2729,9 +3055,9 @@ result to a captured variable that will be accessed twice.
 
 This last example it taken from Once Upon a Type which focuses on
 linearity inference and how to improve it in order to maximise
-occurrences of safe inlining. More recently, work on linearity inference
-(\url{https://arxiv.org/abs/1911.00268} has resumed thanks to Linear
-haskell ()
+occurrences of safe inlining. More recently, work on linearity
+inference\cite{linear_inference} has resumed, motivated by its use in
+linear haskell \cite{linear_haskell}
 
 In the introduction we used \emph{safe inlining} as an intuition to
 understand linear variables. We saw that for a variable to be linear
@@ -2781,6 +3107,8 @@ result of a linear function to an unrestricted variable could just be
 safely inlinable''
 
 Did I miss anything or does that sound reasonable?
+
+\newpage
 
 \hypertarget{performance-improvement-using-linear-types}{%
 \section{Performance Improvement using linear
@@ -3814,6 +4142,8 @@ which once inlined results in
 \end{Highlighting}
 \end{Shaded}
 
+\newpage
+
 \hypertarget{future-work}{%
 \section{Future work}\label{future-work}}
 
@@ -4032,6 +4362,8 @@ print statement without getting a linearity error:
 \end{Highlighting}
 \end{Shaded}
 
+\newpage
+
 \hypertarget{conclusion}{%
 \section{Conclusion}\label{conclusion}}
 
@@ -4088,6 +4420,8 @@ onto side-effect until monads, I strongly suspect linear types (and its
 variants) will allow us to turn performance from an abstract concept
 into a concrete term in a programming language, just like \texttt{IO} is
 a concrete term in functional programming languages.
+
+\newpage
 
 \hypertarget{appendices-glossary-and-definitions}{%
 \section{Appendices: Glossary and
@@ -4192,7 +4526,7 @@ of a stick figure, this time from the front.
 \hypertarget{termexpressionvalue}{%
 \subsection{Term/Expression/Value}\label{termexpressionvalue}}
 
-\bibliography{bibliography.bib} 
+\bibliography{zotero} 
 \bibliographystyle{ieeetr}
 
 \end{document}

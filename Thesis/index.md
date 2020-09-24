@@ -1124,9 +1124,9 @@ Which is a lot simpler and achieves the same goal, it even has the same performa
 
 ## Permutations
 
-During my time on this Master program I was also working for a commercial company using Idris for their business: Statebox.
+The following example is certainly my favourite since it combines both dependent types and linear types in a way that wasn’t possible before. It has been done in the context of my work for the company Statebox strongly relies on dependent types to write formally verified software.
 
-One of their project is a validator for petri-nets\cite{petri-nets}  and petri-net executions: [FSM-oracle](https://github.com/statebox/fsm-oracle). While the technical details of this projects are outside the scope of this text, there is one aspect of it that is fundamentally linked with linear types, and that is the concept of permutation.
+One of Statebox’s project is a validator for petri-nets\cite{petri-nets}  and petri-net executions: [FSM-oracle](https://github.com/statebox/fsm-oracle). While the technical details of this projects are outside the scope of this text, there is one aspect of it that is fundamentally linked with linear types, and that is the concept of permutation.
 
 FSM-Oracle describes petri-nets using [_hypergraphs_](http://www.zanasi.com/fabio/files/paperCALCO19b.pdf) \cite{cartographer} those hypergraphs have a concept of [_permutation_ ](https://github.com/statebox/fsm-oracle/blob/master/src/Permutations/Permutations.idr#L31) that allows to move wires around. This concept is key in a correct and proven implementation of hypergraphs. However, permutations also turn out to be extremely complex to implement as can attest the files [trying to fit](https://github.com/statebox/fsm-oracle/blob/master/src/Permutations/PermutationsCategory.idr) their definition into a [Category](https://github.com/statebox/fsm-oracle/blob/master/src/Permutations/PermutationsStrictMonoidalCategory.idr).
 
@@ -1258,7 +1258,9 @@ lcomp f g = MkLin (\1 x => g.fn (f.fn x))
 
 While this looks like a lot of code, the entire definition holds within 100 lines (including the `Category` definition), and a lot of the definitions like `LinearFn` and `Same` are generic enough to be reused in other modules.
 
-Most importantly, this approach is extremely straightforward. So much that in the future, it wouldn’t seem extravagant to have the type-system automatically generate the code as part of a derived interface.
+Additionally, this approach is extremely straightforward. So much that in the future, it wouldn’t seem extravagant to have the type-system automatically generate the code as part of a derived interface. 
+
+Finally and most importantly, this program could not exist without using both dependent types to declare the necessary proofs to formally verified our Categorical structure, and linear types to implement `Permutation`. It is a beautiful example where the two features meet and merge in a way that is both practical and elegant.
 
 ##  Levitation improvements
 

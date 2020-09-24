@@ -1842,8 +1842,56 @@ The changes to the Idris AST are as follow:
 - Allow linear functions to mutate constructors that are bound linearly
 - Add a new instruction to the backend AST in order to mutate values
 
-Those steps are still insufficient however
+Conceptually the compiler architecture is quite simple, in the following illustration we link trees transformation with their corresponding functions. Each tree is it’s own data declaration:
 
+```
+   PTerm
+   ──┬──
+     |
+ ┌───┴────┐
+ |desugarB|
+ └───┬────┘
+     │
+     ▼
+   RawImp
+   ──┬───
+     |
+┌────┴────┐
+|checkTerm|
+└────┬────┘
+     │
+     ▼
+ Term vars
+ ────┬────
+     |
+  ┌──┴───┐
+  │toCExp│
+  └──┬───┘
+     |
+     ▼
+ CExp vars
+ ────┬────
+     |
+  ┌──┴───┐
+  │forget│
+  └──┬───┘
+     |
+     ▼
+  NamedCExp
+  ───┬─────
+     |
+  ┌──┴───┐
+  │schExp│
+  └──┬───┘
+     |
+     ▼
+scheme output
+```
+
+
+`PTerm` represents the surface level language, it is desugared into `RawImp` which is a front end for our typed terms `Term`. `Term` is indexed over the list of variables in context, which helps avoid indexing errors (specially when manipulating debrujin indices) and makes explicit the rules of context extension, for example when binding arguments under a lambda. `CExp` is a tree of compiled expressions ready for codegen, it keeps the index for variables from `Term` and the index is then dropped when variables indices are replaced by their names in `NamedCExp`. Which is the same but with all variable substitutions performed.
+
+Since our changes do not touch the type checker or elaborator, they do not the `checkTerm` stage. However, since we do need information from the control flow and the access the case tree we need to perform our changes between `Term` and `CExp`.
 
 ### Implementation details
 
@@ -1855,9 +1903,9 @@ update (ValOnce v) = ValOnce (S v)
 update (ValTwice v w) = ValTwice (S v) (S (S w))
 ```
 
-where the `%mutating` annotation indicates that the value manipulated will be subject to mutation rather than construction.
+Where the `%mutating` annotation indicates that the value manipulated will be subject to mutation rather than construction.
 
-If we were to write this code in a low-level c-like syntax we would like to go from the non-mutating version here
+If we were to write this code in a low-level c-like syntax we would like to go from the non-mutating version here:
 
 ```haskell
 void * update(v * void) {
@@ -1876,7 +1924,8 @@ void * update(v * void) {
 }
 ```
 
-to the more efficient mutating version here
+To the more efficient mutating version here:
+
 ```haskell
 void * update(v * void) {
     if v->tag == 0 {
@@ -1889,7 +1938,7 @@ void * update(v * void) {
 }
 ```
 
-The two programs are very similar but the second one mutate the argument directly instead of mutating a new copy of it.
+The two programs are very similar but the second one mutates the argument directly instead of mutating a new copy of it.
 
 There is however a very important limitation:
 
@@ -1921,28 +1970,72 @@ Ideally our compiler would be able to identify data declaration that share the s
 
 ### Mutating branches
 
-For this to work we need to add a new constructor to the AST that represents _compiled_ programs `CExp`. We add the consturctor 
+For this to work we need to add a new constructor to the AST that represents _compiled_ programs `CExp`. We add the constructor `CMut`:
 
 ```haskell
 CMut : (ref : Name) -> (args : List (CExp vars)) -> CExp vars 
 ```
 
-which represents mutation of a variable identified by its `Name` in context and using the argument list to modify each of its fields.
+It represents mutation of a variable identified by its `Name` in context and using the argument list to modify each of its fields.
 
-(This new constructor has to be carried of to tress `NamedExp` `ANF` and `Lifted`, the details are irrelevants and the changes trivial)
+Once this change reached the code generator it needs to output a `mutation` instruction rather than an allocation operation. Here is the code for the scheme backend:
 
-Once this change reached the code generator it needs to output a `mutation` instructon rather than an allocation operation. Here is the code for the scheme backend
+```haskell
+||| Mutates the given vector at the given index
+mutateValue : (ref : String) -> (index : Nat) -> String -> String
+mutateValue ref idx newVal =
+  "(vector-set! " ++ ref ++  " " ++ show idx ++ " " ++ newVal ++ ")"
 
-*show scheme backend implementation for CMut*
+||| Mutate all fiels of a given constructor
+||| We skip the first value in the vector because we do not change
+||| @vecRef : The vector to update
+||| @args : The list of new arguments
+schMutate : (ref : String) -> (args : List String) -> String
+schMutate ref args =
+  -- we start indexing at 1 since 0 is the tag and doesn't change
+  let indices = [1 .. (length args + 1)]
+      zipped : List (Nat, String) = zip indices args
+      mutation = (showSep " " (map (uncurry $ mutateValue ref) zipped)) in
+      "(begin " ++ mutation ++ " " ++ ref ++ ")"
+```
 
-AS you can see we generate one instruction per field to mutate as well ad a final instruction to _return_ the value passed in argument, this to keep the semantics of the existing assumption about constructing new values.
+As you can see we generate one instruction per field to mutate as well and a final instruction to _return_ the value passed in argument, this to keep the semantics of the existing assumption about constructing new values. The function `schMutate` is then called to output the scheme program from a `NamedCExp`:
+
+```haskell
+schExp i (NmMut fc ref args)
+    = schMutate (schName ref) <$> (traverse (schExp i) args)
+```
 
 ### Reference nightmare
 
-There is however an additional details that isn't as easy to implement and this is related to getting a reference to the term we are mutating. 
+There is however an additional details that hasn’t been expressed and that is how to _construct_ a value of `CMut`. `CMut` is only constructed in the following circumstances:
 
-Let's look at our `update` function once again and update it slightly 
+- The function is linear.
+- The function is annotated with `%mutating`.
+- The function use the same constructor on the left hand side and the right hand side of its definition.
+- The value passed in argument is _unique_.
 
+Even though the first one is obvious, it will be left out for trivial reasons: lots of the standard library is not defined linearly such that the following will not compile:
+
+```haskell
+lolInts : (1 _ : Int) -> Int
+lolInts n = n + 1
+```
+
+This is because `+` as a foreign function is not declared linearly. This could be solved with an alternative standard library which is purely linear.
+
+The second condition is easy to implement as a boolean check, but requires a bit of thought about _where_ to put it. Since the next condition requires us to change the _case tree_ of our function definition we are going to add the boolean check in `src/TTImp/ProcessDef.idr` which will process every definition of our program. We are going to short-circuit the case-tree generation by replacing the compiled one by our modified version of it:
+
+```haskell
+(rargs ** (tree_rt', _)) <- getPMDef …
+tree_rt <- if Mutating `elem` flags gdef
+              then makeMutating tree_rt'
+              else pure tree_rt'
+```
+
+The third constraint is the most important one without which we corrupt the memory of our program as we’ve seen earlier.
+
+Let's look at our `update` function to understand the nature of the changes and update it slightly:
 
 ```haskell
 %mutating
@@ -1952,9 +2045,7 @@ update arg = case arg of
                   ValOnce v => ValOnce (S v)
 ```
 
-This version makes use of there temporary variable `arg` before matching on the function argument directly. Otherwise it's the same as what we showed before.
-
-What needs to happen is that `ValTwice` on the first clause needs to access the variable `arg` and mutate it directly. And similarly for `ValOnce`.
+This version makes use of a temporary variable `arg` before matching on the function argument directly. The calls to constructors `ValTwice` and `ValOnce` allocate memory but we want to replace them by `CMut` which will reuse memory. In order to reuse the memory space taken by `arg` they need to store a pointer to it. This is reflected in the signature of `CMut : FC -> (ref : Name) -> List (CExp vars) -> CExp vars` where the second argument is the reference to reuse.
 
 ```haskell
 case arg of
@@ -1964,14 +2055,16 @@ case arg of
                   ValOnce (S v)
 ```
 
-However looking at the AST for pattern match clauses we see that it does not carry any information about the original value that was matched:
+However looking at the AST for pattern matching clauses we see that it does not carry any information about the original value that was matched:
 
 ```haskell
 ConCase : Name -> (tag : Int) -> (args : List Name) ->
                  CaseTree (args ++ vars) -> CaseAlt vars
 ```
 
-Thankfully this reference can be found  earlier in the `CaseTree` part of the AST. 
+Indeed, the `Name` we see refers to the constructor we’re matching on, and not to the variable name we are inspecting.
+
+Thankfully this reference can be found  earlier in `CaseTree` :
 
 ```haskell
   public export
@@ -1989,25 +2082,76 @@ Thankfully this reference can be found  earlier in the `CaseTree` part of the AS
        Impossible : CaseTree vars
 ```
 
-A `CaseTree` is either a case containing other cases, or a term, or a missing case, or an impossible case.
-
-We note that the `Case` constructor contains the reference to the variable that is being matched. Therefore we can get it from here and then carry it to our tree transformation.
-
-The tree transformation itself is pretty simple and can be sumarised with this excerpt:
-
+The reference is carried by `idx` which is the index of the variable in its context, as supported by the proof `p`. Once we get a hold of this reference we can move on to the actual tree transformation. The transformation itself is pretty simple and can be summarised with this excerpt:
 
 ```haskell
 replaceConstructor : (cName : Name) -> (tag : Int) ->
                      (rhs : Term vars) ->
                      Core (Term vars)
-replaceConstructor cName tag (App fc (Ref fc' (DataCon nref t arity) nm) arg) = 
-    if cName == nm then pure (App fc (Ref fc' (DataCon (Just ref) t arity) nm) arg)
-                   else App fc (Ref fc' (DataCon nref t arity) nm) <$> replaceConstructor cName tag arg 
+replaceConstructor cName tag 
+  (App fc (Ref fc' (DataCon nref t arity) nm) arg) = 
+    if cName == nm 
+       then pure (App fc (Ref fc'
+                      --           ┌ here is the change
+                      --       ╭───┴────╮
+                      (DataCon (Just ref) t arity) nm) arg)
+        else App fc (Ref fc' (DataCon nref t arity) nm) 
+         <$> replaceConstructor cName tag arg 
 
 ```
 
-Which checks that for every application of a data constructor if it is the same as the one we matched on, if it is, then the `CCon` instruction is replaced by a `CMut` which will tell the backend to _reuse_ the memory space taken by the argument.
+Which will replace every application of a data constructor by one which has a reference to the variable we mutate `ref` as indicated by the `Just ref`.
 
+This refers to another AST change we haven’t mentionned yet. And that is to track which data constructors are allowed to mutate a reference instead of constructing a new value. We change `DataCon` into `DataCon : (ref : Maybe Name) -> (tag : Int) -> (arity : Nat) -> NameType` where the first argument represents the variable we can mutate, if there is one.
+
+The last step of this chain of changes is to inspect our `DataCon` constructor during compilation and emit the correct `CMut` instruction. We do this in `toCExp`:
+
+```haskell
+  toCExpTm n (Ref fc (DataCon (Just ref) tag arity) fn)
+      = pure $ CMut fc ref []
+```
+
+The final piece of the puzzle is to ensure variables are _unique_, and for this we are going to use the property that linear variables that have been constructed in scope are unique:
+
+```haskell
+let 1 v = MkValue 3 in
+    f v -- v is unique
+```
+
+In order to track this change we are going to update our `DataCon` once again to carry the linearity information necessary `DataCon : (rig : RigCount) -> (ref : Maybe Name) -> (tag : Int) -> (arity : Nat) -> NameType`. This step is done when checking let-bindings in `checkLet`. We simply look for this pattern:
+
+```haskell
+lineariseDataCon : RigCount -> Term vars 
+                -> Maybe (Term vars)
+lineariseDataCon rig 
+  (App fc (Ref fc' (DataCon r ref tag ary) name) arg) =
+    toMaybe 
+      (rig /= r) 
+      (App fc (Ref fc' (DataCon rig ref tag ary) name) arg)
+lineariseDataCon _ _ = Nothing
+```
+
+And call the function:
+
+```haskell
+--  from the explicit linearity annotation ┐
+let newVal = fromMaybe valv --             ▼
+                       (lineariseDataCon rigb valv)
+…
+                --   ┌ use the updated constructor here
+pure (Bind fc n -- ╭─┴──╮
+         (Let rigb newVal tyv) scopev,
+         gnf env (Bind fc n (Let rigb newVal' tyv) scopet))
+```
+
+An astute reader might notice that this implementation has multiple shortcomings:
+
+- The unique tag isn’t removed from `DataCon` once they leave the let scope. Allowing the mutating mechanist to trigger on values that have been shared.
+- The `%mutating` flag does not emit compile errors when used on functions called with non-unique variables.
+- The `%mutating` flag does not emit compile errors when used on non-linear functions or when the optimisation does not run.
+- The optimisation is incompatible with “newtype-optimisation” which removes needless pattern matching and constructing of values when they have a single constructor.
+
+Thankfully, most of those limitations are a matter of user ergonomics and not program performance. Which means we are now ready to benchmark linear programs!
 
 ## Benchmarks & methodology
 
@@ -2015,29 +2159,14 @@ In order to test our performance hypothesis I am going to use a series of progra
 
 Each benchmark will be compared to its control which will be the original compiler without any custom optimisation. The variable we are going to introduce is the new mutation instruction.
 
-There are 2 types of benchmarks we want to write:
-- synthetic benchmarks designed to show off our improvements.
-- real-world benchmarks designed to test its influence on programs that were not specifically designed to show off our improvements.
-	 
-The goal of the first category is to explore what is our "best case scenario" and then go from there. Indeed, if the best case scenario doesn't provide any results, then either there is something wrong with our implementation, or there is something wrong with our idea.
+It is important to stress that those are _synthetic benchmarks_ designed to showcase our improvements, and do not necessarily represent their effect in production software. This has often been the source of many misleading claims about performance and is the topic of endless discussion. The nofib\cite{nofib} project ([https://gitlab.haskell.org/ghc/nofib](https://gitlab.haskell.org/ghc/nofib)) make the effort to distribute a set of programs more representative of real-world production software, especially for functional languages. In our case, synthetic benchmarks will be enough to tell us if linear types provide any benefit worth pursuing or not.
+ 
+Additionally, the Idris2 compiler itself was intended to be used as a benchmark by measuring the time it takes to compile itself. However, due to the nature of our optimisation we have found few areas of improvements with the predominantly non-linear style of the compiler.
 
-The second category aims to collect data about programs that are not built with a specific optimisation in mind such that we can observe how our changes manifest in everyday programs. This could give us insight into how to modify existing programs so that they take full advantage of linear types. Here is one possible course of action:
+### Traditional Fibonacci
 
-- Benchmark X doesn't show any improvement over the original compiler implementation.
-- One function is changed from an unrestricted definition to a linear one.
-- We find a performance improvement.
-
-### Synthetic benchmarks
-
-Synthetic benchmarks are designed to show off a particular effect of a particular implementation. They are not representative of real world programs and are mostly there to establish a baseline so that individual variables can be tweaked with further testing. For this project I have designed 3 benchmarks which are all expected to highlight our optimisation in different ways.
-
-### Fibonnaci
-
-One cannot have a benchmark suite without computing fibonacci, in this benchmark suite we are going to tweak the typical fibonacci implementation to insert an allocating function within our loop. Our mutation optimisation should get rid of this allocation and make use of mutation instead. Because of this we are going to look at three variants of the same program.
-
-#### Traditional Fibonacci
-
-This version is the one you would expect from a traditional implementation in a functional programming language
+Our first benchmark is the traditional fibonacci exercise. This will serve as a baseline for our optimisation. We are then going to update this version to include a redundant allocation and attempt to eliminate it using our optimisation. 
+This first version is the one you would expect from a traditional implementation in a functional programming language:
 
 ```haskell
 tailRecFib : Nat -> Int
@@ -2052,7 +2181,7 @@ tailRecFib (S (S k)) = rec 1 1 k
 
 As you can see it does not perform any extraneous allocation since it only makes use of primitive values like `Int` which are not heap-allocated. If our optimisation works perfectly, we expect to reach the same performance signature as this implementation.
 
-#### Allocating Fibonacci
+### Allocating Fibonacci
 
 This version of Fibonacci does allocate a new value for each call of the `update` function. We expect this version to perform worse than the previous one, both in memory and runtime, because those objects are allocated on the heap (unlike ints), and allocating and reclaiming storage takes more time than mutating values.
 
@@ -2073,9 +2202,9 @@ tailRecFib (S Z) = 1
 tailRecFib (S (S k)) = rec (MkFibState 1 1) k
 ```
 
-#### Mutating Fibonacci
+### Mutating Fibonacci
 
-This version is almost the same as the previous one except our `update` function should now avoid allocating any memory, while this adds a function call compared to the first version we do expect this version to have a similar performance profile as the first one
+This third version is almost the same as the previous one except our `update` function should now avoid allocating any memory, while this adds a function call compared to the first version we do expect this version to have a similar performance profile as the first one
 
 ```haskell
 import Data.List
@@ -2099,21 +2228,89 @@ tailRecFib (S (S k)) = rec (MkFibState 1 1) k
     rec state (S j) = rec (next state) j
 ```
 
-### Real-world benchmarks
 
-For our real world benchmarks we are going to use whatever is available to us. Since the ecosystem is still small we only have a handful of programs to pick from. For this purpose I've elected the following programs:
+### Mapping lists
+  
+We know that we can remove the need for intermediate data-structures when mapping them using linear operations\cite{deforestation}, but can we reproduce this result here? This benchmark aims to simply map a list from `Int` to `Int`. 
 
-- The Idris2 compiler itself
-- A Sat solver
-#### The Idris2 compiler as benchmark 
+```haskell
+mapList : (1 _ : List Int) -> List Int
+mapList [] = []
+mapList (x :: xs) = x + 1 :: mapList xs
 
-The Idris2 compiler itself has the benefit of being a large scale program with many parts that aren't immediately obvious if they would benefit from memory optimisation or not. Having our update statement be detected and replaced automatically will allow us to understand if our optimisation can be performed often enough, where and if it results in tangible performance improvements.
+main : IO ()
+main = printLn (length (mapList [0 .. 9999]))
+```
 
-#### A simple SAT solver as benchmark
+### Allocation free mapping
+
+Similarly to the deforestation algorithm we are going to see if we can improve the performance of linear functions across data structures like lists. When mapping across a list with a function of type `a -> a` that only mutates the input we can avoid allocating an
+
+```haskell
+%mutating
+mapList : (1 _ : List Int) -> List Int
+mapList [] = []
+mapList (x :: xs) = x + 1 :: mapList xs
+
+main : IO ()
+main = printLn (length (mapList [0 .. 9999]))
+```
+
+
+### Countdown
+
+Another typical synthetic benchmark is a countdown function.
+
+```haskell
+countdown : Int -> Int
+countdown 0 = 0
+countdown n = countdown (n-1)
+
+main : IO ()
+main = printLn (countdown 50000000)
+```
+
+### Mutating countdown
+
+This time we wrap our `Int` in a data type that should be optimised away by having its content be mutated rather than being allocated at every loop.
+
+```haskell
+data IntData = MkInt Int | MkNat Nat
+
+Show IntData where
+  show (MkInt int) = show int
+  show (MkNat nat) = show nat
+
+%mutating
+countdown : (IntData) -> IntData
+countdown (MkInt 0) = MkInt 0
+countdown (MkInt n) = countdown (MkInt (n-1))
+countdown (MkNat Z) = MkNat Z
+countdown (MkNat (S n)) = countdown (MkNat n)
+
+main : IO ()
+main = printLn (countdown (MkInt 50000000))
+```
+
+### A simple SAT solver as benchmark
 
 Sat solvers themselves aren't necessarily considered "real-world" programs in the same sense that compilers or servers are. However they have two benefits:
+
 - You can make them arbitrarily slow to make the performance improvement very obvious by increasing the size of the problem to solve.
-- They still represent a real-life case study where a program need to be fast and where traditional functional programming has fallen short compared to imperative programs, using memory unsafe operations. If we can implement a fast SAT solver in our functional programming language, then it is likely we can also implement fast versions of other programs that were traditionally reserved to imperative, memory unsafe programming languages.
+- They still represent a real-life case study where a program need to be fast and where traditional functional programming has fallen short compared to imperative programs.
+
+In this case we are interested in solving the core loop of the state monad that threads through the entire program:
+
+```haskell
+(>>=) : (1 _ : LState a) -> (1 f : ((_ : a) -> LState b))
+     -> LState b
+(>>=) (MkLState f) c = MkLState 
+    (\x => let (res # s') = f x in
+           let (MkLState r2) = c res in 
+           r2 s')
+```
+
+Our optimisation is subsumed by the “newtype-optimisation” which erases any boxing around types with a single constructor. We can however safely inline this function since `(>>=)` will only be composed with itself, since it takes linear arguments the inlining when composed is safe.
 
 ## Measurements
 
@@ -2131,7 +2328,7 @@ Idris-bench takes the following arguments:
 - `-t | --testPath TEST_PATH` The path to the root folder containing the test files.
 - `-o | --output FILE_OUTPUT` The location and name of the CSV file that will be written with our results.
 	- Alternatively `--stdout` can be given in order to print out the results on the standard output.
-- `-c count` The number of times each file has to be benchmarked. This is to get multiple results and avoid lucky/unluck variations.
+- `-c | --count` The number of times each file has to be benchmarked. This is to get multiple results and avoid lucky/unluck variations.
 - `--node` If the node backend should be used instead. If this flag is absent, the Chez backend will be used instead
 
 ### Idris-stats
@@ -2157,6 +2354,7 @@ $$ \operatorname{Var}(X) = \frac{1}{n} \sum_{i=1}^n (x_i - \mu)^2 $$
 ### Expected results
 
 Our expectation is that our programs will run fasters for 2 reasons:
+
 - Allocation is slower than mutation
 - Mutation avoids short lived variables that need to be garbage collected
 
@@ -2174,31 +2372,47 @@ All the benchmarks were run on a laptop with the following specs:
 
 While this computer has a base clock of 1.4Ghz, it features a boost clock of 3.9Ghz (a feature of modern CPUs called “turbo-boost”) which is particularly useful for single-core application like ours. However, turbo-boost might introduce an uncontrollable level of variance in the results since it triggers based on a number of parameters that aren't all under control (like ambient temperature, other programs running, etc). Because of this I've disabled turbo boost on this machine and run all benchmarks at a steady 1.4Ghz.
 
-### Results
+## Results
   
-In this section I will present the results obtained from the compiler optimisation.  The metodology and the nature of the benchmarks is explained in the “Benchmarks & methodology” section.
-
-### Results1: Fibonacci
+In this section I will present the results obtained from the compiler optimisation.  The methodology and the nature of the benchmarks is explained in the “Benchmarks & methodology” section.
 
 Out first test suite runs the benchmark on our 3 fibonacci variants. As a refresher they are as follow:
 - The first one is implemented traditionally, carrying at all times 2 Ints representing the last 2 fibonacci numbers and computing the next one
 - Second one boxes those Ints into a datatype that will be allocated every time it is changed
 - The Third one will make use of our optimisation and mutate the boxes values instead of discarding the old one and allocating a new one.
 
+The last one is an example of mapping across a list, a very common operation in functional programming languages. Our last one is an example of inlining in a program making use of a linear state monad.
+
 The hypothesis is as follows: Chez is a very smart and efficient runtime, and our example is small and simple. Because of this, we expect a small difference in runtime between those three versions. However, the memory pressure incurred in the second example will trigger the garbage collector to interfere with execution and introduce uncertainty in the runtime of the program. This should translate in our statistical model as a greater variance in the results rather than a strictly smaller mean.
 
-#### The results
+### Results 1: Fibonacci
 
 Here are there results of running our benchmarks 100 times in a row:
 
 ```haskell
-../Idris2_fib_benchmark/fibTestNoMutation.idr,5.76e-4,0.00119,6.733999999999996e-4,1.0818499999999999e-8
-../Idris2_fib_benchmark/fibTest.idr,5.84e-4,8.41e-4,6.449e-4,2.3797899999999993e-9
-../Idris2_fib_benchmark/fibTailRec.idr,5.88e-4,8.53e-4,6.499100000000001e-4,2.692301899999999e-9
+../Idris2_fib_benchmark/fibTestNoMutation.idr,
+5.76e-4,0.00119,
+6.733999999999996e-4,
+1.0818499999999999e-8
 
-[3, 18, 18, 32, 12, 0, 2, 4, 0, 0, 0, 2, 1, 2, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1]
-[7, 22, 26, 27, 6, 2, 3, 1, 1, 2, 0, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-[7, 20, 20, 28, 9, 5, 2, 2, 2, 2, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+../Idris2_fib_benchmark/fibTest.idr,
+5.84e-4,
+8.41e-4,
+6.449e-4,
+2.3797899999999993e-9
+
+../Idris2_fib_benchmark/fibTailRec.idr,
+5.88e-4,
+8.53e-4,
+6.499100000000001e-4,
+2.692301899999999e-9
+
+[3, 18, 18, 32, 12, 0, 2, 4, 0, 0, 0, 2, 1, 2, 
+1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1]
+[7, 22, 26, 27, 6, 2, 3, 1, 1, 2, 0, 2, 1, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+[7, 20, 20, 28, 9, 5, 2, 2, 2, 2, 0, 1, 1, 1, 0,
+ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 ```
 
 ![](Screenshot%202020-08-25%20at%2017.59.43.png)
@@ -2225,13 +2439,28 @@ The three arrays at the end correspond to an aggregation of the data in “bucke
 As you can see the results are pretty consistent with our predictions but the values themselves aren't statistically significant. In order to get a better picture we are going to run the same benchmark 1000 times instead of 100.
 
 ```haskell
-../Idris2_fib_benchmark/fibTestNoMutation.idr,5.08e-4,0.001795,6.561829999999996e-4,1.4789385511000005e-8
-../Idris2_fib_benchmark/fibTest.idr,5.08e-4,0.001753,5.882930000000001e-4,1.5392219150999998e-8
-../Idris2_fib_benchmark/fibTailRec.idr,4.89e-4,0.001974,6.241300000000006e-4,3.8718697099999886e-8
+../Idris2_fib_benchmark/fibTestNoMutation.idr,
+5.08e-4,0.001795,
+6.561829999999996e-4,
+1.4789385511000005e-8
 
-[53, 126, 460, 192, 47, 23, 31, 32, 11, 5, 1, 2, 2, 4, 1, 5, 0, 2, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0]
-[261, 546, 76, 32, 18, 12, 13, 7, 2, 5, 10, 4, 3, 5, 0, 1, 1, 0, 0, 2, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0]
-[217, 527, 80, 44, 23, 14, 12, 11, 7, 6, 10, 2, 6, 11, 5, 4, 4, 2, 1, 2, 1, 1, 0, 3, 3, 1, 2, 0, 0, 1]
+../Idris2_fib_benchmark/fibTest.idr,
+5.08e-4,
+0.001753,
+5.882930000000001e-4,
+1.5392219150999998e-8
+
+../Idris2_fib_benchmark/fibTailRec.idr,
+4.89e-4,0.001974,
+6.241300000000006e-4,
+3.8718697099999886e-8
+
+[53, 126, 460, 192, 47, 23, 31, 32, 11, 5, 1, 2, 2, 4, 1, 5, 
+0, 2, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0]
+[261, 546, 76, 32, 18, 12, 13, 7, 2, 5, 10, 4, 3, 5, 0, 
+1, 1, 0, 0, 2, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0]
+[217, 527, 80, 44, 23, 14, 12, 11, 7, 6, 10, 2, 6, 11, 5,
+4, 4, 2, 1, 2, 1, 1, 0, 3, 3, 1, 2, 0, 0, 1]
 ```
 ![](Screenshot%202020-08-25%20at%2018.00.17.png)
 The results are pretty similar which gives us a greater confidence in their accuracy.
@@ -2249,27 +2478,44 @@ Takes 0.13 seconds to run despite doing nothing. This time is the startup time a
 
 In order to remove the startup time we are going to change the emitted bytecode to wrap our main function inside a time-measuring function. Since the timer won't start until the program is ready to run the startup time will be eliminated. Running our empty program we get
 
-```haskell
-0.000000000s elapsed cpu time
+```
+> 0.000000000s elapsed cpu time
 ```
 
 Which is what we expect.
 
 This time we will run our benchmarks 1000 times using the same command as before. We expect to see the same results but the difference should give us a greater interval of confidence. Running our statistical analysis gives us those results
 
-```haskell
-../Idris2_fib_benchmark/fibTestNoMutation.idr,1.696760896,1.977075901,1.7447377120060026,9.18303221644259e-4
-../Idris2_fib_benchmark/fibTest.idr,1.734708117,2.152951106,1.786299514231,0.002247060292357963
-../Idris2_fib_benchmark/fibTailRec.idr,1.65627213,1.881412963,1.6768551703740004,9.142437018832634e-4
+```
+../Idris2_fib_benchmark/fibTestNoMutation.idr,
+1.696760896,
+1.977075901,
+1.7447377120060026,
+9.18303221644259e-4
 
-[0, 0, 136, 113, 17, 620, 62, 22, 4, 6, 4, 3, 2, 3, 4, 0, 1, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-[0, 0, 0, 0, 164, 217, 36, 160, 264, 47, 36, 18, 19, 7, 5, 5, 7, 3, 2, 3, 2, 2, 1, 0, 0, 0, 1, 0, 0, 1]
-[647, 221, 19, 4, 52, 33, 8, 2, 5, 2, 0, 4, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+../Idris2_fib_benchmark/fibTest.idr,
+1.734708117,
+2.152951106,
+1.786299514231,
+0.002247060292357963
+
+../Idris2_fib_benchmark/fibTailRec.idr,
+1.65627213,
+1.881412963,
+1.6768551703740004,
+9.142437018832634e-4
+
+[0, 0, 136, 113, 17, 620, 62, 22, 4, 6, 4, 3, 2, 3, 4, 
+0, 1, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+[0, 0, 0, 0, 164, 217, 36, 160, 264, 47, 36, 18, 19, 7, 5, 
+5, 7, 3, 2, 3, 2, 2, 1, 0, 0, 0, 1, 0, 0, 1]
+[647, 221, 19, 4, 52, 33, 8, 2, 5, 2, 0, 4, 2, 1, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 ```
 ![](Screenshot%202020-08-25%20at%2017.59.34.png)
 As you can see the results aren't exactly as expected, both our _average_ and our _variance_ is higher than without any optimisation. A result that we definitely did not anticipate and goes against the belief that founded our hypothesis.
 
-One possible explanation is that scheme performs JIT compilation and correctly identifies the hot-loop in our unoptimized example but is unable to perform such optimization with our mix of pure and mutating code.
+One possible explanation is that scheme performs JIT compilation and correctly identifies the hot-loop in our unoptimised example but is unable to perform such optimisation with our mix of pure and mutating code.
 
 ### Results 3: Fibonacci without startup time, small loop
 
@@ -2277,14 +2523,29 @@ In order to test the JIT hypothesis we are going to run the same test, _without_
 
 In order to reduce the running time from seconds to milliseconds we simply change the loop count from `8*10^6` to `8*10^4` reducing it by two orders of magnitude reduces the running time accordingly.
 
-```haskell
-../Idris2_fib_benchmark/fibTestNoMutation.idr,0.007216185,0.008861124,0.007520532116999987,3.5827851856347296e-8
-../Idris2_fib_benchmark/fibTest.idr,0.006543267,0.010942671,0.006867369243000004,5.3106313711037986e-8
-../Idris2_fib_benchmark/fibTailRec.idr,0.006385357,0.007625528,0.006624731209000001,2.4002041892751334e-8
+```
+../Idris2_fib_benchmark/fibTestNoMutation.idr,
+0.007216185,0.008861124,
+0.007520532116999987,
+3.5827851856347296e-8
 
-[0, 0, 0, 0, 0, 72, 411, 361, 106, 17, 12, 8, 6, 2, 3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-[0, 95, 493, 288, 83, 13, 9, 10, 3, 0, 3, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
-[303, 470, 161, 41, 13, 7, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+../Idris2_fib_benchmark/fibTest.idr,0.006543267,
+0.010942671,
+0.006867369243000004,
+5.3106313711037986e-8
+
+../Idris2_fib_benchmark/fibTailRec.idr,
+0.006385357,
+0.007625528,
+0.006624731209000001,
+2.4002041892751334e-8
+
+[0, 0, 0, 0, 0, 72, 411, 361, 106, 17, 12, 8, 6, 2, 3, 2, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+[0, 95, 493, 288, 83, 13, 9, 10, 3, 0, 3, 1, 0, 0, 0, 0, 
+0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+[303, 470, 161, 41, 13, 7, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 ```
 ![](Screenshot%202020-08-25%20at%2017.59.21.png)
 And indeed this data does not disprove our JIT hypothesis (but it does not confirm it either). However, since this thesis is not about the intricacies of the scheme runtime we are going to let the issue rest for now. 
@@ -2293,56 +2554,43 @@ Those results showcase two things: That our optimisation works, and that it is n
 
 Idris2 has an alternative javascript backend, however, the javascript code generation is unable to translate our programs into plain loops free of recursion. Because of this, our benchmark exceeds the maximum stack size and the program aborts. When the stack size is increased the program segfaults.
 
-## Safe inlining 
+### Results 4: mapping
 
-As we’ve seen in the context review, one of the use-cases for linear types is to detect where control flow allows for safe inlining of functions. In the following snippet, `y` cannot be inlined without duplicating computation.
+In this exercise we are going to aggregate the result of our control and our experimental run of `map`; which increments a list of number and returns its size. We ran each program a 100 times using `idris-bench`. As before we expect a negligible average speedup but a significant decrease in variance.
 
-```haskell
-let x = 1 + 2
-    y = x + 3 in
-    y + y
+```
+../map_test/map.idr,
+8.73337e-4,
+0.005067636,
+0.0011461037300000004,
+2.211481014400371e-7
+../map_test_mutate/mapMutation.idr,
+5.23816e-4,
+0.001308711,
+6.850426700000001e-4,
+1.9851180862141108e-8
+
+[0, 0, 47, 29, 6, 4, 4, 6, 2, 1, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+[63, 26, 5, 5, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+```
+  
+This time our performance improvements are more noticeable in average than before. Tough it might be because the benchmark is measured in tens of microseconds.
+
+## Sat solver
+
+For this benchmark we didn’t use `idris-bench` rather we compiled two versions of `isat`, one with the inlining optimisation, and one without. And ran each version 10 times on the same input (in appendix) :
+
+```
+sat      | average            | variance
+---------+--------------------+-----------------
+normal   | 384008.545454545   | 337134927.872727
+mutating | 371382.454545455   | 264041625.672727
 ```
 
-Indeed inlining it would result in
+The results show an improvement of about 3.3% in average which is encouraging but not enough to warrant further inspection. Despite this small improvement, we could take things further and implement _safe inlining by default_ on every variable that is linearly bound, since it does not hurt performance. And hope that the inlined function will be subject to further optimisations after being inlined.
 
-```haskell
-let x = 1 + 2
-    x + 3 + x + 3
-```
-
-where the `+ 3` operation is performed twice. `x` however can be inlined safely:
-
-```haskell
-let y = 1 + 2 + 3 in
-    y + y
-```
-
-the `1 + 2` operation is performed only once after inlining.
-
-One area where linearity and inlining comes into play is when defining effects. Indeed, a linear state monad could have the following `bind` signature:
-
-```haskell
-(>>=) : (1 _ : LState s a) -> (1 f : a -> LState s b) -> LState s b
-(>>=) (LState s) c = LState (\x => …)
-```
-
-Which indicates that the state is inspected linearity and the function is applied exactly once. Since programs using `bind` compose with themselves we often see the following sequence of operations:
-```haskell
-inital >>= f >>= g
-```
-
-which once inlined results in
-
-```haskell
-LState (\x => let v = initial >>= f)
-                  g v)
-```
-
-```haskell
-LState (\x => let v = x (LState (\y => let w = y initial 
-                                           f w))
-                  g v)
-```
 \newpage
 
 # Future work
@@ -2566,6 +2814,115 @@ we can deduce that the meaning of the circle was to represent the head of a stic
 
 \bibliography{bibliography} 
 \bibliographystyle{ieeetr}
+# Appendix
+
+## Sat solver benchmark input
+
+```
+c FILE: aim-50-1_6-yes1-4.cnf
+c
+c SOURCE: Kazuo Iwama, Eiji Miyano (miyano@cscu.kyushu-u.ac.jp),
+c          and Yuichi Asahiro
+c
+c DESCRIPTION: Artifical instances from generator by source.  Generators
+c              and more information in sat/contributed/iwama.
+c
+c NOTE: Satisfiable
+c
+p cnf 50 80
+16 17 30 0
+-17 22 30 0
+-17 -22 30 0
+16 -30 47 0
+16 -30 -47 0
+-16 -21 31 0
+-16 -21 -31 0
+-16 21 -28 0
+-13 21 28 0
+13 -16 18 0
+13 -18 -38 0
+13 -18 -31 0
+31 38 44 0
+-8 31 -44 0
+8 -12 -44 0
+8 12 -27 0
+12 27 40 0
+-4 27 -40 0
+12 23 -40 0
+-3 4 -23 0
+3 -23 -49 0
+3 -13 -49 0
+-23 -26 49 0
+12 -34 49 0
+-12 26 -34 0
+19 34 36 0
+-19 26 36 0
+-30 34 -36 0
+24 34 -36 0
+-24 -36 43 0
+6 42 -43 0
+-24 42 -43 0
+-5 -24 -42 0
+5 20 -42 0
+5 -7 -20 0
+4 7 10 0
+-4 10 -20 0
+7 -10 -41 0
+-10 41 46 0
+-33 41 -46 0
+33 -37 -46 0
+32 33 37 0
+6 -32 37 0
+-6 25 -32 0
+-6 -25 -48 0
+-9 28 48 0
+-9 -25 -28 0
+19 -25 48 0
+2 9 -19 0
+-2 -19 35 0
+-2 22 -35 0
+-22 -35 50 0
+-17 -35 -50 0
+-29 -35 -50 0
+-1 29 -50 0
+1 11 29 0
+-11 17 -45 0
+-11 39 45 0
+-26 39 45 0
+-3 -26 45 0
+-11 15 -39 0
+14 -15 -39 0
+14 -15 -45 0
+14 -15 -27 0
+-14 -15 47 0
+17 17 40 0
+1 -29 -31 0
+-7 32 38 0
+-14 -33 -47 0
+-1 2 -8 0
+35 43 44 0
+21 21 24 0
+20 29 -48 0
+23 35 -37 0
+2 18 -33 0
+15 25 -45 0
+9 14 -38 0
+-5 11 50 0
+-3 -13 46 0
+-13 -41 43 0
+```
+
+## Sat solver benchmark output
+
+```
+,,,,,,,,,,,,average,variance,,,,,,,,,
+normal,5m 51s 878ms,5m 52s 27ms,6m 29s 173ms,6m 35s 147ms,6m 34s 151ms,6m 35s 888ms,6m 36s 815ms,6m 35s 960ms,6m 33s 967ms,6m 34s 964ms,6m 4s 124ms,6m 24s 9ms,,,,,,,,,,
+mutat,6m 27s 894ms,6m 21s 214ms,6m 10s 131ms,6m 27s 206ms,6m 4s 71ms,6m 25s 495ms,6m 27s 899ms,6m 13s 771ms,5m 51s 541ms,5m 47s 685ms,5m 48s 300ms,6m 11s 382ms,,,,,,,,,,
+normal milisec,351878,352027,389173,395147,394151,395888,396815,395960,393967,394964,364124,384008.545454545,337134927.872727,,,,,,,,,
+mutating milisec,387894,381214,370131,387206,364071,385495,387899,373771,351541,347685,348300,371382.454545455,264041625.672727,,,,,,,,,
+normal milisec * 10^5,3.51878,3.52027,3.89173,3.95147,3.94151,3.95888,3.96815,3.9596,3.93967,3.94964,3.64124,3.84008545454545,0.0337134927872727,,,,,,,,,
+mutating milisec * 10⁵,3.87894,3.81214,3.70131,3.87206,3.64071,3.85495,3.87899,3.73771,3.51541,3.47685,3.483,3.71382454545455,0.0264041625672727,,,,,,,,,
+```
 
 [^1]:	We can recover those features by using patterns like "monad" but it is not the topic of this brief introduction
 

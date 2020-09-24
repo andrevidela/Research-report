@@ -100,12 +100,6 @@
 \usepackage{fancyvrb}[]
 \fvset{samepage=true, baselinestretch=1, frame=lines}
 \renewcommand{\baselinestretch}{1.2}
-
-
-
-
-
-
 \ifluatex
   \usepackage{selnolig}  % disable illegal ligatures
 \fi
@@ -3314,7 +3308,69 @@ The changes to the Idris AST are as follow:
   Add a new instruction to the backend AST in order to mutate values
 \end{itemize}
 
-Those steps are still insufficient however
+Conceptually the compiler architecture is quite simple, in the following
+illustration we link trees transformation with their corresponding
+functions. Each tree is it's own data declaration:
+
+\begin{verbatim}
+   PTerm
+   ──┬──
+     |
+ ┌───┴────┐
+ |desugarB|
+ └───┬────┘
+     │
+     ▼
+   RawImp
+   ──┬───
+     |
+┌────┴────┐
+|checkTerm|
+└────┬────┘
+     │
+     ▼
+ Term vars
+ ────┬────
+     |
+  ┌──┴───┐
+  │toCExp│
+  └──┬───┘
+     |
+     ▼
+ CExp vars
+ ────┬────
+     |
+  ┌──┴───┐
+  │forget│
+  └──┬───┘
+     |
+     ▼
+  NamedCExp
+  ───┬─────
+     |
+  ┌──┴───┐
+  │schExp│
+  └──┬───┘
+     |
+     ▼
+scheme output
+\end{verbatim}
+
+\texttt{PTerm} represents the surface level language, it is desugared
+into \texttt{RawImp} which is a front end for our typed terms
+\texttt{Term}. \texttt{Term} is indexed over the list of variables in
+context, which helps avoid indexing errors (specially when manipulating
+debrujin indices) and makes explicit the rules of context extension, for
+example when binding arguments under a lambda. \texttt{CExp} is a tree
+of compiled expressions ready for codegen, it keeps the index for
+variables from \texttt{Term} and the index is then dropped when
+variables indices are replaced by their names in \texttt{NamedCExp}.
+Which is the same but with all variable substitutions performed.
+
+Since our changes do not touch the type checker or elaborator, they do
+not the \texttt{checkTerm} stage. However, since we do need information
+from the control flow and the access the case tree we need to perform
+our changes between \texttt{Term} and \texttt{CExp}.
 
 \hypertarget{implementation-details}{%
 \subsubsection{Implementation details}\label{implementation-details}}
@@ -3330,11 +3386,11 @@ The goal is to be able to write this program
 \end{Highlighting}
 \end{Shaded}
 
-where the \texttt{\%mutating} annotation indicates that the value
+Where the \texttt{\%mutating} annotation indicates that the value
 manipulated will be subject to mutation rather than construction.
 
 If we were to write this code in a low-level c-like syntax we would like
-to go from the non-mutating version here
+to go from the non-mutating version here:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -3355,7 +3411,7 @@ to go from the non-mutating version here
 \end{Highlighting}
 \end{Shaded}
 
-to the more efficient mutating version here
+To the more efficient mutating version here:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -3371,8 +3427,8 @@ to the more efficient mutating version here
 \end{Highlighting}
 \end{Shaded}
 
-The two programs are very similar but the second one mutate the argument
-directly instead of mutating a new copy of it.
+The two programs are very similar but the second one mutates the
+argument directly instead of mutating a new copy of it.
 
 There is however a very important limitation:
 
@@ -3424,7 +3480,7 @@ the next section
 
 For this to work we need to add a new constructor to the AST that
 represents \emph{compiled} programs \texttt{CExp}. We add the
-consturctor
+constructor \texttt{CMut}:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -3432,32 +3488,104 @@ consturctor
 \end{Highlighting}
 \end{Shaded}
 
-which represents mutation of a variable identified by its \texttt{Name}
-in context and using the argument list to modify each of its fields.
-
-(This new constructor has to be carried of to tress \texttt{NamedExp}
-\texttt{ANF} and \texttt{Lifted}, the details are irrelevants and the
-changes trivial)
+It represents mutation of a variable identified by its \texttt{Name} in
+context and using the argument list to modify each of its fields.
 
 Once this change reached the code generator it needs to output a
-\texttt{mutation} instructon rather than an allocation operation. Here
-is the code for the scheme backend
+\texttt{mutation} instruction rather than an allocation operation. Here
+is the code for the scheme backend:
 
-\emph{show scheme backend implementation for CMut}
+\begin{Shaded}
+\begin{Highlighting}[]
+\OperatorTok{|||} \DataTypeTok{Mutates}\NormalTok{ the given vector at the given }\FunctionTok{index}
+\NormalTok{mutateValue }\OperatorTok{:}\NormalTok{ (ref }\OperatorTok{:} \DataTypeTok{String}\NormalTok{) }\OtherTok{{-}\textgreater{}}\NormalTok{ (}\FunctionTok{index} \OperatorTok{:} \DataTypeTok{Nat}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{String} \OtherTok{{-}\textgreater{}} \DataTypeTok{String}
+\NormalTok{mutateValue ref idx newVal }\OtherTok{=}
+  \StringTok{"(vector{-}set! "} \OperatorTok{++}\NormalTok{ ref }\OperatorTok{++}  \StringTok{" "} \OperatorTok{++} \FunctionTok{show}\NormalTok{ idx }\OperatorTok{++} \StringTok{" "} \OperatorTok{++}\NormalTok{ newVal }\OperatorTok{++} \StringTok{")"}
 
-AS you can see we generate one instruction per field to mutate as well
-ad a final instruction to \emph{return} the value passed in argument,
+\OperatorTok{|||} \DataTypeTok{Mutate} \FunctionTok{all}\NormalTok{ fiels }\KeywordTok{of}\NormalTok{ a given constructor}
+\OperatorTok{|||} \DataTypeTok{We}\NormalTok{ skip the first value }\KeywordTok{in}\NormalTok{ the vector because we }\KeywordTok{do} \FunctionTok{not}\NormalTok{ change}
+\OperatorTok{|||} \OperatorTok{@}\NormalTok{vecRef }\OperatorTok{:} \DataTypeTok{The}\NormalTok{ vector to update}
+\OperatorTok{|||} \OperatorTok{@}\NormalTok{args }\OperatorTok{:} \DataTypeTok{The}\NormalTok{ list }\KeywordTok{of}\NormalTok{ new arguments}
+\NormalTok{schMutate }\OperatorTok{:}\NormalTok{ (ref }\OperatorTok{:} \DataTypeTok{String}\NormalTok{) }\OtherTok{{-}\textgreater{}}\NormalTok{ (args }\OperatorTok{:} \DataTypeTok{List} \DataTypeTok{String}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{String}
+\NormalTok{schMutate ref args }\OtherTok{=}
+  \CommentTok{{-}{-} we start indexing at 1 since 0 is the tag and doesn\textquotesingle{}t change}
+  \KeywordTok{let}\NormalTok{ indices }\OtherTok{=}\NormalTok{ [}\DecValTok{1} \OperatorTok{..}\NormalTok{ (}\FunctionTok{length}\NormalTok{ args }\OperatorTok{+} \DecValTok{1}\NormalTok{)]}
+\NormalTok{      zipped }\OperatorTok{:} \DataTypeTok{List}\NormalTok{ (}\DataTypeTok{Nat}\NormalTok{, }\DataTypeTok{String}\NormalTok{) }\OtherTok{=} \FunctionTok{zip}\NormalTok{ indices args}
+\NormalTok{      mutation }\OtherTok{=}\NormalTok{ (showSep }\StringTok{" "}\NormalTok{ (}\FunctionTok{map}\NormalTok{ (}\FunctionTok{uncurry} \OperatorTok{$}\NormalTok{ mutateValue ref) zipped)) }\KeywordTok{in}
+      \StringTok{"(begin "} \OperatorTok{++}\NormalTok{ mutation }\OperatorTok{++} \StringTok{" "} \OperatorTok{++}\NormalTok{ ref }\OperatorTok{++} \StringTok{")"}
+\end{Highlighting}
+\end{Shaded}
+
+As you can see we generate one instruction per field to mutate as well
+and a final instruction to \emph{return} the value passed in argument,
 this to keep the semantics of the existing assumption about constructing
-new values.
+new values. The function \texttt{schMutate} is then called to output the
+scheme program from a \texttt{NamedCExp}:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{schExp i (}\DataTypeTok{NmMut}\NormalTok{ fc ref args)}
+    \OtherTok{=}\NormalTok{ schMutate (schName ref) }\OperatorTok{\textless{}$\textgreater{}}\NormalTok{ (}\FunctionTok{traverse}\NormalTok{ (schExp i) args)}
+\end{Highlighting}
+\end{Shaded}
 
 \hypertarget{reference-nightmare}{%
 \subsubsection{Reference nightmare}\label{reference-nightmare}}
 
-There is however an additional details that isn't as easy to implement
-and this is related to getting a reference to the term we are mutating.
+There is however an additional details that hasn't been expressed and
+that is how to \emph{construct} a value of \texttt{CMut}. \texttt{CMut}
+is only constructed in the following circumstances:
 
-Let's look at our \texttt{update} function once again and update it
-slightly
+\begin{itemize}
+\tightlist
+\item
+  The function is linear.
+\item
+  The function is annotated with \texttt{\%mutating}.
+\item
+  The function use the same constructor on the left hand side and the
+  right hand side of its definition.
+\item
+  The value passed in argument is \emph{unique}.
+\end{itemize}
+
+Even though the first one is obvious, it will be left out for trivial
+reasons: lots of the standard library is not defined linearly such that
+the following will not compile:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{lolInts }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{Int}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Int}
+\NormalTok{lolInts n }\OtherTok{=}\NormalTok{ n }\OperatorTok{+} \DecValTok{1}
+\end{Highlighting}
+\end{Shaded}
+
+This is because \texttt{+} as a foreign function is not declared
+linearly. This could be solved with an alternative standard library
+which is purely linear.
+
+The second condition is easy to implement as a boolean check, but
+requires a bit of thought about \emph{where} to put it. Since the next
+condition requires us to change the \emph{case tree} of our function
+definition we are going to add the boolean check in
+\texttt{src/TTImp/ProcessDef.idr} which will process every definition of
+our program. We are going to short-circuit the case-tree generation by
+replacing the compiled one by our modified version of it:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{(rargs }\OperatorTok{**}\NormalTok{ (tree\_rt\textquotesingle{}, \_)) }\OtherTok{\textless{}{-}}\NormalTok{ getPMDef …}
+\NormalTok{tree\_rt }\OtherTok{\textless{}{-}} \KeywordTok{if} \DataTypeTok{Mutating} \OtherTok{\textasciigrave{}elem\textasciigrave{}}\NormalTok{ flags gdef}
+              \KeywordTok{then}\NormalTok{ makeMutating tree\_rt\textquotesingle{}}
+              \KeywordTok{else} \FunctionTok{pure}\NormalTok{ tree\_rt\textquotesingle{}}
+\end{Highlighting}
+\end{Shaded}
+
+The third constraint is the most important one without which we corrupt
+the memory of our program as we've seen earlier.
+
+Let's look at our \texttt{update} function to understand the nature of
+the changes and update it slightly:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -3469,13 +3597,14 @@ slightly
 \end{Highlighting}
 \end{Shaded}
 
-This version makes use of there temporary variable \texttt{arg} before
-matching on the function argument directly. Otherwise it's the same as
-what we showed before.
-
-What needs to happen is that \texttt{ValTwice} on the first clause needs
-to access the variable \texttt{arg} and mutate it directly. And
-similarly for \texttt{ValOnce}.
+This version makes use of a temporary variable \texttt{arg} before
+matching on the function argument directly. The calls to constructors
+\texttt{ValTwice} and \texttt{ValOnce} allocate memory but we want to
+replace them by \texttt{CMut} which will reuse memory. In order to reuse
+the memory space taken by \texttt{arg} they need to store a pointer to
+it. This is reflected in the signature of
+\texttt{CMut\ :\ FC\ -\textgreater{}\ (ref\ :\ Name)\ -\textgreater{}\ List\ (CExp\ vars)\ -\textgreater{}\ CExp\ vars}
+where the second argument is the reference to reuse.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -3487,8 +3616,9 @@ similarly for \texttt{ValOnce}.
 \end{Highlighting}
 \end{Shaded}
 
-However looking at the AST for pattern match clauses we see that it does
-not carry any information about the original value that was matched:
+However looking at the AST for pattern matching clauses we see that it
+does not carry any information about the original value that was
+matched:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -3497,8 +3627,10 @@ not carry any information about the original value that was matched:
 \end{Highlighting}
 \end{Shaded}
 
-Thankfully this reference can be found earlier in the \texttt{CaseTree}
-part of the AST.
+Indeed, the \texttt{Name} we see refers to the constructor we're
+matching on, and not to the variable name we are inspecting.
+
+Thankfully this reference can be found earlier in \texttt{CaseTree} :
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -3518,31 +3650,120 @@ part of the AST.
 \end{Highlighting}
 \end{Shaded}
 
-A \texttt{CaseTree} is either a case containing other cases, or a term,
-or a missing case, or an impossible case.
-
-We note that the \texttt{Case} constructor contains the reference to the
-variable that is being matched. Therefore we can get it from here and
-then carry it to our tree transformation.
-
-The tree transformation itself is pretty simple and can be sumarised
-with this excerpt:
+The reference is carried by \texttt{idx} which is the index of the
+variable in its context, as supported by the proof \texttt{p}. Once we
+get a hold of this reference we can move on to the actual tree
+transformation. The transformation itself is pretty simple and can be
+summarised with this excerpt:
 
 \begin{Shaded}
 \begin{Highlighting}[]
 \NormalTok{replaceConstructor }\OperatorTok{:}\NormalTok{ (cName }\OperatorTok{:} \DataTypeTok{Name}\NormalTok{) }\OtherTok{{-}\textgreater{}}\NormalTok{ (tag }\OperatorTok{:} \DataTypeTok{Int}\NormalTok{) }\OtherTok{{-}\textgreater{}}
 \NormalTok{                     (rhs }\OperatorTok{:} \DataTypeTok{Term}\NormalTok{ vars) }\OtherTok{{-}\textgreater{}}
                      \DataTypeTok{Core}\NormalTok{ (}\DataTypeTok{Term}\NormalTok{ vars)}
-\NormalTok{replaceConstructor cName tag (}\DataTypeTok{App}\NormalTok{ fc (}\DataTypeTok{Ref}\NormalTok{ fc\textquotesingle{} (}\DataTypeTok{DataCon}\NormalTok{ nref t arity) nm) arg) }\OtherTok{=} 
-    \KeywordTok{if}\NormalTok{ cName }\OperatorTok{==}\NormalTok{ nm }\KeywordTok{then} \FunctionTok{pure}\NormalTok{ (}\DataTypeTok{App}\NormalTok{ fc (}\DataTypeTok{Ref}\NormalTok{ fc\textquotesingle{} (}\DataTypeTok{DataCon}\NormalTok{ (}\DataTypeTok{Just}\NormalTok{ ref) t arity) nm) arg)}
-                   \KeywordTok{else} \DataTypeTok{App}\NormalTok{ fc (}\DataTypeTok{Ref}\NormalTok{ fc\textquotesingle{} (}\DataTypeTok{DataCon}\NormalTok{ nref t arity) nm) }\OperatorTok{\textless{}$\textgreater{}}\NormalTok{ replaceConstructor cName tag arg }
+\NormalTok{replaceConstructor cName tag }
+\NormalTok{  (}\DataTypeTok{App}\NormalTok{ fc (}\DataTypeTok{Ref}\NormalTok{ fc\textquotesingle{} (}\DataTypeTok{DataCon}\NormalTok{ nref t arity) nm) arg) }\OtherTok{=} 
+    \KeywordTok{if}\NormalTok{ cName }\OperatorTok{==}\NormalTok{ nm }
+       \KeywordTok{then} \FunctionTok{pure}\NormalTok{ (}\DataTypeTok{App}\NormalTok{ fc (}\DataTypeTok{Ref}\NormalTok{ fc\textquotesingle{}}
+                      \CommentTok{{-}{-}           ┌ here is the change}
+                      \CommentTok{{-}{-}       ╭───┴────╮}
+\NormalTok{                      (}\DataTypeTok{DataCon}\NormalTok{ (}\DataTypeTok{Just}\NormalTok{ ref) t arity) nm) arg)}
+        \KeywordTok{else} \DataTypeTok{App}\NormalTok{ fc (}\DataTypeTok{Ref}\NormalTok{ fc\textquotesingle{} (}\DataTypeTok{DataCon}\NormalTok{ nref t arity) nm) }
+         \OperatorTok{\textless{}$\textgreater{}}\NormalTok{ replaceConstructor cName tag arg }
 \end{Highlighting}
 \end{Shaded}
 
-Which checks that for every application of a data constructor if it is
-the same as the one we matched on, if it is, then the \texttt{CCon}
-instruction is replaced by a \texttt{CMut} which will tell the backend
-to \emph{reuse} the memory space taken by the argument.
+Which will replace every application of a data constructor by one which
+has a reference to the variable we mutate \texttt{ref} as indicated by
+the \texttt{Just\ ref}.
+
+This refers to another AST change we haven't mentionned yet. And that is
+to track which data constructors are allowed to mutate a reference
+instead of constructing a new value. We change \texttt{DataCon} into
+\texttt{DataCon\ :\ (ref\ :\ Maybe\ Name)\ -\textgreater{}\ (tag\ :\ Int)\ -\textgreater{}\ (arity\ :\ Nat)\ -\textgreater{}\ NameType}
+where the first argument represents the variable we can mutate, if there
+is one.
+
+The last step of this chain of changes is to inspect our
+\texttt{DataCon} constructor during compilation and emit the correct
+\texttt{CMut} instruction. We do this in \texttt{toCExp}:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{  toCExpTm n (}\DataTypeTok{Ref}\NormalTok{ fc (}\DataTypeTok{DataCon}\NormalTok{ (}\DataTypeTok{Just}\NormalTok{ ref) tag arity) fn)}
+      \OtherTok{=} \FunctionTok{pure} \OperatorTok{$} \DataTypeTok{CMut}\NormalTok{ fc ref []}
+\end{Highlighting}
+\end{Shaded}
+
+The final piece of the puzzle is to ensure variables are \emph{unique},
+and for this we are going to use the property that linear variables that
+have been constructed in scope are unique:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{let} \DecValTok{1}\NormalTok{ v }\OtherTok{=} \DataTypeTok{MkValue} \DecValTok{3} \KeywordTok{in}
+\NormalTok{    f v }\CommentTok{{-}{-} v is unique}
+\end{Highlighting}
+\end{Shaded}
+
+In order to track this change we are going to update our
+\texttt{DataCon} once again to carry the linearity information necessary
+\texttt{DataCon\ :\ (rig\ :\ RigCount)\ -\textgreater{}\ (ref\ :\ Maybe\ Name)\ -\textgreater{}\ (tag\ :\ Int)\ -\textgreater{}\ (arity\ :\ Nat)\ -\textgreater{}\ NameType}.
+This step is done when checking let-bindings in \texttt{checkLet}. We
+simply look for this pattern:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{lineariseDataCon }\OperatorTok{:} \DataTypeTok{RigCount} \OtherTok{{-}\textgreater{}} \DataTypeTok{Term}\NormalTok{ vars }
+                \OtherTok{{-}\textgreater{}} \DataTypeTok{Maybe}\NormalTok{ (}\DataTypeTok{Term}\NormalTok{ vars)}
+\NormalTok{lineariseDataCon rig }
+\NormalTok{  (}\DataTypeTok{App}\NormalTok{ fc (}\DataTypeTok{Ref}\NormalTok{ fc\textquotesingle{} (}\DataTypeTok{DataCon}\NormalTok{ r ref tag ary) name) arg) }\OtherTok{=}
+\NormalTok{    toMaybe }
+\NormalTok{      (rig }\OperatorTok{/=}\NormalTok{ r) }
+\NormalTok{      (}\DataTypeTok{App}\NormalTok{ fc (}\DataTypeTok{Ref}\NormalTok{ fc\textquotesingle{} (}\DataTypeTok{DataCon}\NormalTok{ rig ref tag ary) name) arg)}
+\NormalTok{lineariseDataCon \_ \_ }\OtherTok{=} \DataTypeTok{Nothing}
+\end{Highlighting}
+\end{Shaded}
+
+And call the function:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{{-}{-}  from the explicit linearity annotation ┐}
+\KeywordTok{let}\NormalTok{ newVal }\OtherTok{=}\NormalTok{ fromMaybe valv }\CommentTok{{-}{-}             ▼}
+\NormalTok{                       (lineariseDataCon rigb valv)}
+\NormalTok{…}
+                \CommentTok{{-}{-}   ┌ use the updated constructor here}
+\FunctionTok{pure}\NormalTok{ (}\DataTypeTok{Bind}\NormalTok{ fc n }\CommentTok{{-}{-} ╭─┴──╮}
+\NormalTok{         (}\DataTypeTok{Let}\NormalTok{ rigb newVal tyv) scopev,}
+\NormalTok{         gnf env (}\DataTypeTok{Bind}\NormalTok{ fc n (}\DataTypeTok{Let}\NormalTok{ rigb newVal\textquotesingle{} tyv) scopet))}
+\end{Highlighting}
+\end{Shaded}
+
+An astute reader might notice that this implementation has multiple
+shortcomings:
+
+\begin{itemize}
+\tightlist
+\item
+  The unique tag isn't removed from \texttt{DataCon} once they leave the
+  let scope. Allowing the mutating mechanist to trigger on values that
+  have been shared.
+\item
+  The \texttt{\%mutating} flag does not emit compile errors when used on
+  functions called with non-unique variables.
+\item
+  The \texttt{\%mutating} flag does not emit compile errors when used on
+  non-linear functions or when the optimisation does not run.
+\item
+  The optimisation is incompatible with ``newtype-optimisation'' which
+  removes needless pattern matching and constructing of values when they
+  have a single constructor.
+\end{itemize}
+
+Thankfully, most of those limitations are a matter of user ergonomics
+and not program performance. Which means we are now ready to benchmark
+linear programs!
 
 \hypertarget{benchmarks-methodology}{%
 \subsection{Benchmarks \& methodology}\label{benchmarks-methodology}}
@@ -3557,59 +3778,31 @@ Each benchmark will be compared to its control which will be the
 original compiler without any custom optimisation. The variable we are
 going to introduce is the new mutation instruction.
 
-There are 2 types of benchmarks we want to write: - synthetic benchmarks
-designed to show off our improvements. - real-world benchmarks designed
-to test its influence on programs that were not specifically designed to
-show off our improvements.
+It is important to stress that those are \emph{synthetic benchmarks}
+designed to showcase our improvements, and do not necessarily represent
+their effect in production software. This has often been the source of
+many misleading claims about performance and is the topic of endless
+discussion. The nofib\cite{nofib} project
+(\url{https://gitlab.haskell.org/ghc/nofib}) make the effort to
+distribute a set of programs more representative of real-world
+production software, especially for functional languages. In our case,
+synthetic benchmarks will be enough to tell us if linear types provide
+any benefit worth pursuing or not.
 
-The goal of the first category is to explore what is our ``best case
-scenario'' and then go from there. Indeed, if the best case scenario
-doesn't provide any results, then either there is something wrong with
-our implementation, or there is something wrong with our idea.
-
-The second category aims to collect data about programs that are not
-built with a specific optimisation in mind such that we can observe how
-our changes manifest in everyday programs. This could give us insight
-into how to modify existing programs so that they take full advantage of
-linear types. Here is one possible course of action:
-
-\begin{itemize}
-\tightlist
-\item
-  Benchmark X doesn't show any improvement over the original compiler
-  implementation.
-\item
-  One function is changed from an unrestricted definition to a linear
-  one.
-\item
-  We find a performance improvement.
-\end{itemize}
-
-\hypertarget{synthetic-benchmarks}{%
-\subsubsection{Synthetic benchmarks}\label{synthetic-benchmarks}}
-
-Synthetic benchmarks are designed to show off a particular effect of a
-particular implementation. They are not representative of real world
-programs and are mostly there to establish a baseline so that individual
-variables can be tweaked with further testing. For this project I have
-designed 3 benchmarks which are all expected to highlight our
-optimisation in different ways.
-
-\hypertarget{fibonnaci}{%
-\subsubsection{Fibonnaci}\label{fibonnaci}}
-
-One cannot have a benchmark suite without computing fibonacci, in this
-benchmark suite we are going to tweak the typical fibonacci
-implementation to insert an allocating function within our loop. Our
-mutation optimisation should get rid of this allocation and make use of
-mutation instead. Because of this we are going to look at three variants
-of the same program.
+Additionally, the Idris2 compiler itself was intended to be used as a
+benchmark by measuring the time it takes to compile itself. However, due
+to the nature of our optimisation we have found few areas of
+improvements with the predominantly non-linear style of the compiler.
 
 \hypertarget{traditional-fibonacci}{%
-\paragraph{Traditional Fibonacci}\label{traditional-fibonacci}}
+\subsubsection{Traditional Fibonacci}\label{traditional-fibonacci}}
 
-This version is the one you would expect from a traditional
-implementation in a functional programming language
+Our first benchmark is the traditional fibonacci exercise. This will
+serve as a baseline for our optimisation. We are then going to update
+this version to include a redundant allocation and attempt to eliminate
+it using our optimisation. This first version is the one you would
+expect from a traditional implementation in a functional programming
+language:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -3630,7 +3823,7 @@ heap-allocated. If our optimisation works perfectly, we expect to reach
 the same performance signature as this implementation.
 
 \hypertarget{allocating-fibonacci}{%
-\paragraph{Allocating Fibonacci}\label{allocating-fibonacci}}
+\subsubsection{Allocating Fibonacci}\label{allocating-fibonacci}}
 
 This version of Fibonacci does allocate a new value for each call of the
 \texttt{update} function. We expect this version to perform worse than
@@ -3658,9 +3851,9 @@ storage takes more time than mutating values.
 \end{Shaded}
 
 \hypertarget{mutating-fibonacci}{%
-\paragraph{Mutating Fibonacci}\label{mutating-fibonacci}}
+\subsubsection{Mutating Fibonacci}\label{mutating-fibonacci}}
 
-This version is almost the same as the previous one except our
+This third version is almost the same as the previous one except our
 \texttt{update} function should now avoid allocating any memory, while
 this adds a function call compared to the first version we do expect
 this version to have a similar performance profile as the first one
@@ -3689,44 +3882,128 @@ this version to have a similar performance profile as the first one
 \end{Highlighting}
 \end{Shaded}
 
-\hypertarget{real-world-benchmarks}{%
-\subsubsection{Real-world benchmarks}\label{real-world-benchmarks}}
+\hypertarget{mapping-lists}{%
+\subsubsection{Mapping lists}\label{mapping-lists}}
 
-For our real world benchmarks we are going to use whatever is available
-to us. Since the ecosystem is still small we only have a handful of
-programs to pick from. For this purpose I've elected the following
-programs:
+We know that we can remove the need for intermediate data-structures
+when mapping them using linear operations\cite{deforestation}, but can
+we reproduce this result here? This benchmark aims to simply map a list
+from \texttt{Int} to \texttt{Int}.
 
-\begin{itemize}
-\tightlist
-\item
-  The Idris2 compiler itself
-\item
-  A Sat solver \#\#\#\# The Idris2 compiler as benchmark
-\end{itemize}
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{mapList }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{List} \DataTypeTok{Int}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{List} \DataTypeTok{Int}
+\NormalTok{mapList [] }\OtherTok{=}\NormalTok{ []}
+\NormalTok{mapList (}\OtherTok{x ::}\NormalTok{ xs) }\OtherTok{=}\NormalTok{ x }\OperatorTok{+} \DecValTok{1}\OtherTok{ ::}\NormalTok{ mapList xs}
 
-The Idris2 compiler itself has the benefit of being a large scale
-program with many parts that aren't immediately obvious if they would
-benefit from memory optimisation or not. Having our update statement be
-detected and replaced automatically will allow us to understand if our
-optimisation can be performed often enough, where and if it results in
-tangible performance improvements.
+\NormalTok{main }\OperatorTok{:} \DataTypeTok{IO}\NormalTok{ ()}
+\NormalTok{main }\OtherTok{=}\NormalTok{ printLn (}\FunctionTok{length}\NormalTok{ (mapList [}\DecValTok{0} \OperatorTok{..} \DecValTok{9999}\NormalTok{]))}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{allocation-free-mapping}{%
+\subsubsection{Allocation free mapping}\label{allocation-free-mapping}}
+
+Similarly to the deforestation algorithm we are going to see if we can
+improve the performance of linear functions across data structures like
+lists. When mapping across a list with a function of type
+\texttt{a\ -\textgreater{}\ a} that only mutates the input we can avoid
+allocating an
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\OperatorTok{\%}\NormalTok{mutating}
+\NormalTok{mapList }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{List} \DataTypeTok{Int}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{List} \DataTypeTok{Int}
+\NormalTok{mapList [] }\OtherTok{=}\NormalTok{ []}
+\NormalTok{mapList (}\OtherTok{x ::}\NormalTok{ xs) }\OtherTok{=}\NormalTok{ x }\OperatorTok{+} \DecValTok{1}\OtherTok{ ::}\NormalTok{ mapList xs}
+
+\NormalTok{main }\OperatorTok{:} \DataTypeTok{IO}\NormalTok{ ()}
+\NormalTok{main }\OtherTok{=}\NormalTok{ printLn (}\FunctionTok{length}\NormalTok{ (mapList [}\DecValTok{0} \OperatorTok{..} \DecValTok{9999}\NormalTok{]))}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{countdown}{%
+\subsubsection{Countdown}\label{countdown}}
+
+Another typical synthetic benchmark is a countdown function.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{countdown }\OperatorTok{:} \DataTypeTok{Int} \OtherTok{{-}\textgreater{}} \DataTypeTok{Int}
+\NormalTok{countdown }\DecValTok{0} \OtherTok{=} \DecValTok{0}
+\NormalTok{countdown n }\OtherTok{=}\NormalTok{ countdown (n}\OperatorTok{{-}}\DecValTok{1}\NormalTok{)}
+
+\NormalTok{main }\OperatorTok{:} \DataTypeTok{IO}\NormalTok{ ()}
+\NormalTok{main }\OtherTok{=}\NormalTok{ printLn (countdown }\DecValTok{50000000}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{mutating-countdown}{%
+\subsubsection{Mutating countdown}\label{mutating-countdown}}
+
+This time we wrap our \texttt{Int} in a data type that should be
+optimised away by having its content be mutated rather than being
+allocated at every loop.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{data} \DataTypeTok{IntData} \OtherTok{=} \DataTypeTok{MkInt} \DataTypeTok{Int} \OperatorTok{|} \DataTypeTok{MkNat} \DataTypeTok{Nat}
+
+\DataTypeTok{Show} \DataTypeTok{IntData} \KeywordTok{where}
+  \FunctionTok{show}\NormalTok{ (}\DataTypeTok{MkInt}\NormalTok{ int) }\OtherTok{=} \FunctionTok{show}\NormalTok{ int}
+  \FunctionTok{show}\NormalTok{ (}\DataTypeTok{MkNat}\NormalTok{ nat) }\OtherTok{=} \FunctionTok{show}\NormalTok{ nat}
+
+\OperatorTok{\%}\NormalTok{mutating}
+\NormalTok{countdown }\OperatorTok{:}\NormalTok{ (}\DataTypeTok{IntData}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{IntData}
+\NormalTok{countdown (}\DataTypeTok{MkInt} \DecValTok{0}\NormalTok{) }\OtherTok{=} \DataTypeTok{MkInt} \DecValTok{0}
+\NormalTok{countdown (}\DataTypeTok{MkInt}\NormalTok{ n) }\OtherTok{=}\NormalTok{ countdown (}\DataTypeTok{MkInt}\NormalTok{ (n}\OperatorTok{{-}}\DecValTok{1}\NormalTok{))}
+\NormalTok{countdown (}\DataTypeTok{MkNat} \DataTypeTok{Z}\NormalTok{) }\OtherTok{=} \DataTypeTok{MkNat} \DataTypeTok{Z}
+\NormalTok{countdown (}\DataTypeTok{MkNat}\NormalTok{ (}\DataTypeTok{S}\NormalTok{ n)) }\OtherTok{=}\NormalTok{ countdown (}\DataTypeTok{MkNat}\NormalTok{ n)}
+
+\NormalTok{main }\OperatorTok{:} \DataTypeTok{IO}\NormalTok{ ()}
+\NormalTok{main }\OtherTok{=}\NormalTok{ printLn (countdown (}\DataTypeTok{MkInt} \DecValTok{50000000}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
 
 \hypertarget{a-simple-sat-solver-as-benchmark}{%
-\paragraph{A simple SAT solver as
+\subsubsection{A simple SAT solver as
 benchmark}\label{a-simple-sat-solver-as-benchmark}}
 
 Sat solvers themselves aren't necessarily considered ``real-world''
 programs in the same sense that compilers or servers are. However they
-have two benefits: - You can make them arbitrarily slow to make the
-performance improvement very obvious by increasing the size of the
-problem to solve. - They still represent a real-life case study where a
-program need to be fast and where traditional functional programming has
-fallen short compared to imperative programs, using memory unsafe
-operations. If we can implement a fast SAT solver in our functional
-programming language, then it is likely we can also implement fast
-versions of other programs that were traditionally reserved to
-imperative, memory unsafe programming languages.
+have two benefits:
+
+\begin{itemize}
+\tightlist
+\item
+  You can make them arbitrarily slow to make the performance improvement
+  very obvious by increasing the size of the problem to solve.
+\item
+  They still represent a real-life case study where a program need to be
+  fast and where traditional functional programming has fallen short
+  compared to imperative programs.
+\end{itemize}
+
+In this case we are interested in solving the core loop of the state
+monad that threads through the entire program:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{(}\OperatorTok{\textgreater{}\textgreater{}=}\NormalTok{) }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{LState}\NormalTok{ a) }\OtherTok{{-}\textgreater{}}\NormalTok{ (}\DecValTok{1}\NormalTok{ f }\OperatorTok{:}\NormalTok{ ((\_ }\OperatorTok{:}\NormalTok{ a) }\OtherTok{{-}\textgreater{}} \DataTypeTok{LState}\NormalTok{ b))}
+     \OtherTok{{-}\textgreater{}} \DataTypeTok{LState}\NormalTok{ b}
+\NormalTok{(}\OperatorTok{\textgreater{}\textgreater{}=}\NormalTok{) (}\DataTypeTok{MkLState}\NormalTok{ f) c }\OtherTok{=} \DataTypeTok{MkLState} 
+\NormalTok{    (\textbackslash{}x }\OtherTok{=\textgreater{}} \KeywordTok{let}\NormalTok{ (res }\OperatorTok{\#}\NormalTok{ s\textquotesingle{}) }\OtherTok{=}\NormalTok{ f x }\KeywordTok{in}
+           \KeywordTok{let}\NormalTok{ (}\DataTypeTok{MkLState}\NormalTok{ r2) }\OtherTok{=}\NormalTok{ c res }\KeywordTok{in} 
+\NormalTok{           r2 s\textquotesingle{})}
+\end{Highlighting}
+\end{Shaded}
+
+Our optimisation is subsumed by the ``newtype-optimisation'' which
+erases any boxing around types with a single constructor. We can however
+safely inline this function since
+\texttt{(\textgreater{}\textgreater{}=)} will only be composed with
+itself, since it takes linear arguments the inlining when composed is
+safe.
 
 \hypertarget{measurements}{%
 \subsection{Measurements}\label{measurements}}
@@ -3771,9 +4048,9 @@ Idris-bench takes the following arguments:
     the results on the standard output.
   \end{itemize}
 \item
-  \texttt{-c\ count} The number of times each file has to be
-  benchmarked. This is to get multiple results and avoid lucky/unluck
-  variations.
+  \texttt{-c\ \textbar{}\ -\/-count} The number of times each file has
+  to be benchmarked. This is to get multiple results and avoid
+  lucky/unluck variations.
 \item
   \texttt{-\/-node} If the node backend should be used instead. If this
   flag is absent, the Chez backend will be used instead
@@ -3813,9 +4090,16 @@ the square difference with the mean divided by the number of samples.
 \hypertarget{expected-results}{%
 \subsubsection{Expected results}\label{expected-results}}
 
-Our expectation is that our programs will run fasters for 2 reasons: -
-Allocation is slower than mutation - Mutation avoids short lived
-variables that need to be garbage collected
+Our expectation is that our programs will run fasters for 2 reasons:
+
+\begin{itemize}
+\tightlist
+\item
+  Allocation is slower than mutation
+\item
+  Mutation avoids short lived variables that need to be garbage
+  collected
+\end{itemize}
 
 Indeed allocation will always be slower than simply updating parts of
 the memory. Memory allocation requires finding a new memory spot that is
@@ -3859,14 +4143,11 @@ etc). Because of this I've disabled turbo boost on this machine and run
 all benchmarks at a steady 1.4Ghz.
 
 \hypertarget{results}{%
-\subsubsection{Results}\label{results}}
+\subsection{Results}\label{results}}
 
 In this section I will present the results obtained from the compiler
-optimisation. The metodology and the nature of the benchmarks is
+optimisation. The methodology and the nature of the benchmarks is
 explained in the ``Benchmarks \& methodology'' section.
-
-\hypertarget{results1-fibonacci}{%
-\subsubsection{Results1: Fibonacci}\label{results1-fibonacci}}
 
 Out first test suite runs the benchmark on our 3 fibonacci variants. As
 a refresher they are as follow: - The first one is implemented
@@ -3875,6 +4156,10 @@ fibonacci numbers and computing the next one - Second one boxes those
 Ints into a datatype that will be allocated every time it is changed -
 The Third one will make use of our optimisation and mutate the boxes
 values instead of discarding the old one and allocating a new one.
+
+The last one is an example of mapping across a list, a very common
+operation in functional programming languages. Our last one is an
+example of inlining in a program making use of a linear state monad.
 
 The hypothesis is as follows: Chez is a very smart and efficient
 runtime, and our example is small and simple. Because of this, we expect
@@ -3885,20 +4170,36 @@ runtime of the program. This should translate in our statistical model
 as a greater variance in the results rather than a strictly smaller
 mean.
 
-\hypertarget{the-results}{%
-\paragraph{The results}\label{the-results}}
+\hypertarget{results-1-fibonacci}{%
+\subsubsection{Results 1: Fibonacci}\label{results-1-fibonacci}}
 
 Here are there results of running our benchmarks 100 times in a row:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTestNoMutation}\OperatorTok{.}\NormalTok{idr,}\FloatTok{5.76e{-}4}\NormalTok{,}\FloatTok{0.00119}\NormalTok{,}\FloatTok{6.733999999999996e{-}4}\NormalTok{,}\FloatTok{1.0818499999999999e{-}8}
-\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTest}\OperatorTok{.}\NormalTok{idr,}\FloatTok{5.84e{-}4}\NormalTok{,}\FloatTok{8.41e{-}4}\NormalTok{,}\FloatTok{6.449e{-}4}\NormalTok{,}\FloatTok{2.3797899999999993e{-}9}
-\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTailRec}\OperatorTok{.}\NormalTok{idr,}\FloatTok{5.88e{-}4}\NormalTok{,}\FloatTok{8.53e{-}4}\NormalTok{,}\FloatTok{6.499100000000001e{-}4}\NormalTok{,}\FloatTok{2.692301899999999e{-}9}
+\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTestNoMutation}\OperatorTok{.}\NormalTok{idr,}
+\FloatTok{5.76e{-}4}\NormalTok{,}\FloatTok{0.00119}\NormalTok{,}
+\FloatTok{6.733999999999996e{-}4}\NormalTok{,}
+\FloatTok{1.0818499999999999e{-}8}
 
-\NormalTok{[}\DecValTok{3}\NormalTok{, }\DecValTok{18}\NormalTok{, }\DecValTok{18}\NormalTok{, }\DecValTok{32}\NormalTok{, }\DecValTok{12}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{1}\NormalTok{]}
-\NormalTok{[}\DecValTok{7}\NormalTok{, }\DecValTok{22}\NormalTok{, }\DecValTok{26}\NormalTok{, }\DecValTok{27}\NormalTok{, }\DecValTok{6}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{]}
-\NormalTok{[}\DecValTok{7}\NormalTok{, }\DecValTok{20}\NormalTok{, }\DecValTok{20}\NormalTok{, }\DecValTok{28}\NormalTok{, }\DecValTok{9}\NormalTok{, }\DecValTok{5}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{]}
+\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTest}\OperatorTok{.}\NormalTok{idr,}
+\FloatTok{5.84e{-}4}\NormalTok{,}
+\FloatTok{8.41e{-}4}\NormalTok{,}
+\FloatTok{6.449e{-}4}\NormalTok{,}
+\FloatTok{2.3797899999999993e{-}9}
+
+\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTailRec}\OperatorTok{.}\NormalTok{idr,}
+\FloatTok{5.88e{-}4}\NormalTok{,}
+\FloatTok{8.53e{-}4}\NormalTok{,}
+\FloatTok{6.499100000000001e{-}4}\NormalTok{,}
+\FloatTok{2.692301899999999e{-}9}
+
+\NormalTok{[}\DecValTok{3}\NormalTok{, }\DecValTok{18}\NormalTok{, }\DecValTok{18}\NormalTok{, }\DecValTok{32}\NormalTok{, }\DecValTok{12}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{2}\NormalTok{, }
+\DecValTok{1}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{1}\NormalTok{]}
+\NormalTok{[}\DecValTok{7}\NormalTok{, }\DecValTok{22}\NormalTok{, }\DecValTok{26}\NormalTok{, }\DecValTok{27}\NormalTok{, }\DecValTok{6}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }
+\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{]}
+\NormalTok{[}\DecValTok{7}\NormalTok{, }\DecValTok{20}\NormalTok{, }\DecValTok{20}\NormalTok{, }\DecValTok{28}\NormalTok{, }\DecValTok{9}\NormalTok{, }\DecValTok{5}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{,}
+ \DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{]}
 \end{Highlighting}
 \end{Shaded}
 
@@ -3930,7 +4231,7 @@ The results are in the following format:
 \end{Highlighting}
 \end{Shaded}
 
-The three arrays at the end correspond to an aggergation of the data in
+The three arrays at the end correspond to an aggregation of the data in
 ``buckets''. Our statistical tool makes 30 ``buckets'' which represent
 the different time slots that each benchmark result falls into. The
 first bucket is the minimum time measured across all benchmarks and the
@@ -3945,13 +4246,28 @@ instead of 100.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTestNoMutation}\OperatorTok{.}\NormalTok{idr,}\FloatTok{5.08e{-}4}\NormalTok{,}\FloatTok{0.001795}\NormalTok{,}\FloatTok{6.561829999999996e{-}4}\NormalTok{,}\FloatTok{1.4789385511000005e{-}8}
-\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTest}\OperatorTok{.}\NormalTok{idr,}\FloatTok{5.08e{-}4}\NormalTok{,}\FloatTok{0.001753}\NormalTok{,}\FloatTok{5.882930000000001e{-}4}\NormalTok{,}\FloatTok{1.5392219150999998e{-}8}
-\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTailRec}\OperatorTok{.}\NormalTok{idr,}\FloatTok{4.89e{-}4}\NormalTok{,}\FloatTok{0.001974}\NormalTok{,}\FloatTok{6.241300000000006e{-}4}\NormalTok{,}\FloatTok{3.8718697099999886e{-}8}
+\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTestNoMutation}\OperatorTok{.}\NormalTok{idr,}
+\FloatTok{5.08e{-}4}\NormalTok{,}\FloatTok{0.001795}\NormalTok{,}
+\FloatTok{6.561829999999996e{-}4}\NormalTok{,}
+\FloatTok{1.4789385511000005e{-}8}
 
-\NormalTok{[}\DecValTok{53}\NormalTok{, }\DecValTok{126}\NormalTok{, }\DecValTok{460}\NormalTok{, }\DecValTok{192}\NormalTok{, }\DecValTok{47}\NormalTok{, }\DecValTok{23}\NormalTok{, }\DecValTok{31}\NormalTok{, }\DecValTok{32}\NormalTok{, }\DecValTok{11}\NormalTok{, }\DecValTok{5}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{5}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{]}
-\NormalTok{[}\DecValTok{261}\NormalTok{, }\DecValTok{546}\NormalTok{, }\DecValTok{76}\NormalTok{, }\DecValTok{32}\NormalTok{, }\DecValTok{18}\NormalTok{, }\DecValTok{12}\NormalTok{, }\DecValTok{13}\NormalTok{, }\DecValTok{7}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{5}\NormalTok{, }\DecValTok{10}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{5}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{]}
-\NormalTok{[}\DecValTok{217}\NormalTok{, }\DecValTok{527}\NormalTok{, }\DecValTok{80}\NormalTok{, }\DecValTok{44}\NormalTok{, }\DecValTok{23}\NormalTok{, }\DecValTok{14}\NormalTok{, }\DecValTok{12}\NormalTok{, }\DecValTok{11}\NormalTok{, }\DecValTok{7}\NormalTok{, }\DecValTok{6}\NormalTok{, }\DecValTok{10}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{6}\NormalTok{, }\DecValTok{11}\NormalTok{, }\DecValTok{5}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{]}
+\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTest}\OperatorTok{.}\NormalTok{idr,}
+\FloatTok{5.08e{-}4}\NormalTok{,}
+\FloatTok{0.001753}\NormalTok{,}
+\FloatTok{5.882930000000001e{-}4}\NormalTok{,}
+\FloatTok{1.5392219150999998e{-}8}
+
+\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTailRec}\OperatorTok{.}\NormalTok{idr,}
+\FloatTok{4.89e{-}4}\NormalTok{,}\FloatTok{0.001974}\NormalTok{,}
+\FloatTok{6.241300000000006e{-}4}\NormalTok{,}
+\FloatTok{3.8718697099999886e{-}8}
+
+\NormalTok{[}\DecValTok{53}\NormalTok{, }\DecValTok{126}\NormalTok{, }\DecValTok{460}\NormalTok{, }\DecValTok{192}\NormalTok{, }\DecValTok{47}\NormalTok{, }\DecValTok{23}\NormalTok{, }\DecValTok{31}\NormalTok{, }\DecValTok{32}\NormalTok{, }\DecValTok{11}\NormalTok{, }\DecValTok{5}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{5}\NormalTok{, }
+\DecValTok{0}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{]}
+\NormalTok{[}\DecValTok{261}\NormalTok{, }\DecValTok{546}\NormalTok{, }\DecValTok{76}\NormalTok{, }\DecValTok{32}\NormalTok{, }\DecValTok{18}\NormalTok{, }\DecValTok{12}\NormalTok{, }\DecValTok{13}\NormalTok{, }\DecValTok{7}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{5}\NormalTok{, }\DecValTok{10}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{5}\NormalTok{, }\DecValTok{0}\NormalTok{, }
+\DecValTok{1}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{]}
+\NormalTok{[}\DecValTok{217}\NormalTok{, }\DecValTok{527}\NormalTok{, }\DecValTok{80}\NormalTok{, }\DecValTok{44}\NormalTok{, }\DecValTok{23}\NormalTok{, }\DecValTok{14}\NormalTok{, }\DecValTok{12}\NormalTok{, }\DecValTok{11}\NormalTok{, }\DecValTok{7}\NormalTok{, }\DecValTok{6}\NormalTok{, }\DecValTok{10}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{6}\NormalTok{, }\DecValTok{11}\NormalTok{, }\DecValTok{5}\NormalTok{,}
+\DecValTok{4}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{]}
 \end{Highlighting}
 \end{Shaded}
 
@@ -3984,11 +4300,9 @@ bytecode to wrap our main function inside a time-measuring function.
 Since the timer won't start until the program is ready to run the
 startup time will be eliminated. Running our empty program we get
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\FloatTok{0.000000000}\NormalTok{s elapsed cpu time}
-\end{Highlighting}
-\end{Shaded}
+\begin{verbatim}
+> 0.000000000s elapsed cpu time
+\end{verbatim}
 
 Which is what we expect.
 
@@ -3997,17 +4311,32 @@ as before. We expect to see the same results but the difference should
 give us a greater interval of confidence. Running our statistical
 analysis gives us those results
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTestNoMutation}\OperatorTok{.}\NormalTok{idr,}\FloatTok{1.696760896}\NormalTok{,}\FloatTok{1.977075901}\NormalTok{,}\FloatTok{1.7447377120060026}\NormalTok{,}\FloatTok{9.18303221644259e{-}4}
-\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTest}\OperatorTok{.}\NormalTok{idr,}\FloatTok{1.734708117}\NormalTok{,}\FloatTok{2.152951106}\NormalTok{,}\FloatTok{1.786299514231}\NormalTok{,}\FloatTok{0.002247060292357963}
-\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTailRec}\OperatorTok{.}\NormalTok{idr,}\FloatTok{1.65627213}\NormalTok{,}\FloatTok{1.881412963}\NormalTok{,}\FloatTok{1.6768551703740004}\NormalTok{,}\FloatTok{9.142437018832634e{-}4}
+\begin{verbatim}
+../Idris2_fib_benchmark/fibTestNoMutation.idr,
+1.696760896,
+1.977075901,
+1.7447377120060026,
+9.18303221644259e-4
 
-\NormalTok{[}\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{136}\NormalTok{, }\DecValTok{113}\NormalTok{, }\DecValTok{17}\NormalTok{, }\DecValTok{620}\NormalTok{, }\DecValTok{62}\NormalTok{, }\DecValTok{22}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{6}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{]}
-\NormalTok{[}\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{164}\NormalTok{, }\DecValTok{217}\NormalTok{, }\DecValTok{36}\NormalTok{, }\DecValTok{160}\NormalTok{, }\DecValTok{264}\NormalTok{, }\DecValTok{47}\NormalTok{, }\DecValTok{36}\NormalTok{, }\DecValTok{18}\NormalTok{, }\DecValTok{19}\NormalTok{, }\DecValTok{7}\NormalTok{, }\DecValTok{5}\NormalTok{, }\DecValTok{5}\NormalTok{, }\DecValTok{7}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{]}
-\NormalTok{[}\DecValTok{647}\NormalTok{, }\DecValTok{221}\NormalTok{, }\DecValTok{19}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{52}\NormalTok{, }\DecValTok{33}\NormalTok{, }\DecValTok{8}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{5}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{]}
-\end{Highlighting}
-\end{Shaded}
+../Idris2_fib_benchmark/fibTest.idr,
+1.734708117,
+2.152951106,
+1.786299514231,
+0.002247060292357963
+
+../Idris2_fib_benchmark/fibTailRec.idr,
+1.65627213,
+1.881412963,
+1.6768551703740004,
+9.142437018832634e-4
+
+[0, 0, 136, 113, 17, 620, 62, 22, 4, 6, 4, 3, 2, 3, 4, 
+0, 1, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+[0, 0, 0, 0, 164, 217, 36, 160, 264, 47, 36, 18, 19, 7, 5, 
+5, 7, 3, 2, 3, 2, 2, 1, 0, 0, 0, 1, 0, 0, 1]
+[647, 221, 19, 4, 52, 33, 8, 2, 5, 2, 0, 4, 2, 1, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+\end{verbatim}
 
 \includegraphics{Screenshot 2020-08-25 at 17.59.34.png} As you can see
 the results aren't exactly as expected, both our \emph{average} and our
@@ -4016,8 +4345,8 @@ we definitely did not anticipate and goes against the belief that
 founded our hypothesis.
 
 One possible explanation is that scheme performs JIT compilation and
-correctly identifies the hot-loop in our unoptimized example but is
-unable to perform such optimization with our mix of pure and mutating
+correctly identifies the hot-loop in our unoptimised example but is
+unable to perform such optimisation with our mix of pure and mutating
 code.
 
 \hypertarget{results-3-fibonacci-without-startup-time-small-loop}{%
@@ -4035,17 +4364,30 @@ simply change the loop count from \texttt{8*10\^{}6} to
 \texttt{8*10\^{}4} reducing it by two orders of magnitude reduces the
 running time accordingly.
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTestNoMutation}\OperatorTok{.}\NormalTok{idr,}\FloatTok{0.007216185}\NormalTok{,}\FloatTok{0.008861124}\NormalTok{,}\FloatTok{0.007520532116999987}\NormalTok{,}\FloatTok{3.5827851856347296e{-}8}
-\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTest}\OperatorTok{.}\NormalTok{idr,}\FloatTok{0.006543267}\NormalTok{,}\FloatTok{0.010942671}\NormalTok{,}\FloatTok{0.006867369243000004}\NormalTok{,}\FloatTok{5.3106313711037986e{-}8}
-\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTailRec}\OperatorTok{.}\NormalTok{idr,}\FloatTok{0.006385357}\NormalTok{,}\FloatTok{0.007625528}\NormalTok{,}\FloatTok{0.006624731209000001}\NormalTok{,}\FloatTok{2.4002041892751334e{-}8}
+\begin{verbatim}
+../Idris2_fib_benchmark/fibTestNoMutation.idr,
+0.007216185,0.008861124,
+0.007520532116999987,
+3.5827851856347296e-8
 
-\NormalTok{[}\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{72}\NormalTok{, }\DecValTok{411}\NormalTok{, }\DecValTok{361}\NormalTok{, }\DecValTok{106}\NormalTok{, }\DecValTok{17}\NormalTok{, }\DecValTok{12}\NormalTok{, }\DecValTok{8}\NormalTok{, }\DecValTok{6}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{]}
-\NormalTok{[}\DecValTok{0}\NormalTok{, }\DecValTok{95}\NormalTok{, }\DecValTok{493}\NormalTok{, }\DecValTok{288}\NormalTok{, }\DecValTok{83}\NormalTok{, }\DecValTok{13}\NormalTok{, }\DecValTok{9}\NormalTok{, }\DecValTok{10}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{]}
-\NormalTok{[}\DecValTok{303}\NormalTok{, }\DecValTok{470}\NormalTok{, }\DecValTok{161}\NormalTok{, }\DecValTok{41}\NormalTok{, }\DecValTok{13}\NormalTok{, }\DecValTok{7}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{]}
-\end{Highlighting}
-\end{Shaded}
+../Idris2_fib_benchmark/fibTest.idr,0.006543267,
+0.010942671,
+0.006867369243000004,
+5.3106313711037986e-8
+
+../Idris2_fib_benchmark/fibTailRec.idr,
+0.006385357,
+0.007625528,
+0.006624731209000001,
+2.4002041892751334e-8
+
+[0, 0, 0, 0, 0, 72, 411, 361, 106, 17, 12, 8, 6, 2, 3, 2, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+[0, 95, 493, 288, 83, 13, 9, 10, 3, 0, 3, 1, 0, 0, 0, 0, 
+0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+[303, 470, 161, 41, 13, 7, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+\end{verbatim}
 
 \includegraphics{Screenshot 2020-08-25 at 17.59.21.png} And indeed this
 data does not disprove our JIT hypothesis (but it does not confirm it
@@ -4067,80 +4409,58 @@ free of recursion. Because of this, our benchmark exceeds the maximum
 stack size and the program aborts. When the stack size is increased the
 program segfaults.
 
-\hypertarget{safe-inlining}{%
-\subsection{Safe inlining}\label{safe-inlining}}
+\hypertarget{results-4-mapping}{%
+\subsubsection{Results 4: mapping}\label{results-4-mapping}}
 
-As we've seen in the context review, one of the use-cases for linear
-types is to detect where control flow allows for safe inlining of
-functions. In the following snippet, \texttt{y} cannot be inlined
-without duplicating computation.
+In this exercise we are going to aggregate the result of our control and
+our experimental run of \texttt{map}; which increments a list of number
+and returns its size. We ran each program a 100 times using
+\texttt{idris-bench}. As before we expect a negligible average speedup
+but a significant decrease in variance.
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\KeywordTok{let}\NormalTok{ x }\OtherTok{=} \DecValTok{1} \OperatorTok{+} \DecValTok{2}
-\NormalTok{    y }\OtherTok{=}\NormalTok{ x }\OperatorTok{+} \DecValTok{3} \KeywordTok{in}
-\NormalTok{    y }\OperatorTok{+}\NormalTok{ y}
-\end{Highlighting}
-\end{Shaded}
+\begin{verbatim}
+../map_test/map.idr,
+8.73337e-4,
+0.005067636,
+0.0011461037300000004,
+2.211481014400371e-7
+../map_test_mutate/mapMutation.idr,
+5.23816e-4,
+0.001308711,
+6.850426700000001e-4,
+1.9851180862141108e-8
 
-Indeed inlining it would result in
+[0, 0, 47, 29, 6, 4, 4, 6, 2, 1, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+[63, 26, 5, 5, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+\end{verbatim}
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\KeywordTok{let}\NormalTok{ x }\OtherTok{=} \DecValTok{1} \OperatorTok{+} \DecValTok{2}
-\NormalTok{    x }\OperatorTok{+} \DecValTok{3} \OperatorTok{+}\NormalTok{ x }\OperatorTok{+} \DecValTok{3}
-\end{Highlighting}
-\end{Shaded}
+This time our performance improvements are more noticeable in average
+than before. Tough it might be because the benchmark is measured in tens
+of microseconds.
 
-where the \texttt{+\ 3} operation is performed twice. \texttt{x} however
-can be inlined safely:
+\hypertarget{sat-solver}{%
+\subsection{Sat solver}\label{sat-solver}}
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\KeywordTok{let}\NormalTok{ y }\OtherTok{=} \DecValTok{1} \OperatorTok{+} \DecValTok{2} \OperatorTok{+} \DecValTok{3} \KeywordTok{in}
-\NormalTok{    y }\OperatorTok{+}\NormalTok{ y}
-\end{Highlighting}
-\end{Shaded}
+For this benchmark we didn't use \texttt{idris-bench} rather we compiled
+two versions of \texttt{isat}, one with the inlining optimisation, and
+one without. And ran each version 10 times on the same input (in
+appendix) :
 
-the \texttt{1\ +\ 2} operation is performed only once after inlining.
+\begin{verbatim}
+sat      | average            | variance
+---------+--------------------+-----------------
+normal   | 384008.545454545   | 337134927.872727
+mutating | 371382.454545455   | 264041625.672727
+\end{verbatim}
 
-One area where linearity and inlining comes into play is when defining
-effects. Indeed, a linear state monad could have the following
-\texttt{bind} signature:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{(}\OperatorTok{\textgreater{}\textgreater{}=}\NormalTok{) }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{LState}\NormalTok{ s a) }\OtherTok{{-}\textgreater{}}\NormalTok{ (}\DecValTok{1}\NormalTok{ f }\OperatorTok{:}\NormalTok{ a }\OtherTok{{-}\textgreater{}} \DataTypeTok{LState}\NormalTok{ s b) }\OtherTok{{-}\textgreater{}} \DataTypeTok{LState}\NormalTok{ s b}
-\NormalTok{(}\OperatorTok{\textgreater{}\textgreater{}=}\NormalTok{) (}\DataTypeTok{LState}\NormalTok{ s) c }\OtherTok{=} \DataTypeTok{LState}\NormalTok{ (\textbackslash{}x }\OtherTok{=\textgreater{}}\NormalTok{ …)}
-\end{Highlighting}
-\end{Shaded}
-
-Which indicates that the state is inspected linearity and the function
-is applied exactly once. Since programs using \texttt{bind} compose with
-themselves we often see the following sequence of operations:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{inital }\OperatorTok{\textgreater{}\textgreater{}=}\NormalTok{ f }\OperatorTok{\textgreater{}\textgreater{}=}\NormalTok{ g}
-\end{Highlighting}
-\end{Shaded}
-
-which once inlined results in
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\DataTypeTok{LState}\NormalTok{ (\textbackslash{}x }\OtherTok{=\textgreater{}} \KeywordTok{let}\NormalTok{ v }\OtherTok{=}\NormalTok{ initial }\OperatorTok{\textgreater{}\textgreater{}=}\NormalTok{ f)}
-\NormalTok{                  g v)}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\DataTypeTok{LState}\NormalTok{ (\textbackslash{}x }\OtherTok{=\textgreater{}} \KeywordTok{let}\NormalTok{ v }\OtherTok{=}\NormalTok{ x (}\DataTypeTok{LState}\NormalTok{ (\textbackslash{}y }\OtherTok{=\textgreater{}} \KeywordTok{let}\NormalTok{ w }\OtherTok{=}\NormalTok{ y initial }
-\NormalTok{                                           f w))}
-\NormalTok{                  g v)}
-\end{Highlighting}
-\end{Shaded}
+The results show an improvement of about 3.3\% in average which is
+encouraging but not enough to warrant further inspection. Despite this
+small improvement, we could take things further and implement \emph{safe
+inlining by default} on every variable that is linearly bound, since it
+does not hurt performance. And hope that the inlined function will be
+subject to further optimisations after being inlined.
 
 \newpage
 
@@ -4526,7 +4846,122 @@ of a stick figure, this time from the front.
 \hypertarget{termexpressionvalue}{%
 \subsection{Term/Expression/Value}\label{termexpressionvalue}}
 
-\bibliography{zotero} 
+\bibliography{bibliography} 
 \bibliographystyle{ieeetr}
+
+\hypertarget{appendix}{%
+\section{Appendix}\label{appendix}}
+
+\hypertarget{sat-solver-benchmark-input}{%
+\subsection{Sat solver benchmark
+input}\label{sat-solver-benchmark-input}}
+
+\begin{verbatim}
+c FILE: aim-50-1_6-yes1-4.cnf
+c
+c SOURCE: Kazuo Iwama, Eiji Miyano (miyano@cscu.kyushu-u.ac.jp),
+c          and Yuichi Asahiro
+c
+c DESCRIPTION: Artifical instances from generator by source.  Generators
+c              and more information in sat/contributed/iwama.
+c
+c NOTE: Satisfiable
+c
+p cnf 50 80
+16 17 30 0
+-17 22 30 0
+-17 -22 30 0
+16 -30 47 0
+16 -30 -47 0
+-16 -21 31 0
+-16 -21 -31 0
+-16 21 -28 0
+-13 21 28 0
+13 -16 18 0
+13 -18 -38 0
+13 -18 -31 0
+31 38 44 0
+-8 31 -44 0
+8 -12 -44 0
+8 12 -27 0
+12 27 40 0
+-4 27 -40 0
+12 23 -40 0
+-3 4 -23 0
+3 -23 -49 0
+3 -13 -49 0
+-23 -26 49 0
+12 -34 49 0
+-12 26 -34 0
+19 34 36 0
+-19 26 36 0
+-30 34 -36 0
+24 34 -36 0
+-24 -36 43 0
+6 42 -43 0
+-24 42 -43 0
+-5 -24 -42 0
+5 20 -42 0
+5 -7 -20 0
+4 7 10 0
+-4 10 -20 0
+7 -10 -41 0
+-10 41 46 0
+-33 41 -46 0
+33 -37 -46 0
+32 33 37 0
+6 -32 37 0
+-6 25 -32 0
+-6 -25 -48 0
+-9 28 48 0
+-9 -25 -28 0
+19 -25 48 0
+2 9 -19 0
+-2 -19 35 0
+-2 22 -35 0
+-22 -35 50 0
+-17 -35 -50 0
+-29 -35 -50 0
+-1 29 -50 0
+1 11 29 0
+-11 17 -45 0
+-11 39 45 0
+-26 39 45 0
+-3 -26 45 0
+-11 15 -39 0
+14 -15 -39 0
+14 -15 -45 0
+14 -15 -27 0
+-14 -15 47 0
+17 17 40 0
+1 -29 -31 0
+-7 32 38 0
+-14 -33 -47 0
+-1 2 -8 0
+35 43 44 0
+21 21 24 0
+20 29 -48 0
+23 35 -37 0
+2 18 -33 0
+15 25 -45 0
+9 14 -38 0
+-5 11 50 0
+-3 -13 46 0
+-13 -41 43 0
+\end{verbatim}
+
+\hypertarget{sat-solver-benchmark-output}{%
+\subsection{Sat solver benchmark
+output}\label{sat-solver-benchmark-output}}
+
+\begin{verbatim}
+,,,,,,,,,,,,average,variance,,,,,,,,,
+normal,5m 51s 878ms,5m 52s 27ms,6m 29s 173ms,6m 35s 147ms,6m 34s 151ms,6m 35s 888ms,6m 36s 815ms,6m 35s 960ms,6m 33s 967ms,6m 34s 964ms,6m 4s 124ms,6m 24s 9ms,,,,,,,,,,
+mutat,6m 27s 894ms,6m 21s 214ms,6m 10s 131ms,6m 27s 206ms,6m 4s 71ms,6m 25s 495ms,6m 27s 899ms,6m 13s 771ms,5m 51s 541ms,5m 47s 685ms,5m 48s 300ms,6m 11s 382ms,,,,,,,,,,
+normal milisec,351878,352027,389173,395147,394151,395888,396815,395960,393967,394964,364124,384008.545454545,337134927.872727,,,,,,,,,
+mutating milisec,387894,381214,370131,387206,364071,385495,387899,373771,351541,347685,348300,371382.454545455,264041625.672727,,,,,,,,,
+normal milisec * 10^5,3.51878,3.52027,3.89173,3.95147,3.94151,3.95888,3.96815,3.9596,3.93967,3.94964,3.64124,3.84008545454545,0.0337134927872727,,,,,,,,,
+mutating milisec * 10⁵,3.87894,3.81214,3.70131,3.87206,3.64071,3.85495,3.87899,3.73771,3.51541,3.47685,3.483,3.71382454545455,0.0264041625672727,,,,,,,,,
+\end{verbatim}
 
 \end{document}

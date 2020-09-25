@@ -141,24 +141,27 @@ In this project I will demonstrate different uses and results stemming
 from a programming practice that allows us to specify how many times
 each variable is being used. This information is part of the type
 system, in our case we are tracking if a variable is allowed to be used
-exactly once, or if it has no restrictions. Such types are called
-``linear types''.
+exactly once, or if it has no restrictions. Such types system is called
+a ``linear type system''.
 
 As we will see there is a lot more to this story, so as part of this
-thesis, I will spend some time introducing dependent types and linear
-types. After that we will see some examples of (new and old) uses for
-linear types in Idris2. This focus on practical examples will be
-followed by a context review of the existing body of theoretical work
-around linear types. Once both the theoretical and practical landscape
-have been set I will delve into the main two topics of this thesis, the
-ergonomics of Quantitative Type Theory\cite{qtt}\cite{nuttin} (QTT, for
-short) for software development and the performance improvement we can
-derive from the linearity features of Idris2.
+thesis, I will spend some time introducing dependent types as well as
+our host language: Idris. This warm up will be followed by a context
+review outlining the existing body of work abour to linear types and
+related topics. Once both the theoretical and technical landscape have
+been set I will introduce the concept of linear and quantitative type in
+order to. Which is the final piece to nderstand the two main topics of
+this thesis, the ergonomics of Quantitative Type
+Theory\cite{qtt}\cite{nuttin} (QTT, for short) for software development
+and the performance improvement we can derive from the linearity
+features of Idris2.
 
-The ergonomics chapter will focus on how the current implementation of
-Idris can be extended, and the steps already taken toward those
-extensions. The performance chapter will analyse one aspect of
-performance that can be optimised thanks to clever use of linearity.
+Those two chapters reflect the main goal of this thesis which is to
+explore the uses of quantitative types in a dependently-types setting,
+for real-world programs. This exploration aims to explain their
+limitations and propose ways of getting around them. Some of those ideas
+have been implemented in the Idris2 compiler and we discuss their
+details and consequences.
 
 Let us begin slowly and introduce the basic concepts. The following will
 only make assumptions about basic understanding of imperative and
@@ -759,7 +762,7 @@ Soon after the development of linear types, they appeared in a paper
 aimed at optimising away redundant allocations when manipulating lists:
 The deforestation algorithm.
 
-Deforestation\cite{deforestations} is an algorithm designed to avoid
+Deforestation\cite{deforestation} is an algorithm designed to avoid
 extraneous allocation when performing list operations in a programming
 language close to System-F. The assumption that operations on lists must
 be linear was made to avoid duplicating operations. If a program was
@@ -790,7 +793,7 @@ Where inlining into \texttt{(f\ x,\ f\ x)} duplicates the work done by
 
 Beside inlining and mutation, another way to use linear types for
 performance is memory space mutation. \emph{Linear types can change the
-world}\cite{linear_update} show that Linear types can be used for
+world}\cite{linear_types_update} show that Linear types can be used for
 in-place update and mutation instead of relying on copying. They provide
 a safe API to update values by relying on the linearity of the argument
 being used.
@@ -798,7 +801,7 @@ being used.
 However the weakness of this result is that the API exposed to the
 programmer relies on nested continuations when traversing nested data
 types. Which is largely seen as undesirable user experience. \emph{Is
-there a use for linear logic}\cite{linear-use} makes similar claims and
+there a use for linear logic}\cite{linear_use} makes similar claims and
 introduces a concept of types with a \emph{unique} pointer to them. This
 restriction for unique pointers is something we are going to encounter
 again during this thesis.
@@ -812,8 +815,8 @@ memory allocation and deallocation using linear types. While the
 calculus itself isn't very ergonomic to use for programming, one could
 imagine using it as a backend for a reference counted runtime.
 
-\emph{Practical affine types}\cite{practical_affine} aims to answer
-``What does it mean to have access to linear and affine types \emph{in
+\emph{Practical affine types}\cite{affine_types} aims to answer ``What
+does it mean to have access to linear and affine types \emph{in
 practice}''? Indeed, most the results we've talked about develop a
 theory for linear types using a variant of linear logic, and then
 present a toy language to showcase their contribution. However this does
@@ -2009,7 +2012,7 @@ not seen wide spread use in commercial applications. The Idris2 compiler
 itself stands as the most popular example of a complex program that
 showcases uses for QTT and quantitative types. Linear types already
 benefit from a body of work that showcase their uses
-\cite{linear_diff}\cite{linear_types_update}\cite{linear_types_session}\cite{linear_types_subst}\cite{actor_channels}\cite{linear_race}\cite{linear_use}\cite{once_upon_a_type}\cite{deforestations},
+\cite{linear_diff}\cite{linear_types_update}\cite{linear_types_session}\cite{linear_types_subst}\cite{actor_channels}\cite{linear_race}\cite{linear_use}\cite{once_upon_a_type}\cite{deforestation},
 but one of the goals of this thesis was to list and discover some new
 and innovative uses for linear types and QTT.
 
@@ -2140,11 +2143,13 @@ performance characteristics.
 \hypertarget{permutations}{%
 \subsection{Permutations}\label{permutations}}
 
-During my time on this Master program I was also working for a
-commercial company using Idris for their business: Statebox.
+The following example is certainly my favourite since it combines both
+dependent types and linear types in a way that wasn't possible before.
+It has been done in the context of my work for the company Statebox
+strongly relies on dependent types to write formally verified software.
 
-One of their project is a validator for petri-nets\cite{petri-nets} and
-petri-net executions:
+One of Statebox's project is a validator for petri-nets\cite{petri-nets}
+and petri-net executions:
 \href{https://github.com/statebox/fsm-oracle}{FSM-oracle}. While the
 technical details of this projects are outside the scope of this text,
 there is one aspect of it that is fundamentally linked with linear
@@ -2161,13 +2166,52 @@ out to be extremely complex to implement as can attest the files
 to fit} their definition into a
 \href{https://github.com/statebox/fsm-oracle/blob/master/src/Permutations/PermutationsStrictMonoidalCategory.idr}{Category}.
 
+The relevant bit about permutation can be found in the two files
+\texttt{Permutations.idr} and \texttt{SwapDown.idr}, a permutation
+relies on a list of ``swaps'' that describe the operation that we can do
+on a list to generate a new permutation of the same list.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{data} \DataTypeTok{Perm} \OperatorTok{:}\NormalTok{ \{o }\OperatorTok{:} \DataTypeTok{Type}\NormalTok{\} }\OtherTok{{-}\textgreater{}} \DataTypeTok{List}\NormalTok{ o }\OtherTok{{-}\textgreater{}} \DataTypeTok{List}\NormalTok{ o }\OtherTok{{-}\textgreater{}} \DataTypeTok{Type} \KeywordTok{where}
+  \DataTypeTok{Nil} \OperatorTok{:} \DataTypeTok{Perm}\NormalTok{ [] []}
+  \DataTypeTok{Ins} \OperatorTok{:} \DataTypeTok{Perm}\NormalTok{ xs ys }\OtherTok{{-}\textgreater{}} \DataTypeTok{SwapDown}\NormalTok{ (}\OtherTok{a::}\NormalTok{ys) zs }\OtherTok{{-}\textgreater{}} \DataTypeTok{Perm}\NormalTok{ (}\OtherTok{a::}\NormalTok{xs) zs}
+
+\KeywordTok{data} \DataTypeTok{SwapDown} \OperatorTok{:} \DataTypeTok{List}\NormalTok{ t }\OtherTok{{-}\textgreater{}} \DataTypeTok{List}\NormalTok{ t }\OtherTok{{-}\textgreater{}} \DataTypeTok{Type} \KeywordTok{where}
+  \DataTypeTok{HereS}  \OperatorTok{:} \DataTypeTok{SwapDown}\NormalTok{ (}\OtherTok{a::}\NormalTok{as) (}\OtherTok{a::}\NormalTok{as)}
+  \DataTypeTok{ThereS} \OperatorTok{:} \DataTypeTok{SwapDown}\NormalTok{ (}\OtherTok{a::}\NormalTok{as) bs }\OtherTok{{-}\textgreater{}} \DataTypeTok{SwapDown}\NormalTok{ (}\OtherTok{a::b::}\NormalTok{as) (}\OtherTok{b::}\NormalTok{bs)}
+\end{Highlighting}
+\end{Shaded}
+
+If you don't have access to the internet to witness the proofs in their
+full glory, here is an example of what we are dealing with:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{permAssoc }\OperatorTok{:}\NormalTok{ (ab }\OperatorTok{:} \DataTypeTok{Perm}\NormalTok{ aas bbs) }\OtherTok{{-}\textgreater{}}\NormalTok{ (bc }\OperatorTok{:} \DataTypeTok{Perm}\NormalTok{ bbs ccs) }\OtherTok{{-}\textgreater{}}\NormalTok{ (cd }\OperatorTok{:} \DataTypeTok{Perm}\NormalTok{ ccs dds)}
+         \OtherTok{{-}\textgreater{}}\NormalTok{ permComp ab (permComp bc cd) }\OtherTok{=}\NormalTok{ permComp (permComp ab bc) cd}
+\NormalTok{permAssoc }\DataTypeTok{Nil}\NormalTok{ bc cd }\OtherTok{=} \DataTypeTok{Refl}
+\NormalTok{permAssoc (}\DataTypeTok{Ins}\NormalTok{ \{xs}\OtherTok{=}\NormalTok{as\} \{ys}\OtherTok{=}\NormalTok{bs\} ab\textquotesingle{} abb) bc cd with (shuffle abb (permComp bc cd)) proof bdPrf}
+  \OperatorTok{|} \DataTypeTok{Ins}\NormalTok{ \{ys}\OtherTok{=}\NormalTok{ds\} bd\textquotesingle{} add with (shuffle abb bc) proof bcPrf}
+    \OperatorTok{|} \DataTypeTok{Ins}\NormalTok{ \{ys}\OtherTok{=}\NormalTok{cs\} bc\textquotesingle{} acc with (shuffle acc cd) proof cdPrf}
+      \OperatorTok{|} \DataTypeTok{Ins}\NormalTok{ \{ys}\OtherTok{=}\NormalTok{ds\textquotesingle{}\} cd\textquotesingle{} ad\textquotesingle{}d }\OtherTok{=}
+        \KeywordTok{let}\NormalTok{ (}\DataTypeTok{Refl}\NormalTok{, }\DataTypeTok{Refl}\NormalTok{, }\DataTypeTok{Refl}\NormalTok{) }\OtherTok{=}\NormalTok{ shuffleComp abb bc cd bcPrf cdPrf bdPrf }\KeywordTok{in}
+\NormalTok{        insCong5 }\DataTypeTok{Refl} \DataTypeTok{Refl} \DataTypeTok{Refl}\NormalTok{ (permAssoc ab\textquotesingle{} bc\textquotesingle{} cd\textquotesingle{}) }\DataTypeTok{Refl}
+\end{Highlighting}
+\end{Shaded}
+
+This function ensures that composition of permutation is associative. It
+relies on helper functions such as \texttt{shuffleComp} which are not
+even implemented in Idris1, because it is too hard to convince the
+compiler.
+
 Linear types can thankfully ease the pain by providing a very simple
 representation of permutations :
 
 \begin{Shaded}
 \begin{Highlighting}[]
 \DataTypeTok{Permutation} \OperatorTok{:} \DataTypeTok{Type} \OtherTok{{-}\textgreater{}} \DataTypeTok{Type}
-\DataTypeTok{Premutation}\NormalTok{ a }\OtherTok{=}\NormalTok{ (}\DecValTok{1}\NormalTok{ ls }\OperatorTok{:} \DataTypeTok{List}\NormalTok{ a) }\OtherTok{{-}\textgreater{}} \DataTypeTok{List}\NormalTok{ a}
+\DataTypeTok{Permutation}\NormalTok{ a }\OtherTok{=}\NormalTok{ (}\DecValTok{1}\NormalTok{ ls }\OperatorTok{:} \DataTypeTok{List}\NormalTok{ a) }\OtherTok{{-}\textgreater{}} \DataTypeTok{List}\NormalTok{ a}
 \end{Highlighting}
 \end{Shaded}
 
@@ -2177,7 +2221,7 @@ a linear function from \texttt{List\ a} to \texttt{List\ a}\footnote{This
   \url{https://github.com/bobatkey/sorting-types/blob/master/agda/Linear.agda}}.
 
 This definition works because no elements from the input list can be
-omited or reused for the output list. \emph{Every single element} from
+omitted or reused for the output list. \emph{Every single element} from
 the argument has to find a new spot in the output list. Additionally,
 since the type \texttt{a} is unknown, no special value can be inserted
 in advance. Indeed, the only way to achieve this effect would be to
@@ -2319,9 +2363,15 @@ While this looks like a lot of code, the entire definition holds within
 definitions like \texttt{LinearFn} and \texttt{Same} are generic enough
 to be reused in other modules.
 
-Most importantly, this approach is extremely straightforward. So much
-that in the future, it wouldn't seem extravagant to have the type-system
+Additionally, this approach is extremely straightforward. So much that
+in the future, it wouldn't seem extravagant to have the type-system
 automatically generate the code as part of a derived interface.
+
+Finally and most importantly, this program could not exist without using
+both dependent types to declare the necessary proofs to formally
+verified our Categorical structure, and linear types to implement
+\texttt{Permutation}. It is a beautiful example where the two features
+meet and merge in a way that is both practical and elegant.
 
 \hypertarget{levitation-improvements}{%
 \subsection{Levitation improvements}\label{levitation-improvements}}
@@ -2340,9 +2390,9 @@ including representations for primitive types such as \texttt{Int} or
 \texttt{String}, an approach that's been proven effective with
 Typedefs\cite{typedefs}.
 
-\emph{The practical guide to levitation}\cite{guide_to_levitation} shows
-that those features are plagued by multiple shortcomings: the verbosity
-of the definitions not only make the data declaration hard to write and
+\emph{The practical guide to levitation}\cite{levitation} shows that
+those features are plagued by multiple shortcomings: the verbosity of
+the definitions not only make the data declaration hard to write and
 read, it makes the compiler spend a lot of time constructing and
 checking those terms and it has trouble identifying what is a type
 parameter or what is an index.
@@ -2548,10 +2598,10 @@ perform a runtime concatenation.
 ergonomics}\label{quantitative-type-theory-and-programming-ergonomics}}
 
 Idris2 features both linear and dependent types, providing programmers
-with the tools to write elegant and correct software\cite{dtt_edwin},
-while ensuring performance. In this thesis I am going to reuse the
-intuition originally suggested by
-\cite{once_upon_a_type}\cite{linear_update}\textbackslash cite\{linear\_types\_update\cite{linear_use}
+with the tools to write elegant and correct software\cite{tdd}, while
+ensuring performance. In this thesis I am going to reuse the intuition
+originally suggested by
+\cite{once_upon_a_type}\cite{linear_types_update}\textbackslash cite\{linear\_types\_update\cite{linear_use}
 and rephrase it as
 
 \begin{quote}
@@ -2652,10 +2702,11 @@ inheriting the instance from \texttt{List} and \texttt{Vect}.
 Additionally, since the procedure to implement those instances is very
 mechanical, it could almost certainly be automatically derived.
 
-This approach is reminiscent of projects like practical levitation or
-Typedefs, which describe data types as data structures. And the benefits
-of both would translate quite well to our situation, beyond the ability
-to dance around linearity with primitive types.
+This approach is reminiscent of projects like practical
+levitation\cite{practical_levitation} or Typedefs\footnote{\url{http://typedefs.com}},
+which describe data types as data structures. And the benefits of both
+would translate quite well to our situation, beyond the ability to dance
+around linearity with primitive types.
 
 Indeed, in both instance, once our data type is represented we can use
 its structure to infer its properties. For example, if a data type has
@@ -3121,19 +3172,19 @@ this way:
 \begin{Shaded}
 \begin{Highlighting}[]
 \NormalTok{isTrue }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:}\NormalTok{ a) }\OtherTok{{-}\textgreater{}}\NormalTok{ (f }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:}\NormalTok{ a) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Bool}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{String}
-\NormalTok{isTrue value predicate}
-\CommentTok{{-}{-}                 ┌ We can free \textasciigrave{}value\textasciigrave{} after this}
-\CommentTok{{-}{-}               ╭─┴─╮}
-  \OtherTok{=} \KeywordTok{if}\NormalTok{ predicate value }\KeywordTok{then} \StringTok{"It\textquotesingle{}s true!"}
+\NormalTok{isTrue arg predicate}
+\CommentTok{{-}{-}                ┌ We can free \textasciigrave{}arg\textasciigrave{} after this}
+\CommentTok{{-}{-}                ▼}
+  \OtherTok{=} \KeywordTok{if}\NormalTok{ predicate arg }\KeywordTok{then} \StringTok{"It\textquotesingle{}s true!"}
                        \KeywordTok{else} \StringTok{"Fake news."}
 \end{Highlighting}
 \end{Shaded}
 
-The value \texttt{value} of type \texttt{a} can be free immediately
-after being called by \texttt{predicate}. Indeed, it's been used,
-therefore it cannot be used again, which means its memory space won't
-ever be accessed again. Freeing memory might not sound very exciting but
-the benefit is that we do not need to wait for the garbage collector to
+The value \texttt{arg} of type \texttt{a} can be freed immediately after
+being called by \texttt{predicate}. Indeed, it's been used, therefore it
+cannot be used again, which means its memory space won't ever be
+accessed again. Freeing memory might not sound very exciting but the
+main benefit is that we do not need to wait for the garbage collector to
 notice our value can be freed. Removing the reliance on garbage
 collection is a huge step toward predictable performance.
 
@@ -3160,7 +3211,9 @@ freed but we have to wait on the garbage collector to catch it.
 
 Unfortunately, we cannot simply implement the free and update feature in
 order to see what kind of performance improvement we can get out of
-linear types. This is due to a feature of Idris2: subtyping.
+linear types. This is because a linear variable is not guaranteed to be
+unique when it is called on a linear function. One example of this
+sharing mechanism can be seen with function subtyping.
 
 \hypertarget{linear-function-subtyping}{%
 \subsection{Linear function subtyping}\label{linear-function-subtyping}}
@@ -3170,7 +3223,7 @@ easier, Idris2 features subtyping on functions. As a refresher,
 subtyping allows a function to accept another type than the one that it
 has been specified with, as long as the other type is a subtype of the
 original one. In the following example we are going to assume we have
-access to two types, \texttt{A} and \texttt{B} and \texttt{B} is a
+access to two types, \texttt{A} and \texttt{B}, and that \texttt{B} is a
 subtype of \texttt{A}, noted with \texttt{B\ \textless{}:\ A}
 
 \begin{Shaded}
@@ -3180,11 +3233,11 @@ subtype of \texttt{A}, noted with \texttt{B\ \textless{}:\ A}
 
 \NormalTok{g }\OperatorTok{:} \DataTypeTok{B} \OtherTok{{-}\textgreater{}} \DataTypeTok{B}
 
-\CommentTok{{-}{-} assume we have B \textless{}: A}
+\CommentTok{{-}{-} Assume we have B \textless{}: A}
 
 \KeywordTok{let}\NormalTok{ a }\OperatorTok{:} \DataTypeTok{A} \OtherTok{=}\NormalTok{ …}
 \NormalTok{    b }\OperatorTok{:} \DataTypeTok{B} \OtherTok{=}\NormalTok{ … }
-\NormalTok{    y1 }\OtherTok{=}\NormalTok{ f a }\CommentTok{{-}{-} expected}
+\NormalTok{    y1 }\OtherTok{=}\NormalTok{ f a }\CommentTok{{-}{-} Expected}
 \NormalTok{    y2 }\OtherTok{=}\NormalTok{ f b }\CommentTok{{-}{-} b is a subtype, it\textquotesingle{}s valid}
 \NormalTok{    no }\OtherTok{=}\NormalTok{ g a }\CommentTok{{-}{-} a is a supertype of b, invalid}
  \KeywordTok{in} \OperatorTok{?}\NormalTok{rest}
@@ -3213,16 +3266,16 @@ compile correctly.
 
 \NormalTok{linInc }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{Nat}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Nat}
 
-\CommentTok{{-}{-} success everything unrestricted}
+\CommentTok{{-}{-} Success everything unrestricted}
 \FunctionTok{map}\NormalTok{ inc [}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{,}\DecValTok{3}\NormalTok{] }
 
-\CommentTok{{-}{-} success because got unrestricted and expected linear}
+\CommentTok{{-}{-} Success because got linear and expected unrestricted}
 \FunctionTok{map}\NormalTok{ linInc [}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{,}\DecValTok{3}\NormalTok{]}
 
-\CommentTok{{-}{-} fail because inc is unrestricted but linMap expected linear}
+\CommentTok{{-}{-} Fail because inc is unrestricted but linMap expected linear}
 \NormalTok{linearMap inc [}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{,}\DecValTok{3}\NormalTok{]}
 
-\CommentTok{{-}{-} success because everything is linear}
+\CommentTok{{-}{-} Success because everything is linear}
 \NormalTok{linearMap linInc [}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{,}\DecValTok{3}\NormalTok{]}
 \end{Highlighting}
 \end{Shaded}
@@ -3272,9 +3325,9 @@ safe updates and safe memory frees is not restrictive enough. We need an
 additional level of restriction to ensure \emph{uniqueness} of the
 values instead of linearity.
 
-\hypertarget{restricting-the-scope-of-linear-optimisations}{%
-\subsection{Restricting the scope of linear
-optimisations}\label{restricting-the-scope-of-linear-optimisations}}
+\hypertarget{the-nature-of-the-changes-required-for-linear-optimisations}{%
+\subsection{The nature of the changes required for linear
+optimisations}\label{the-nature-of-the-changes-required-for-linear-optimisations}}
 
 Since linearity is not enough to ensure uniqueness, we are going to add
 an additional restriction: We can only mutate a variable if it has been
@@ -3368,9 +3421,9 @@ variables indices are replaced by their names in \texttt{NamedCExp}.
 Which is the same but with all variable substitutions performed.
 
 Since our changes do not touch the type checker or elaborator, they do
-not the \texttt{checkTerm} stage. However, since we do need information
-from the control flow and the access the case tree we need to perform
-our changes between \texttt{Term} and \texttt{CExp}.
+not change the \texttt{checkTerm} stage. However, since we do need
+information from the control flow and the access the case tree we need
+to perform our changes between \texttt{Term} and \texttt{CExp}.
 
 \hypertarget{implementation-details}{%
 \subsubsection{Implementation details}\label{implementation-details}}
@@ -3397,11 +3450,11 @@ to go from the non-mutating version here:
 \NormalTok{void }\OperatorTok{*}\NormalTok{ update(v }\OperatorTok{*}\NormalTok{ void) \{}
     \DataTypeTok{Ty}\OperatorTok{*}\NormalTok{ newv;}
     \KeywordTok{if}\NormalTok{ v}\OtherTok{{-}\textgreater{}}\NormalTok{tag }\OperatorTok{==} \DecValTok{0}\NormalTok{ \{}
-\NormalTok{        newv }\OtherTok{=}\NormalTok{ malloc(sizeof(}\DataTypeTok{ValOnce}\NormalTok{));}
+\NormalTok{        newv }\OtherTok{=}\NormalTok{ malloc(sizeof(}\DataTypeTok{ValOnce}\NormalTok{)); }\OperatorTok{//} \DataTypeTok{Allocation}\NormalTok{ here}
 \NormalTok{        newv}\OtherTok{{-}\textgreater{}}\NormalTok{tag }\OtherTok{=} \DecValTok{0}\NormalTok{;}
 \NormalTok{        newv}\OtherTok{{-}\textgreater{}}\NormalTok{val1 }\OtherTok{=} \DecValTok{1} \OperatorTok{+}\NormalTok{ v}\OtherTok{{-}\textgreater{}}\NormalTok{val1;}
 \NormalTok{    \} }\KeywordTok{else}\NormalTok{ \{}
-\NormalTok{        newv }\OtherTok{=}\NormalTok{ malloc(sizeof(}\DataTypeTok{ValTwice}\NormalTok{));}
+\NormalTok{        newv }\OtherTok{=}\NormalTok{ malloc(sizeof(}\DataTypeTok{ValTwice}\NormalTok{)); }\OperatorTok{//} \DataTypeTok{Allocation}\NormalTok{ here}
 \NormalTok{        newv}\OtherTok{{-}\textgreater{}}\NormalTok{tag }\OtherTok{=} \DecValTok{1}\NormalTok{;}
 \NormalTok{        newv}\OtherTok{{-}\textgreater{}}\NormalTok{val1 }\OtherTok{=} \DecValTok{1} \OperatorTok{+}\NormalTok{ v}\OtherTok{{-}\textgreater{}}\NormalTok{val1;}
 \NormalTok{        newv}\OtherTok{{-}\textgreater{}}\NormalTok{val2 }\OtherTok{=} \DecValTok{1} \OperatorTok{+} \DecValTok{1} \OperatorTok{+}\NormalTok{ v}\OtherTok{{-}\textgreater{}}\NormalTok{val2;}
@@ -3422,7 +3475,7 @@ To the more efficient mutating version here:
 \NormalTok{        v}\OtherTok{{-}\textgreater{}}\NormalTok{val1 }\OtherTok{=} \DecValTok{1} \OperatorTok{+}\NormalTok{ v}\OtherTok{{-}\textgreater{}}\NormalTok{val1;}
 \NormalTok{        v}\OtherTok{{-}\textgreater{}}\NormalTok{val2 }\OtherTok{=} \DecValTok{1} \OperatorTok{+} \DecValTok{1} \OperatorTok{+}\NormalTok{ v}\OtherTok{{-}\textgreater{}}\NormalTok{val2;}
 \NormalTok{    \}}
-    \FunctionTok{return}\NormalTok{ nv;}
+    \FunctionTok{return}\NormalTok{ v; }\OperatorTok{//} \DataTypeTok{Return}\NormalTok{ the mutated argument}
 \NormalTok{\}}
 \end{Highlighting}
 \end{Shaded}
@@ -3442,8 +3495,8 @@ The following program would see no mutation
 \begin{Highlighting}[]
 \OperatorTok{\%}\NormalTok{mutating}
 \NormalTok{update }\OperatorTok{:} \DataTypeTok{Ty} \OtherTok{{-}\textgreater{}} \DataTypeTok{Ty}
-\NormalTok{update (}\DataTypeTok{ValTwice}\NormalTok{ v) }\OtherTok{=} \DataTypeTok{ValOnce}\NormalTok{ (}\DataTypeTok{S}\NormalTok{ v)}
-\NormalTok{update (}\DataTypeTok{ValOnce}\NormalTok{ v) }\OtherTok{=} \DataTypeTok{ValTwice}\NormalTok{ (}\DataTypeTok{S}\NormalTok{ (}\DataTypeTok{S}\NormalTok{ v))}
+\NormalTok{update (}\DataTypeTok{ValTwice}\NormalTok{ v w) }\OtherTok{=} \DataTypeTok{ValOnce}\NormalTok{ (}\DataTypeTok{S}\NormalTok{ v)}
+\NormalTok{update (}\DataTypeTok{ValOnce}\NormalTok{ v) }\OtherTok{=} \DataTypeTok{ValTwice}\NormalTok{ (}\DataTypeTok{S}\NormalTok{ (}\DataTypeTok{S}\NormalTok{ v)) (}\DataTypeTok{S}\NormalTok{ (}\DataTypeTok{S}\NormalTok{ w))}
 \end{Highlighting}
 \end{Shaded}
 
@@ -3467,7 +3520,11 @@ accomodate for the extra \texttt{val2} field.
 
 Similarly if we are given a \texttt{ValTwice} and are asked to mutate it
 into a value \texttt{ValOnce} we would have to carry over extra memory
-space that will remain unused.
+space that will remain unused. In the worst case, reckless access to the
+fields in memory would result in accessing out of bound memory and
+provoke either segfault or memory corruption. For example while
+attempting to mutate the second argument of a constructor that has only
+one.
 
 Ideally our compiler would be able to identify data declaration that
 share the same layout and replace allocation for them by mutation, but
@@ -3585,7 +3642,7 @@ The third constraint is the most important one without which we corrupt
 the memory of our program as we've seen earlier.
 
 Let's look at our \texttt{update} function to understand the nature of
-the changes and update it slightly:
+the changes and change it slightly:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -3609,8 +3666,8 @@ where the second argument is the reference to reuse.
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{case}\NormalTok{ arg }\KeywordTok{of}
-     \DataTypeTok{ValTwice}\NormalTok{ v }\OtherTok{=\textgreater{}} \CommentTok{{-}{-} access \textasciigrave{}arg\textasciigrave{} and mutate it with S (S v)}
-                   \DataTypeTok{ValTwice}\NormalTok{ (}\DataTypeTok{S}\NormalTok{ (}\DataTypeTok{S}\NormalTok{ v))}
+     \DataTypeTok{ValTwice}\NormalTok{ v w }\OtherTok{=\textgreater{}} \CommentTok{{-}{-} access \textasciigrave{}arg\textasciigrave{} and mutate it with S (S v)}
+                     \DataTypeTok{ValTwice}\NormalTok{ (}\DataTypeTok{S}\NormalTok{ (}\DataTypeTok{S}\NormalTok{ v)) (}\DataTypeTok{S}\NormalTok{ (}\DataTypeTok{S}\NormalTok{ w))}
      \DataTypeTok{ValOnce}\NormalTok{ v }\OtherTok{=\textgreater{}} \CommentTok{{-}{-} access \textasciigrave{}arg\textasciigrave{} and mutate it with S v}
                   \DataTypeTok{ValOnce}\NormalTok{ (}\DataTypeTok{S}\NormalTok{ v)}
 \end{Highlighting}
@@ -3654,7 +3711,7 @@ The reference is carried by \texttt{idx} which is the index of the
 variable in its context, as supported by the proof \texttt{p}. Once we
 get a hold of this reference we can move on to the actual tree
 transformation. The transformation itself is pretty simple and can be
-summarised with this excerpt:
+summarised with this snippet:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -3677,12 +3734,13 @@ Which will replace every application of a data constructor by one which
 has a reference to the variable we mutate \texttt{ref} as indicated by
 the \texttt{Just\ ref}.
 
-This refers to another AST change we haven't mentionned yet. And that is
+This refers to another AST change we haven't mentioned yet. And that is
 to track which data constructors are allowed to mutate a reference
 instead of constructing a new value. We change \texttt{DataCon} into
 \texttt{DataCon\ :\ (ref\ :\ Maybe\ Name)\ -\textgreater{}\ (tag\ :\ Int)\ -\textgreater{}\ (arity\ :\ Nat)\ -\textgreater{}\ NameType}
 where the first argument represents the variable we can mutate, if there
-is one.
+is one. \texttt{DataCon} is a field of \texttt{Ref}, it indicates what
+kind of data the \texttt{Ref} is pointing to.
 
 The last step of this chain of changes is to inspect our
 \texttt{DataCon} constructor during compilation and emit the correct
@@ -3733,7 +3791,7 @@ And call the function:
 \KeywordTok{let}\NormalTok{ newVal }\OtherTok{=}\NormalTok{ fromMaybe valv }\CommentTok{{-}{-}             ▼}
 \NormalTok{                       (lineariseDataCon rigb valv)}
 \NormalTok{…}
-                \CommentTok{{-}{-}   ┌ use the updated constructor here}
+                \CommentTok{{-}{-}   ┌ Return the updated constructor}
 \FunctionTok{pure}\NormalTok{ (}\DataTypeTok{Bind}\NormalTok{ fc n }\CommentTok{{-}{-} ╭─┴──╮}
 \NormalTok{         (}\DataTypeTok{Let}\NormalTok{ rigb newVal tyv) scopev,}
 \NormalTok{         gnf env (}\DataTypeTok{Bind}\NormalTok{ fc n (}\DataTypeTok{Let}\NormalTok{ rigb newVal\textquotesingle{} tyv) scopet))}
@@ -3770,7 +3828,7 @@ linear programs!
 
 In order to test our performance hypothesis I am going to use a series
 of programs and run them multiple times under different conditions in
-order to measure different aspects of performances. Typically, observing
+order to measure different aspects of performance. Typically, observing
 how memory usage and runtime varies depending on the optimisation we
 use.
 
@@ -3783,16 +3841,17 @@ designed to showcase our improvements, and do not necessarily represent
 their effect in production software. This has often been the source of
 many misleading claims about performance and is the topic of endless
 discussion. The nofib\cite{nofib} project
-(\url{https://gitlab.haskell.org/ghc/nofib}) make the effort to
+(\url{https://gitlab.haskell.org/ghc/nofib}) makes the effort to
 distribute a set of programs more representative of real-world
 production software, especially for functional languages. In our case,
-synthetic benchmarks will be enough to tell us if linear types provide
-any benefit worth pursuing or not.
+synthetic benchmarks will be enough to tell if linear types provide any
+benefit worth pursuing.
 
 Additionally, the Idris2 compiler itself was intended to be used as a
 benchmark by measuring the time it takes to compile itself. However, due
-to the nature of our optimisation we have found few areas of
-improvements with the predominantly non-linear style of the compiler.
+to the nature of our optimisation there are not enough opportunities to
+make noticeable performance improvement, due to the predominantly
+non-linear style of writing in the compiler.
 
 \hypertarget{traditional-fibonacci}{%
 \subsubsection{Traditional Fibonacci}\label{traditional-fibonacci}}
@@ -3913,7 +3972,7 @@ allocating an
 \begin{Shaded}
 \begin{Highlighting}[]
 \OperatorTok{\%}\NormalTok{mutating}
-\NormalTok{mapList }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ \_ }\OperatorTok{:} \DataTypeTok{List} \DataTypeTok{Int}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{List} \DataTypeTok{Int}
+\NormalTok{mapList }\OperatorTok{:}\NormalTok{ (}\DataTypeTok{List} \DataTypeTok{Int}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{List} \DataTypeTok{Int}
 \NormalTok{mapList [] }\OtherTok{=}\NormalTok{ []}
 \NormalTok{mapList (}\OtherTok{x ::}\NormalTok{ xs) }\OtherTok{=}\NormalTok{ x }\OperatorTok{+} \DecValTok{1}\OtherTok{ ::}\NormalTok{ mapList xs}
 
@@ -3922,48 +3981,11 @@ allocating an
 \end{Highlighting}
 \end{Shaded}
 
-\hypertarget{countdown}{%
-\subsubsection{Countdown}\label{countdown}}
-
-Another typical synthetic benchmark is a countdown function.
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{countdown }\OperatorTok{:} \DataTypeTok{Int} \OtherTok{{-}\textgreater{}} \DataTypeTok{Int}
-\NormalTok{countdown }\DecValTok{0} \OtherTok{=} \DecValTok{0}
-\NormalTok{countdown n }\OtherTok{=}\NormalTok{ countdown (n}\OperatorTok{{-}}\DecValTok{1}\NormalTok{)}
-
-\NormalTok{main }\OperatorTok{:} \DataTypeTok{IO}\NormalTok{ ()}
-\NormalTok{main }\OtherTok{=}\NormalTok{ printLn (countdown }\DecValTok{50000000}\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-\hypertarget{mutating-countdown}{%
-\subsubsection{Mutating countdown}\label{mutating-countdown}}
-
-This time we wrap our \texttt{Int} in a data type that should be
-optimised away by having its content be mutated rather than being
-allocated at every loop.
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\KeywordTok{data} \DataTypeTok{IntData} \OtherTok{=} \DataTypeTok{MkInt} \DataTypeTok{Int} \OperatorTok{|} \DataTypeTok{MkNat} \DataTypeTok{Nat}
-
-\DataTypeTok{Show} \DataTypeTok{IntData} \KeywordTok{where}
-  \FunctionTok{show}\NormalTok{ (}\DataTypeTok{MkInt}\NormalTok{ int) }\OtherTok{=} \FunctionTok{show}\NormalTok{ int}
-  \FunctionTok{show}\NormalTok{ (}\DataTypeTok{MkNat}\NormalTok{ nat) }\OtherTok{=} \FunctionTok{show}\NormalTok{ nat}
-
-\OperatorTok{\%}\NormalTok{mutating}
-\NormalTok{countdown }\OperatorTok{:}\NormalTok{ (}\DataTypeTok{IntData}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{IntData}
-\NormalTok{countdown (}\DataTypeTok{MkInt} \DecValTok{0}\NormalTok{) }\OtherTok{=} \DataTypeTok{MkInt} \DecValTok{0}
-\NormalTok{countdown (}\DataTypeTok{MkInt}\NormalTok{ n) }\OtherTok{=}\NormalTok{ countdown (}\DataTypeTok{MkInt}\NormalTok{ (n}\OperatorTok{{-}}\DecValTok{1}\NormalTok{))}
-\NormalTok{countdown (}\DataTypeTok{MkNat} \DataTypeTok{Z}\NormalTok{) }\OtherTok{=} \DataTypeTok{MkNat} \DataTypeTok{Z}
-\NormalTok{countdown (}\DataTypeTok{MkNat}\NormalTok{ (}\DataTypeTok{S}\NormalTok{ n)) }\OtherTok{=}\NormalTok{ countdown (}\DataTypeTok{MkNat}\NormalTok{ n)}
-
-\NormalTok{main }\OperatorTok{:} \DataTypeTok{IO}\NormalTok{ ()}
-\NormalTok{main }\OtherTok{=}\NormalTok{ printLn (countdown (}\DataTypeTok{MkInt} \DecValTok{50000000}\NormalTok{))}
-\end{Highlighting}
-\end{Shaded}
+A small detail to notice here is that the function is non-linear, indeed
+using the signature
+\texttt{mapList\ :\ (1\ \_\ :\ List\ Int)\ -\textgreater{}\ List\ Int}
+will not compile because \texttt{n\ +\ 1} does not consume \texttt{n}
+linearly.
 
 \hypertarget{a-simple-sat-solver-as-benchmark}{%
 \subsubsection{A simple SAT solver as
@@ -4008,14 +4030,14 @@ safe.
 \hypertarget{measurements}{%
 \subsection{Measurements}\label{measurements}}
 
-The benchmarks were run with a command link script written in idris
-itself which takes a source folder and recursively traverses it in order
-to find programs to execute and measure their runtime.
+The benchmarks were run with Idris-bench, a command link script written
+in idris itself which takes a source folder and recursively traverses it
+in order to find programs to execute and measure their runtime.
 
-The analysis of the result was performed with another command line
-script which reads the output of out benchmark program and output data
-like minimum, maximum, mean and variance along with arrays for plotting
-our results on a graph.
+The analysis of the result was performed with Idris-stat, another
+command line script which reads the output of out benchmark program and
+output data like minimum, maximum, mean and variance along with arrays
+for plotting our results on a graph.
 
 \hypertarget{idris-bench}{%
 \subsubsection{Idris-bench}\label{idris-bench}}
@@ -4059,25 +4081,22 @@ Idris-bench takes the following arguments:
 \hypertarget{idris-stats}{%
 \subsubsection{Idris-stats}\label{idris-stats}}
 
-Once our results have been generated we are going to analyse them by
-computing the minimum time, maximum time, mean and variance of the
-collection of benchmark results. For this we are going to rely on
-another script: idris-stats. It take out CSV output and compute the data
-we need and output them as another CSV file. Again the code can be found
-here
+Once our results have been generated with idris-bench, we are going to
+analyse them by computing the minimum time, maximum time, mean and
+variance of the collection of benchmark results. Idris-stats will take
+our CSV output and compute the data we need and output them as another
+CSV file. Again the code can be found here
 \url{https://github.com/andrevidela/idris-bench/blob/master/script/idris-stats.idr}.
 
 The program takes the file to analyse as single argument. The file is
 expected to be a CSV file with the following format:
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{name }\KeywordTok{of}\NormalTok{ first benchmark, result1, result2, result3, etc}
-\NormalTok{name }\KeywordTok{of}\NormalTok{ second benchmark, result1, result2, result3, etc}
-\OperatorTok{...}
-\NormalTok{name }\KeywordTok{of}\NormalTok{ final benchmark, result1, result2, result3, etc}
-\end{Highlighting}
-\end{Shaded}
+\begin{verbatim}
+name of first benchmark, result1, result2, result3, etc
+name of second benchmark, result1, result2, result3, etc
+...
+name of final benchmark, result1, result2, result3, etc
+\end{verbatim}
 
 The first column is ignored for the purpose of data analysis.
 
@@ -4129,9 +4148,15 @@ time-frame.
 \hypertarget{running-the-benchmarks}{%
 \subsection{Running the benchmarks}\label{running-the-benchmarks}}
 
-All the benchmarks were run on a laptop with the following specs: -
-Intel core-i5 8257U (8th gen), 256KB L2 cache, 6MB L3 cache - 16Gb of
-ram at 2133Mhz
+All the benchmarks were run on a laptop with the following specs:
+
+\begin{itemize}
+\tightlist
+\item
+  Intel core-i5 8257U (8th gen), 256KB L2 cache, 6MB L3 cache
+\item
+  16Gb of ram at 2133Mhz
+\end{itemize}
 
 While this computer has a base clock of 1.4Ghz, it features a boost
 clock of 3.9Ghz (a feature of modern CPUs called ``turbo-boost'') which
@@ -4150,12 +4175,21 @@ optimisation. The methodology and the nature of the benchmarks is
 explained in the ``Benchmarks \& methodology'' section.
 
 Out first test suite runs the benchmark on our 3 fibonacci variants. As
-a refresher they are as follow: - The first one is implemented
-traditionally, carrying at all times 2 Ints representing the last 2
-fibonacci numbers and computing the next one - Second one boxes those
-Ints into a datatype that will be allocated every time it is changed -
-The Third one will make use of our optimisation and mutate the boxes
-values instead of discarding the old one and allocating a new one.
+a refresher they are as follow:
+
+\begin{itemize}
+\tightlist
+\item
+  The first one is implemented traditionally, carrying at all times 2
+  Ints representing the last 2 fibonacci numbers and computing the next
+  one
+\item
+  Second one boxes those Ints into a datatype that will be allocated
+  every time it is changed
+\item
+  The Third one will make use of our optimisation and mutate the boxes
+  values instead of discarding the old one and allocating a new one.
+\end{itemize}
 
 The last one is an example of mapping across a list, a very common
 operation in functional programming languages. Our last one is an
@@ -4210,7 +4244,9 @@ options
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{build}\OperatorTok{/}\NormalTok{exec}\OperatorTok{/}\NormalTok{benchmarks }\OperatorTok{{-}}\NormalTok{d }\OperatorTok{../}\NormalTok{idris2}\OperatorTok{{-}}\NormalTok{fib}\OperatorTok{{-}}\NormalTok{benchmarks }\OperatorTok{{-}}\NormalTok{o results}\OperatorTok{.}\NormalTok{csv }\OperatorTok{{-}}\NormalTok{p }\OperatorTok{$}\NormalTok{(which idris2dev) }
+\NormalTok{build}\OperatorTok{/}\NormalTok{exec}\OperatorTok{/}\NormalTok{benchmarks }\OperatorTok{{-}}\NormalTok{d }\OperatorTok{../}\NormalTok{idris2}\OperatorTok{{-}}\NormalTok{fib}\OperatorTok{{-}}\NormalTok{benchmarks }
+                      \OperatorTok{{-}}\NormalTok{o results}\OperatorTok{.}\NormalTok{csv }\OperatorTok{{-}}\NormalTok{p idris2dev }
+                      \OperatorTok{{-}}\NormalTok{c }\DecValTok{99}
 \end{Highlighting}
 \end{Shaded}
 
@@ -4225,11 +4261,9 @@ file:
 
 The results are in the following format:
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{name }\KeywordTok{of}\NormalTok{ benchmark, }\FunctionTok{minimum}\NormalTok{, }\FunctionTok{maximum}\NormalTok{, average, variance}
-\end{Highlighting}
-\end{Shaded}
+\begin{verbatim}
+name of benchmark, minimum, maximum, average, variance
+\end{verbatim}
 
 The three arrays at the end correspond to an aggregation of the data in
 ``buckets''. Our statistical tool makes 30 ``buckets'' which represent
@@ -4296,47 +4330,48 @@ startup time and can go up to 0.3 seconds.
 time}\label{results-2-fibonacci-without-startup-time}}
 
 In order to remove the startup time we are going to change the emitted
-bytecode to wrap our main function inside a time-measuring function.
-Since the timer won't start until the program is ready to run the
-startup time will be eliminated. Running our empty program we get
+bytecode to wrap our main function inside a time-measuring function
+\texttt{(time\ main)}. Since the timer won't start until the program is
+ready to run the startup time will be eliminated. Running our empty
+program we get the following (expected) result:
 
 \begin{verbatim}
 > 0.000000000s elapsed cpu time
 \end{verbatim}
-
-Which is what we expect.
 
 This time we will run our benchmarks 1000 times using the same command
 as before. We expect to see the same results but the difference should
 give us a greater interval of confidence. Running our statistical
 analysis gives us those results
 
-\begin{verbatim}
-../Idris2_fib_benchmark/fibTestNoMutation.idr,
-1.696760896,
-1.977075901,
-1.7447377120060026,
-9.18303221644259e-4
+\begin{Shaded}
+\begin{Highlighting}[]
+\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTestNoMutation}\OperatorTok{.}\NormalTok{idr,}
+\FloatTok{1.696760896}\NormalTok{,}
+\FloatTok{1.977075901}\NormalTok{,}
+\FloatTok{1.7447377120060026}\NormalTok{,}
+\FloatTok{9.18303221644259e{-}4}
 
-../Idris2_fib_benchmark/fibTest.idr,
-1.734708117,
-2.152951106,
-1.786299514231,
-0.002247060292357963
+\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTest}\OperatorTok{.}\NormalTok{idr,}
+\FloatTok{1.734708117}\NormalTok{,}
+\FloatTok{2.152951106}\NormalTok{,}
+\FloatTok{1.786299514231}\NormalTok{,}
+\FloatTok{0.002247060292357963}
 
-../Idris2_fib_benchmark/fibTailRec.idr,
-1.65627213,
-1.881412963,
-1.6768551703740004,
-9.142437018832634e-4
+\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTailRec}\OperatorTok{.}\NormalTok{idr,}
+\FloatTok{1.65627213}\NormalTok{,}
+\FloatTok{1.881412963}\NormalTok{,}
+\FloatTok{1.6768551703740004}\NormalTok{,}
+\FloatTok{9.142437018832634e{-}4}
 
-[0, 0, 136, 113, 17, 620, 62, 22, 4, 6, 4, 3, 2, 3, 4, 
-0, 1, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-[0, 0, 0, 0, 164, 217, 36, 160, 264, 47, 36, 18, 19, 7, 5, 
-5, 7, 3, 2, 3, 2, 2, 1, 0, 0, 0, 1, 0, 0, 1]
-[647, 221, 19, 4, 52, 33, 8, 2, 5, 2, 0, 4, 2, 1, 0, 0, 
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-\end{verbatim}
+\NormalTok{[}\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{136}\NormalTok{, }\DecValTok{113}\NormalTok{, }\DecValTok{17}\NormalTok{, }\DecValTok{620}\NormalTok{, }\DecValTok{62}\NormalTok{, }\DecValTok{22}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{6}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{4}\NormalTok{, }
+\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{]}
+\NormalTok{[}\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{164}\NormalTok{, }\DecValTok{217}\NormalTok{, }\DecValTok{36}\NormalTok{, }\DecValTok{160}\NormalTok{, }\DecValTok{264}\NormalTok{, }\DecValTok{47}\NormalTok{, }\DecValTok{36}\NormalTok{, }\DecValTok{18}\NormalTok{, }\DecValTok{19}\NormalTok{, }\DecValTok{7}\NormalTok{, }\DecValTok{5}\NormalTok{, }
+\DecValTok{5}\NormalTok{, }\DecValTok{7}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{]}
+\NormalTok{[}\DecValTok{647}\NormalTok{, }\DecValTok{221}\NormalTok{, }\DecValTok{19}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{52}\NormalTok{, }\DecValTok{33}\NormalTok{, }\DecValTok{8}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{5}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }
+\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{]}
+\end{Highlighting}
+\end{Shaded}
 
 \includegraphics{Screenshot 2020-08-25 at 17.59.34.png} As you can see
 the results aren't exactly as expected, both our \emph{average} and our
@@ -4364,30 +4399,32 @@ simply change the loop count from \texttt{8*10\^{}6} to
 \texttt{8*10\^{}4} reducing it by two orders of magnitude reduces the
 running time accordingly.
 
-\begin{verbatim}
-../Idris2_fib_benchmark/fibTestNoMutation.idr,
-0.007216185,0.008861124,
-0.007520532116999987,
-3.5827851856347296e-8
+\begin{Shaded}
+\begin{Highlighting}[]
+\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTestNoMutation}\OperatorTok{.}\NormalTok{idr,}
+\FloatTok{0.007216185}\NormalTok{,}\FloatTok{0.008861124}\NormalTok{,}
+\FloatTok{0.007520532116999987}\NormalTok{,}
+\FloatTok{3.5827851856347296e{-}8}
 
-../Idris2_fib_benchmark/fibTest.idr,0.006543267,
-0.010942671,
-0.006867369243000004,
-5.3106313711037986e-8
+\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTest}\OperatorTok{.}\NormalTok{idr,}\FloatTok{0.006543267}\NormalTok{,}
+\FloatTok{0.010942671}\NormalTok{,}
+\FloatTok{0.006867369243000004}\NormalTok{,}
+\FloatTok{5.3106313711037986e{-}8}
 
-../Idris2_fib_benchmark/fibTailRec.idr,
-0.006385357,
-0.007625528,
-0.006624731209000001,
-2.4002041892751334e-8
+\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTailRec}\OperatorTok{.}\NormalTok{idr,}
+\FloatTok{0.006385357}\NormalTok{,}
+\FloatTok{0.007625528}\NormalTok{,}
+\FloatTok{0.006624731209000001}\NormalTok{,}
+\FloatTok{2.4002041892751334e{-}8}
 
-[0, 0, 0, 0, 0, 72, 411, 361, 106, 17, 12, 8, 6, 2, 3, 2, 
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-[0, 95, 493, 288, 83, 13, 9, 10, 3, 0, 3, 1, 0, 0, 0, 0, 
-0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
-[303, 470, 161, 41, 13, 7, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-\end{verbatim}
+\NormalTok{[}\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{72}\NormalTok{, }\DecValTok{411}\NormalTok{, }\DecValTok{361}\NormalTok{, }\DecValTok{106}\NormalTok{, }\DecValTok{17}\NormalTok{, }\DecValTok{12}\NormalTok{, }\DecValTok{8}\NormalTok{, }\DecValTok{6}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{2}\NormalTok{, }
+\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{]}
+\NormalTok{[}\DecValTok{0}\NormalTok{, }\DecValTok{95}\NormalTok{, }\DecValTok{493}\NormalTok{, }\DecValTok{288}\NormalTok{, }\DecValTok{83}\NormalTok{, }\DecValTok{13}\NormalTok{, }\DecValTok{9}\NormalTok{, }\DecValTok{10}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }
+\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{]}
+\NormalTok{[}\DecValTok{303}\NormalTok{, }\DecValTok{470}\NormalTok{, }\DecValTok{161}\NormalTok{, }\DecValTok{41}\NormalTok{, }\DecValTok{13}\NormalTok{, }\DecValTok{7}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }
+\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{]}
+\end{Highlighting}
+\end{Shaded}
 
 \includegraphics{Screenshot 2020-08-25 at 17.59.21.png} And indeed this
 data does not disprove our JIT hypothesis (but it does not confirm it
@@ -4407,7 +4444,8 @@ Idris2 has an alternative javascript backend, however, the javascript
 code generation is unable to translate our programs into plain loops
 free of recursion. Because of this, our benchmark exceeds the maximum
 stack size and the program aborts. When the stack size is increased the
-program segfaults.
+program segfaults. This could be solved with the use of trampolines in
+the runtime, instead of plain recursion.
 
 \hypertarget{results-4-mapping}{%
 \subsubsection{Results 4: mapping}\label{results-4-mapping}}
@@ -4418,23 +4456,25 @@ and returns its size. We ran each program a 100 times using
 \texttt{idris-bench}. As before we expect a negligible average speedup
 but a significant decrease in variance.
 
-\begin{verbatim}
-../map_test/map.idr,
-8.73337e-4,
-0.005067636,
-0.0011461037300000004,
-2.211481014400371e-7
-../map_test_mutate/mapMutation.idr,
-5.23816e-4,
-0.001308711,
-6.850426700000001e-4,
-1.9851180862141108e-8
+\begin{Shaded}
+\begin{Highlighting}[]
+\OperatorTok{../}\NormalTok{map\_test}\OperatorTok{/}\FunctionTok{map}\OperatorTok{.}\NormalTok{idr,}
+\FloatTok{8.73337e{-}4}\NormalTok{,}
+\FloatTok{0.005067636}\NormalTok{,}
+\FloatTok{0.0011461037300000004}\NormalTok{,}
+\FloatTok{2.211481014400371e{-}7}
+\OperatorTok{../}\NormalTok{map\_test\_mutate}\OperatorTok{/}\NormalTok{mapMutation}\OperatorTok{.}\NormalTok{idr,}
+\FloatTok{5.23816e{-}4}\NormalTok{,}
+\FloatTok{0.001308711}\NormalTok{,}
+\FloatTok{6.850426700000001e{-}4}\NormalTok{,}
+\FloatTok{1.9851180862141108e{-}8}
 
-[0, 0, 47, 29, 6, 4, 4, 6, 2, 1, 0, 0, 0, 0, 0, 0, 0, 
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
-[63, 26, 5, 5, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-\end{verbatim}
+\NormalTok{[}\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{47}\NormalTok{, }\DecValTok{29}\NormalTok{, }\DecValTok{6}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{6}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }
+\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{]}
+\NormalTok{[}\DecValTok{63}\NormalTok{, }\DecValTok{26}\NormalTok{, }\DecValTok{5}\NormalTok{, }\DecValTok{5}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }
+\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{]}
+\end{Highlighting}
+\end{Shaded}
 
 This time our performance improvements are more noticeable in average
 than before. Tough it might be because the benchmark is measured in tens
@@ -4444,9 +4484,10 @@ of microseconds.
 \subsection{Sat solver}\label{sat-solver}}
 
 For this benchmark we didn't use \texttt{idris-bench} rather we compiled
-two versions of \texttt{isat}, one with the inlining optimisation, and
-one without. And ran each version 10 times on the same input (in
-appendix) :
+two versions of \texttt{isat}
+(\url{https://git.sr.ht/~cypheon/idris-minisat}), one with the inlining
+optimisation, and one without. And ran each version 10 times on the same
+input (in appendix) :
 
 \begin{verbatim}
 sat      | average            | variance
@@ -4534,7 +4575,7 @@ might expect. They roughly end up in two buckets:
 
 The first one appears when the programmer tries to make thoughtful usage
 of linear and erased annotation but finds that other parts of existing
-libraries do not support linearity. Here are a couple of examples
+libraries do not support linearity. The following program:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -4543,15 +4584,13 @@ libraries do not support linearity. Here are a couple of examples
 \end{Highlighting}
 \end{Shaded}
 
-gives the error
+Gives the error:
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\DataTypeTok{Trying}\NormalTok{ to use linear name n }\KeywordTok{in}\NormalTok{ non}\OperatorTok{{-}}\NormalTok{linear context}
-\end{Highlighting}
-\end{Shaded}
+\begin{verbatim}
+> Trying to use linear name n in non-linear context
+\end{verbatim}
 
-Because the \texttt{+} interface is defined as
+Because the \texttt{+} interface is defined as:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -4560,7 +4599,7 @@ Because the \texttt{+} interface is defined as
 \end{Highlighting}
 \end{Shaded}
 
-Despite addition on \texttt{Nat} being defined linearly
+Despite addition on \texttt{Nat} being defined linearly:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -4585,12 +4624,10 @@ A similar problem occurs with interfaces
 \end{Highlighting}
 \end{Shaded}
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\DataTypeTok{Expected} \DataTypeTok{Type} \OtherTok{{-}\textgreater{}} \DataTypeTok{Type}
-\NormalTok{got (}\DecValTok{0}\NormalTok{ ty }\OperatorTok{:} \DataTypeTok{Type}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Type}
-\end{Highlighting}
-\end{Shaded}
+\begin{verbatim}
+> Expected Type -> Type
+> got (0 ty : Type) -> Type
+\end{verbatim}
 
 One way to solve those issues would be to have linearity polymorphism
 and be able to abstract over linearity annotations. For example the map
@@ -4633,21 +4670,17 @@ So that it can be used with both linear and non-linear variables.
 \hypertarget{too-linear-now}{%
 \subsubsection{Too linear now}\label{too-linear-now}}
 
-We've already mentionned before how benefitial it would be for our
+We've already mentioned before how beneficial it would be for our
 optimisation strategy to be \emph{100\%} linear in every aspect. We also
 mentioned how this is a problem to implement basic functionality like
-\texttt{drop} and \texttt{copy}, but those are artifical examples,
+\texttt{drop} and \texttt{copy}, but those are artificial examples,
 rarely does a programmer need to call \texttt{copy} or \texttt{drop} in
-industrial applications. Therefore I will present a couple of situation
-where being \emph{entirely} linear results in tricky code or impossible
-code and then propose a solution.
+industrial applications. In the following example I will show how linear
+types hold back programming and how QTT can fix it.
 
-\hypertarget{logging}{%
-\paragraph{Logging}\label{logging}}
-
-This is a common scenario, you're trying to debug effectful code, and
-for this you're spreading around log statements hoping that running the
-program will give you insight into how it's running.
+A common scenario when debugging effectful code is sprinkling around log
+statements hoping that running the program will give insight into how
+it's running.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -4682,6 +4715,48 @@ print statement without getting a linearity error:
 \end{Highlighting}
 \end{Shaded}
 
+There are two solutions for this problem that are worth exploring. The
+first one is to introduce \texttt{Nat} as the multiplicity semiring and
+write:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{do}\NormalTok{ datas }\OtherTok{\textless{}{-}}\NormalTok{ getData arg1 arg2}
+   \DecValTok{2}\NormalTok{ (}\DataTypeTok{Just}\NormalTok{ success) }\OtherTok{\textless{}{-}}\NormalTok{ trySomething datas (options}\OperatorTok{.}\NormalTok{memoized)}
+     \OperatorTok{|}\NormalTok{ \_ }\OtherTok{⇒} \FunctionTok{pure} \OperatorTok{$}\NormalTok{ returnError }\StringTok{"couldn\textquotesingle{}t make it work"}
+   \FunctionTok{putStrLn} \OperatorTok{$} \FunctionTok{show}\NormalTok{ success}
+   \KeywordTok{case} \OperatorTok{!}\NormalTok{(check\_timestamp success) }\KeywordTok{of}
+\NormalTok{       …}
+\end{Highlighting}
+\end{Shaded}
+
+Which will allow \texttt{success} to be bound with linearity \texttt{2}
+and therefor used twice. We've already seen how multiplicities are
+useful for memory management, but more flexibility also results in
+better ergonomics.
+
+The other solutions to this problem would be to allow \emph{borrowing}
+of read-only variables:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{do}\NormalTok{ datas }\OtherTok{\textless{}{-}}\NormalTok{ getData arg1 arg2}
+   \DataTypeTok{Just}\NormalTok{ success }\OtherTok{\textless{}{-}}\NormalTok{ trySomething datas (options}\OperatorTok{.}\NormalTok{memoized)}
+     \OperatorTok{|}\NormalTok{ \_ }\OtherTok{⇒} \FunctionTok{pure} \OperatorTok{$}\NormalTok{ returnError }\StringTok{"couldn\textquotesingle{}t make it work"}
+   \FunctionTok{putStrLn} \OperatorTok{$} \FunctionTok{show} \OperatorTok{\&}\NormalTok{success }\CommentTok{{-}{-} this doesn\textquotesingle{}t count as a use}
+   \KeywordTok{case} \OperatorTok{!}\NormalTok{(check\_timestamp success) }\KeywordTok{of}
+\end{Highlighting}
+\end{Shaded}
+
+We've seen that read-only variables have been a topic for linearly typed
+system with \emph{Linear Types can change the
+world}\cite{linear_types_update}, where linear read-only variables are
+allowed within some restriction on their scope. It would be interesting
+to implement a similar set of rules, adapted for QTT, that allows
+multiple use of linear types as long as they are read-only (Maybe even
+reuse our \texttt{\%mutating} implementation to differentiate between
+read-only and mutating functions).
+
 \newpage
 
 \hypertarget{conclusion}{%
@@ -4692,16 +4767,17 @@ types, quantitative types, graded modal types, containers, categories,
 optimisation techniques, benchmarking, program safety, compiler design
 and implementation, etc.
 
-I also learned about myself and how I best approach research topics.
-Research is not an activity to carry out alone, it is not a mindless
-job, and it is not limited to the ivory tower that is higher education.
-I learned that I do my best research work when I embrace my nature of
-being easily distracted by shining new research topics. I would never
-have understood graded modalities if I wasn't distracted by semirings. I
-would never have understood semirings if I wasn't distracted by porting
-some code to Idris2. I would have never started porting code to Idris2
-if I wasn't looking for an escape from writing test for my performance
-improvements.
+Most importantly I learned about myself and how I best approach research
+topics. Research is not an activity to carry out alone, it is not a
+mindless job, and it is not limited to the ivory tower that is higher
+education. I learned that I do my best research work when I explore the
+paths that opens in the forest of knowledge after clearing one of them.
+I would never have understood graded modalities if I wasn't distracted
+by semirings. I would never have understood semirings if I wasn't
+frustrated porting some code to Idris2 and noticing the limitations of
+\texttt{0}, \texttt{1} and \texttt{ω}. I would have never started
+porting code to Idris2 if I wasn't looking for an escape from writing
+test for my performance improvements.
 
 While this behaviour is dangerous, in that it can result in nothing of
 value produced, it also taught me the importance of having a strong and
@@ -4713,16 +4789,16 @@ life. I have discovered that sharing my research through teaching has
 been an extremely effective mean to contextualise my work and to put
 boundaries between personal and research life.
 
-As for linear types, just like me, they still have a long way to go. The
-work displayed here is only a minuscule sliver of what can be done, and
-needs to be done, for them to become commercially significant. Just like
-the main two topics of this thesis, I think the main areas linear types
+Quantitative types, just like me, still have a long way to go. The work
+displayed here is only a minuscule sliver of what can be done, and needs
+to be done, for them to become commercially significant. In line with
+the two main topics of this thesis, I think the areas quantiative types
 need to improve are ergonomics and performance. They are two pain points
 that functional programming has failed to fix, while other programming
 language have been successful basing their entire value proposition upon
-them.
+them (Rust, Javascript, Python, etc).
 
-Ergonomics have made huge strives forward with interactive development
+Ergonomics have made huge strides forward with interactive development
 environment like we find in Idris, Agda or Coq. But their gimmicks
 cannot sustain the behemoth of features that commercially successful
 programming languages showcase. Linear types won't turn the balance
@@ -4733,13 +4809,23 @@ more helpful error messages, and help guide new users navigate complex
 programs by being explicit about usage rules that were left unwritten
 before.
 
-Until recently, it wasn't clear how the concept of performance could be
-approached and studied in functional programming. We did not have a way
-to get a hold of it. But just like we did not have a way to get a hold
-onto side-effect until monads, I strongly suspect linear types (and its
-variants) will allow us to turn performance from an abstract concept
-into a concrete term in a programming language, just like \texttt{IO} is
-a concrete term in functional programming languages.
+Until the recent development in resource tracking technologies, it
+wasn't clear how the concept of performance could be approached and
+studied in functional programming. We did not have a way to get a hold
+of it. But just like we did not have a way to get a hold onto
+side-effect until monads, I strongly suspect quantitative types will
+allow us to turn performance from an abstract concept into a concrete
+term in a programming language, just like \texttt{IO} became a concrete
+term in functional programming languages.
+
+I hope you enjoyed this report on linear and quantitative types as much
+as I did writing it. I wish I explored the paths of knowledge that I
+discovered with more depth. Yet I am satisfied with the result of this
+year of exploration. I come out of it with a strong intuition about
+quantitative types, how to use them and how to improve them. I strongly
+believe this thesis, as the first detailed exploration of quantitative
+types used in practice with dependent types, will be the start of a
+series of great discoveries.
 
 \newpage
 

@@ -13,11 +13,11 @@ In this thesis I explore multiple facets of programming through the lens of quan
 \newpage
 # Introduction 
 
-In this project I will demonstrate different uses and results stemming from a programming practice that allows us to specify how many times each variable is being used. This information is part of the type system, in our case we are tracking if a variable is allowed to be used exactly once, or if it has no restrictions. Such types are called “linear types”. 
+In this project I will demonstrate different uses and results stemming from a programming practice that allows us to specify how many times each variable is being used. This information is part of the type system, in our case we are tracking if a variable is allowed to be used exactly once, or if it has no restrictions. Such types system is called a “linear type system”. 
 
-As we will see there is a lot more to this story, so as part of this thesis, I will spend some time introducing dependent types and linear types. After that we will see some examples of (new and old) uses for linear types in Idris2. This focus on practical examples will be followed by a context review of the existing body of theoretical work around linear types. Once both the theoretical and practical landscape have been set I will delve into the main two topics of this thesis, the ergonomics of Quantitative Type Theory\cite{qtt}\cite{nuttin} (QTT, for short) for software development and the performance improvement we can derive from the linearity features of Idris2.
+As we will see there is a lot more to this story, so as part of this thesis, I will spend some time introducing dependent types as well as our host language: Idris. This warm up will be followed by a context review outlining the existing body of work abour to linear types and related topics. Once both the theoretical and technical landscape have been set I will introduce the concept of linear and quantitative type in order to. Which is the final piece to nderstand the two main topics of this thesis, the ergonomics of Quantitative Type Theory\cite{qtt}\cite{nuttin} (QTT, for short) for software development and the performance improvement we can derive from the linearity features of Idris2.
 
-The ergonomics chapter will focus on how the current implementation of Idris can be extended, and the steps already taken toward those extensions. The performance chapter will analyse one aspect of performance that can be optimised thanks to clever use of linearity.
+Those two chapters reflect the main goal of this thesis which is to explore the uses of quantitative types in a dependently-types setting, for real-world programs. This exploration aims to explain their limitations and propose ways of getting around them. Some of those ideas have been implemented in the Idris2 compiler and we discuss their details and consequences.
 
 Let us begin slowly and introduce the basic concepts. The following will only make assumptions about basic understanding of imperative and functional programming. 
 
@@ -342,7 +342,7 @@ As before, there is no practical application of this in terms of programming lan
 
 Soon after the development of linear types, they appeared in a paper aimed at optimising away redundant allocations when manipulating lists: The deforestation algorithm.
 
-Deforestation\cite{deforestations} is an algorithm designed to avoid extraneous allocation when performing list operations in a programming language close to System-F.  The assumption that operations on lists must be linear was made to avoid duplicating operations. If a program was non-linear, the optimisation would duplicate each of the computation associated with the non-linear variable, making the resulting program less efficient.
+Deforestation\cite{deforestation} is an algorithm designed to avoid extraneous allocation when performing list operations in a programming language close to System-F.  The assumption that operations on lists must be linear was made to avoid duplicating operations. If a program was non-linear, the optimisation would duplicate each of the computation associated with the non-linear variable, making the resulting program less efficient.
 
 While deforestation itself might not be the algorithm that we want to implement today, it is likely we can come up with a similar set of optimisation rules in Idris2 that rely on linearity.
 
@@ -355,13 +355,13 @@ let x = f y in
 
 Where inlining into `(f x, f x)` duplicates the work done by `f`.
 
-Beside inlining and mutation, another way to use linear types for performance is memory space mutation. _Linear types can change the world_\cite{linear_update} show that Linear types can be used for in-place update and mutation instead of relying on copying. They provide a safe API to update values by relying on the linearity of the argument being used.
+Beside inlining and mutation, another way to use linear types for performance is memory space mutation. _Linear types can change the world_\cite{linear_types_update} show that Linear types can be used for in-place update and mutation instead of relying on copying. They provide a safe API to update values by relying on the linearity of the argument being used.
   
-However the weakness of this result is that the API exposed to the programmer relies on nested continuations when traversing nested data types. Which is largely seen as undesirable user experience. _Is there a use for linear logic_\cite{linear-use} makes similar claims and introduces a concept of types with a _unique_ pointer to them. This restriction for unique pointers is something we are going to encounter again during this thesis.
+However the weakness of this result is that the API exposed to the programmer relies on nested continuations when traversing nested data types. Which is largely seen as undesirable user experience. _Is there a use for linear logic_\cite{linear_use} makes similar claims and introduces a concept of types with a _unique_ pointer to them. This restriction for unique pointers is something we are going to encounter again during this thesis.
 
 The memory management benefits from linear types do not stop here, in _ Reference counting as a computational interpretation of linear logic _\cite{linear_ref_count}, linear types are shown to correspond to , this paper shows that a simple calculus augmented with memory management primitives can make use of linearity in order to control memory allocation and deallocation using linear types. While the calculus itself isn’t very ergonomic to use for programming, one could imagine using it as a backend for a reference counted runtime.
 
-_Practical affine types_\cite{practical_affine} aims to answer “What does it mean to have access to linear and affine types _in practice_”? Indeed, most the results we've talked about develop a theory for linear types using a variant of linear logic, and then present a toy language to showcase their contribution. However this does not teach us how they would interact and manifest in existing programs or in existing software engineering workflows. Do we see emerging new programming patterns? Is the user experience improved or diminished? In what regards is the code different to read and write? How is code organised  and sharedAll those questions can only be answered by a fully fledged implementation of a programming language equipped to interact with existing systems. 
+_Practical affine types_\cite{affine_types} aims to answer “What does it mean to have access to linear and affine types _in practice_”? Indeed, most the results we've talked about develop a theory for linear types using a variant of linear logic, and then present a toy language to showcase their contribution. However this does not teach us how they would interact and manifest in existing programs or in existing software engineering workflows. Do we see emerging new programming patterns? Is the user experience improved or diminished? In what regards is the code different to read and write? How is code organised  and sharedAll those questions can only be answered by a fully fledged implementation of a programming language equipped to interact with existing systems. 
 
 Practical affine types show that their implementation for linear+affine types allow to express common operations in concurrent programs without any risk of data races. They note that typical stateful protocols should also be implementable since their language is a strict superset of other which already provided protocol implementations. Those two results hint at us that linear types in a commercially-relevant programming language would provide us with additional guarantees without impeding on the existing writing or reading experience of programs.
 
@@ -1044,7 +1044,7 @@ It tells us that `n` unifies with `Z` and forces the user to spell out the match
 
 # Quantitative Type Theory in practice
 
-QTT is still a recent development and because of its young age, it has not seen wide spread use in commercial applications. The Idris2 compiler itself stands as the most popular example of a complex program that showcases uses for QTT and quantitative types. Linear types already benefit from a body of work that showcase their uses \cite{linear_diff}\cite{linear_types_update}\cite{linear_types_session}\cite{linear_types_subst}\cite{actor_channels}\cite{linear_race}\cite{linear_use}\cite{once_upon_a_type}\cite{deforestations}, but one of the goals of this thesis was to list and discover some new and innovative uses for linear types and QTT.
+QTT is still a recent development and because of its young age, it has not seen wide spread use in commercial applications. The Idris2 compiler itself stands as the most popular example of a complex program that showcases uses for QTT and quantitative types. Linear types already benefit from a body of work that showcase their uses \cite{linear_diff}\cite{linear_types_update}\cite{linear_types_session}\cite{linear_types_subst}\cite{actor_channels}\cite{linear_race}\cite{linear_use}\cite{once_upon_a_type}\cite{deforestation}, but one of the goals of this thesis was to list and discover some new and innovative uses for linear types and QTT.
 
 ## limitations and solutions for quantitative types
 
@@ -1130,16 +1130,44 @@ One of Statebox’s project is a validator for petri-nets\cite{petri-nets}  and 
 
 FSM-Oracle describes petri-nets using [_hypergraphs_](http://www.zanasi.com/fabio/files/paperCALCO19b.pdf) \cite{cartographer} those hypergraphs have a concept of [_permutation_ ](https://github.com/statebox/fsm-oracle/blob/master/src/Permutations/Permutations.idr#L31) that allows to move wires around. This concept is key in a correct and proven implementation of hypergraphs. However, permutations also turn out to be extremely complex to implement as can attest the files [trying to fit](https://github.com/statebox/fsm-oracle/blob/master/src/Permutations/PermutationsCategory.idr) their definition into a [Category](https://github.com/statebox/fsm-oracle/blob/master/src/Permutations/PermutationsStrictMonoidalCategory.idr).
 
+The relevant bit about permutation can be found in the two files `Permutations.idr` and `SwapDown.idr`, a permutation relies on a list of “swaps” that describe the operation that we can do on a list to generate a new permutation of the same list.
+
+```haskell
+data Perm : {o : Type} -> List o -> List o -> Type where
+  Nil : Perm [] []
+  Ins : Perm xs ys -> SwapDown (a::ys) zs -> Perm (a::xs) zs
+
+data SwapDown : List t -> List t -> Type where
+  HereS  : SwapDown (a::as) (a::as)
+  ThereS : SwapDown (a::as) bs -> SwapDown (a::b::as) (b::bs)
+```
+
+If you don’t have access to the internet to witness the proofs in their full glory, here is an example of what we are dealing with:
+
+```haskell
+permAssoc : (ab : Perm aas bbs) -> (bc : Perm bbs ccs) -> (cd : Perm ccs dds)
+         -> permComp ab (permComp bc cd) = permComp (permComp ab bc) cd
+permAssoc Nil bc cd = Refl
+permAssoc (Ins {xs=as} {ys=bs} ab' abb) bc cd with (shuffle abb (permComp bc cd)) proof bdPrf
+  | Ins {ys=ds} bd' add with (shuffle abb bc) proof bcPrf
+    | Ins {ys=cs} bc' acc with (shuffle acc cd) proof cdPrf
+      | Ins {ys=ds'} cd' ad'd =
+        let (Refl, Refl, Refl) = shuffleComp abb bc cd bcPrf cdPrf bdPrf in
+        insCong5 Refl Refl Refl (permAssoc ab' bc' cd') Refl
+```
+
+This function ensures that composition of permutation is associative. It relies on helper functions such as `shuffleComp` which are not even implemented in Idris1, because it is too hard to convince the compiler.
+
 Linear types can thankfully ease the pain by providing a very simple representation of permutations :
 
 ```haskell
 Permutation : Type -> Type
-Premutation a = (1 ls : List a) -> List a
+Permutation a = (1 ls : List a) -> List a
 ```
 
 That is, a `Permutation` parameterised over a type `a` is a linear function from `List a` to `List a`[^15].
 
-This definition works because no elements from the input list can be omited  or reused for the output list. _Every single element_ from the argument has to find a new spot in the output list. Additionally, since the type `a` is unknown, no special value can be inserted in advance. Indeed, the only way to achieve this effect would be to pattern match on `a` and create values once `a` is known, but this would require `a` to be bound with a multiplicity greater than `0`:
+This definition works because no elements from the input list can be omitted  or reused for the output list. _Every single element_ from the argument has to find a new spot in the output list. Additionally, since the type `a` is unknown, no special value can be inserted in advance. Indeed, the only way to achieve this effect would be to pattern match on `a` and create values once `a` is known, but this would require `a` to be bound with a multiplicity greater than `0`:
 
 ```haskell
 fakePermutation : {a : Type} -> (1 _ : List a) -> List a
@@ -1266,7 +1294,7 @@ Finally and most importantly, this program could not exist without using both de
 
 _The gentle art of levitation_\cite{levitation} shows that a dependently typed language has enough resources to describe all indexed data types with only a few constructors. The ability to define types as a language library rather than a language features allows a great deal of introspection which in turns allows a realm of possibilities. Indeed, we can now define operations on those data types that will preserve the semantics of the type but make the representation more efficient. We can generate interface implementations for them automatically. And we can use them to construct new types out of existing ones\cite{category_of_containers}\cite{delta_for_data}\cite{indexed_containers}, including representations for primitive types such as `Int` or `String`, an approach that’s been proven effective with Typedefs\cite{typedefs}.
 
-_The practical guide to levitation_\cite{guide_to_levitation} shows that those features are plagued by multiple shortcomings: the verbosity of the definitions not only make the data declaration hard to write and read, it makes the compiler spend a lot of time constructing and checking those terms and it has trouble identifying what is a type parameter or what is an index.
+_The practical guide to levitation_\cite{levitation} shows that those features are plagued by multiple shortcomings: the verbosity of the definitions not only make the data declaration hard to write and read, it makes the compiler spend a lot of time constructing and checking those terms and it has trouble identifying what is a type parameter or what is an index.
 
 Thankfully, the performance inefficiency from levitation can be alleviated by a smart use of erasure. In his thesis, Ahmad Salim relies on erasing terms with the `.` (dot) syntax, which does its best but cannot enforce erasure of terms. 
 
@@ -1384,7 +1412,7 @@ The string `name` has been consumed and the core will therefore perform a runtim
 
 # Quantitative Type Theory and Programming ergonomics
 
-Idris2 features both linear and dependent types, providing programmers with the tools to write elegant and correct software\cite{dtt_edwin}, while ensuring performance. In this thesis I am going to reuse the intuition originally suggested by \cite{once_upon_a_type}\cite{linear_update}\cite{linear_types_update\cite{linear_use} and rephrase it as 
+Idris2 features both linear and dependent types, providing programmers with the tools to write elegant and correct software\cite{tdd}, while ensuring performance. In this thesis I am going to reuse the intuition originally suggested by \cite{once_upon_a_type}\cite{linear_types_update}\cite{linear_types_update\cite{linear_use} and rephrase it as 
 
 > If you own a linear variable and it is not shared, you can freely mutate it
 
@@ -1437,7 +1465,7 @@ String = List Char
 
 This allows us to implement `Copy` and `Drop` by inheriting the instance from `List` and `Vect`. Additionally, since the procedure to implement those instances is very mechanical, it could almost certainly be automatically derived.
 
-This approach is reminiscent of projects like practical levitation or Typedefs, which describe data types as data structures. And the benefits of both would translate quite well to our situation, beyond the ability to dance around linearity with primitive types.
+This approach is reminiscent of projects like practical levitation\cite{practical_levitation} or Typedefs[^16], which describe data types as data structures. And the benefits of both would translate quite well to our situation, beyond the ability to dance around linearity with primitive types.
 
 Indeed, in both instance, once our data type is represented we can use its structure to infer its properties. For example, if a data type has _type parameters_ then we can generate instance for `Functor`, `Applicative`, etc. If the data type resembles `List Char` then we can replace it by the primitive type `String`. Finally, we can use semantic-preserving operations on our data types in order to optimise their representations in the generated code. For example `data Options = Folder Int | Directory Int` is equivalent to `Vect 33 Bool` which can be represented as an unboxed `Int64` . Even more optimisations could be performed by mapping `Vect` of constant length to buffers of memory of constant size and index through them in `O(1)` instead of `O(n)`.
 
@@ -1603,7 +1631,7 @@ rigSafe lhs rhs =
        (throw (LinearMisuse fc !(getFullName x) lhs rhs))
 ```
 
-Semirings in general do not enforce an order and we do not want to add too many restrictions to our multiplicity types to avoid making it less flexible than it needs. Typically, if affine types were to be implemented using intervals, we could not rely on a _total order_[^16] since some intervals cannot be compared with each others. For example `[3..5]` and `[0..4]` are not directly related to each other. For this reason we are going to use a `Preorder` which only requires equality to be valid for some pairs of values and requires transitivity and associativity to hold. In Idris2 this is formulated as:
+Semirings in general do not enforce an order and we do not want to add too many restrictions to our multiplicity types to avoid making it less flexible than it needs. Typically, if affine types were to be implemented using intervals, we could not rely on a _total order_[^17] since some intervals cannot be compared with each others. For example `[3..5]` and `[0..4]` are not directly related to each other. For this reason we are going to use a `Preorder` which only requires equality to be valid for some pairs of values and requires transitivity and associativity to hold. In Idris2 this is formulated as:
 
 ```haskell
 interface Preorder a where
@@ -1724,14 +1752,14 @@ Idris2 already allows to define linear functions, but despite the extra informat
 
 ```haskell
 isTrue : (1 _ : a) -> (f : (1 _ : a) -> Bool) -> String
-isTrue value predicate
---                 ┌ We can free `value` after this
---               ╭─┴─╮
-  = if predicate value then "It's true!"
+isTrue arg predicate
+--                ┌ We can free `arg` after this
+--                ▼
+  = if predicate arg then "It's true!"
                        else "Fake news."
 ```
 
-The value `value` of type `a` can be free immediately after being called by `predicate`. Indeed, it’s been used, therefore it cannot be used again, which means its memory space won’t ever be accessed again. Freeing memory might not sound very exciting but the benefit is that we do not need to wait for the garbage collector to notice our value can be freed. Removing the reliance on garbage collection is a huge step toward predictable performance.
+The value `arg` of type `a` can be freed immediately after being called by `predicate`. Indeed, it’s been used, therefore it cannot be used again, which means its memory space won’t ever be accessed again. Freeing memory might not sound very exciting but the main benefit is that we do not need to wait for the garbage collector to notice our value can be freed. Removing the reliance on garbage collection is a huge step toward predictable performance.
 
 The safe-update mechanism is similar:
 ```haskell
@@ -1747,11 +1775,11 @@ We have data type with two cases, and update checks which case we have and then 
 
 This function should perform in constant space (`O(1)`) but currently, the Idris compiler always allocates new values when a constructor is called. In addition, the old value is now ready to be freed but we have to wait on the garbage collector to catch it.
 
-Unfortunately, we cannot simply implement the free and update feature in order to see what kind of performance improvement we can get out of linear types. This is due to a feature of Idris2: subtyping.
+Unfortunately, we cannot simply implement the free and update feature in order to see what kind of performance improvement we can get out of linear types. This is because a linear variable is not guaranteed to be unique when it is called on a linear function. One example of this sharing mechanism can be seen with function subtyping.
 
 ## Linear function subtyping
 
-In order to make the interplay between unrestricted and linear functions easier, Idris2 features subtyping on functions. As a refresher, subtyping allows a function to accept another type than the one that it has been specified with, as long as the other type is a subtype of the original one. In the following example we are going to assume we have access to two types, `A` and `B` and `B` is a subtype of `A`, noted with `B <: A`
+In order to make the interplay between unrestricted and linear functions easier, Idris2 features subtyping on functions. As a refresher, subtyping allows a function to accept another type than the one that it has been specified with, as long as the other type is a subtype of the original one. In the following example we are going to assume we have access to two types, `A` and `B`, and that `B` is a subtype of `A`, noted with `B <: A`
 
 ```haskell
 
@@ -1759,11 +1787,11 @@ f : A -> A
 
 g : B -> B
 
--- assume we have B <: A
+-- Assume we have B <: A
 
 let a : A = …
     b : B = … 
-    y1 = f a -- expected
+    y1 = f a -- Expected
     y2 = f b -- b is a subtype, it's valid
     no = g a -- a is a supertype of b, invalid
  in ?rest
@@ -1783,16 +1811,16 @@ inc : Nat -> Nat
 
 linInc : (1 _ : Nat) -> Nat
 
--- success everything unrestricted
+-- Success everything unrestricted
 map inc [1,2,3] 
 
--- success because got unrestricted and expected linear
+-- Success because got linear and expected unrestricted
 map linInc [1,2,3]
 
--- fail because inc is unrestricted but linMap expected linear
+-- Fail because inc is unrestricted but linMap expected linear
 linearMap inc [1,2,3]
 
--- success because everything is linear
+-- Success because everything is linear
 linearMap linInc [1,2,3]
 ```
 
@@ -1825,7 +1853,7 @@ This suggests that our intuition that linear functions can be use for safe updat
 
 
 
-## Restricting the scope of linear optimisations
+## The nature of the changes required for linear optimisations
 
 Since linearity is not enough to ensure uniqueness, we are going to add an additional restriction:  We can only mutate a variable if it has been instanciated within in the immediate surrounding scope of the program. In the following example, `update` will perform an in-place mutation because it has been called with a variable that and been created in scope.
 
@@ -1893,7 +1921,7 @@ scheme output
 
 `PTerm` represents the surface level language, it is desugared into `RawImp` which is a front end for our typed terms `Term`. `Term` is indexed over the list of variables in context, which helps avoid indexing errors (specially when manipulating debrujin indices) and makes explicit the rules of context extension, for example when binding arguments under a lambda. `CExp` is a tree of compiled expressions ready for codegen, it keeps the index for variables from `Term` and the index is then dropped when variables indices are replaced by their names in `NamedCExp`. Which is the same but with all variable substitutions performed.
 
-Since our changes do not touch the type checker or elaborator, they do not the `checkTerm` stage. However, since we do need information from the control flow and the access the case tree we need to perform our changes between `Term` and `CExp`.
+Since our changes do not touch the type checker or elaborator, they do not change the `checkTerm` stage. However, since we do need information from the control flow and the access the case tree we need to perform our changes between `Term` and `CExp`.
 
 ### Implementation details
 
@@ -1913,11 +1941,11 @@ If we were to write this code in a low-level c-like syntax we would like to go f
 void * update(v * void) {
     Ty* newv;
     if v->tag == 0 {
-        newv = malloc(sizeof(ValOnce));
+        newv = malloc(sizeof(ValOnce)); // Allocation here
         newv->tag = 0;
         newv->val1 = 1 + v->val1;
     } else {
-        newv = malloc(sizeof(ValTwice));
+        newv = malloc(sizeof(ValTwice)); // Allocation here
         newv->tag = 1;
         newv->val1 = 1 + v->val1;
         newv->val2 = 1 + 1 + v->val2;
@@ -1936,7 +1964,7 @@ void * update(v * void) {
         v->val1 = 1 + v->val1;
         v->val2 = 1 + 1 + v->val2;
     }
-    return nv;
+    return v; // Return the mutated argument
 }
 ```
 
@@ -1951,8 +1979,8 @@ The following program would see no mutation
 ```haskell
 %mutating
 update : Ty -> Ty
-update (ValTwice v) = ValOnce (S v)
-update (ValOnce v) = ValTwice (S (S v))
+update (ValTwice v w) = ValOnce (S v)
+update (ValOnce v) = ValTwice (S (S v)) (S (S w))
 ```
 
 Since the constructor we are matching on the left side of the clause does not appear on the right.
@@ -1966,7 +1994,7 @@ ValTwice = { tag : Int , val1 : Int val2 : Int }
 
 if we are given a value `ValOnce` and asked to mutate it into a value `ValTwice` we would have to allocate more space to accomodate for the extra `val2` field.
   
-Similarly if we are given a `ValTwice` and are asked to mutate it into a value `ValOnce` we would have to carry over extra memory space that will remain unused.
+Similarly if we are given a `ValTwice` and are asked to mutate it into a value `ValOnce` we would have to carry over extra memory space that will remain unused. In the worst case, reckless access to the fields in memory would result in accessing out of bound memory and provoke either segfault or memory corruption. For example while attempting to mutate the second argument of a constructor that has only one.
 
 Ideally our compiler would be able to identify data declaration that share the same layout and replace allocation for them by mutation, but for the purpose of this thesis we will ignore this optimisation and carefully design our benchmarks to make use of it. Which brings us to the next section
 
@@ -2037,7 +2065,7 @@ tree_rt <- if Mutating `elem` flags gdef
 
 The third constraint is the most important one without which we corrupt the memory of our program as we’ve seen earlier.
 
-Let's look at our `update` function to understand the nature of the changes and update it slightly:
+Let's look at our `update` function to understand the nature of the changes and change it slightly:
 
 ```haskell
 %mutating
@@ -2051,8 +2079,8 @@ This version makes use of a temporary variable `arg` before matching on the func
 
 ```haskell
 case arg of
-     ValTwice v => -- access `arg` and mutate it with S (S v)
-                   ValTwice (S (S v))
+     ValTwice v w => -- access `arg` and mutate it with S (S v)
+                     ValTwice (S (S v)) (S (S w))
      ValOnce v => -- access `arg` and mutate it with S v
                   ValOnce (S v)
 ```
@@ -2084,7 +2112,7 @@ Thankfully this reference can be found  earlier in `CaseTree` :
        Impossible : CaseTree vars
 ```
 
-The reference is carried by `idx` which is the index of the variable in its context, as supported by the proof `p`. Once we get a hold of this reference we can move on to the actual tree transformation. The transformation itself is pretty simple and can be summarised with this excerpt:
+The reference is carried by `idx` which is the index of the variable in its context, as supported by the proof `p`. Once we get a hold of this reference we can move on to the actual tree transformation. The transformation itself is pretty simple and can be summarised with this snippet:
 
 ```haskell
 replaceConstructor : (cName : Name) -> (tag : Int) ->
@@ -2104,7 +2132,7 @@ replaceConstructor cName tag
 
 Which will replace every application of a data constructor by one which has a reference to the variable we mutate `ref` as indicated by the `Just ref`.
 
-This refers to another AST change we haven’t mentionned yet. And that is to track which data constructors are allowed to mutate a reference instead of constructing a new value. We change `DataCon` into `DataCon : (ref : Maybe Name) -> (tag : Int) -> (arity : Nat) -> NameType` where the first argument represents the variable we can mutate, if there is one.
+This refers to another AST change we haven’t mentioned yet. And that is to track which data constructors are allowed to mutate a reference instead of constructing a new value. We change `DataCon` into `DataCon : (ref : Maybe Name) -> (tag : Int) -> (arity : Nat) -> NameType` where the first argument represents the variable we can mutate, if there is one. `DataCon` is a field of `Ref`, it indicates what kind of data the `Ref` is pointing to. 
 
 The last step of this chain of changes is to inspect our `DataCon` constructor during compilation and emit the correct `CMut` instruction. We do this in `toCExp`:
 
@@ -2140,7 +2168,7 @@ And call the function:
 let newVal = fromMaybe valv --             ▼
                        (lineariseDataCon rigb valv)
 …
-                --   ┌ use the updated constructor here
+                --   ┌ Return the updated constructor
 pure (Bind fc n -- ╭─┴──╮
          (Let rigb newVal tyv) scopev,
          gnf env (Bind fc n (Let rigb newVal' tyv) scopet))
@@ -2157,13 +2185,13 @@ Thankfully, most of those limitations are a matter of user ergonomics and not pr
 
 ## Benchmarks & methodology
 
-In order to test our performance hypothesis I am going to use a series of programs and run them multiple times under different conditions in order to measure different aspects of performances. Typically, observing how memory usage and runtime varies depending on the optimisation we use.
+In order to test our performance hypothesis I am going to use a series of programs and run them multiple times under different conditions in order to measure different aspects of performance. Typically, observing how memory usage and runtime varies depending on the optimisation we use.
 
 Each benchmark will be compared to its control which will be the original compiler without any custom optimisation. The variable we are going to introduce is the new mutation instruction.
 
-It is important to stress that those are _synthetic benchmarks_ designed to showcase our improvements, and do not necessarily represent their effect in production software. This has often been the source of many misleading claims about performance and is the topic of endless discussion. The nofib\cite{nofib} project ([https://gitlab.haskell.org/ghc/nofib](https://gitlab.haskell.org/ghc/nofib)) make the effort to distribute a set of programs more representative of real-world production software, especially for functional languages. In our case, synthetic benchmarks will be enough to tell us if linear types provide any benefit worth pursuing or not.
+It is important to stress that those are _synthetic benchmarks_ designed to showcase our improvements, and do not necessarily represent their effect in production software. This has often been the source of many misleading claims about performance and is the topic of endless discussion. The nofib\cite{nofib} project ([https://gitlab.haskell.org/ghc/nofib](https://gitlab.haskell.org/ghc/nofib)) makes the effort to distribute a set of programs more representative of real-world production software, especially for functional languages. In our case, synthetic benchmarks will be enough to tell if linear types provide any benefit worth pursuing.
  
-Additionally, the Idris2 compiler itself was intended to be used as a benchmark by measuring the time it takes to compile itself. However, due to the nature of our optimisation we have found few areas of improvements with the predominantly non-linear style of the compiler.
+Additionally, the Idris2 compiler itself was intended to be used as a benchmark by measuring the time it takes to compile itself. However, due to the nature of our optimisation there are not enough opportunities to make noticeable performance improvement, due to the predominantly non-linear style of writing in the compiler.
 
 ### Traditional Fibonacci
 
@@ -2250,7 +2278,7 @@ Similarly to the deforestation algorithm we are going to see if we can improve t
 
 ```haskell
 %mutating
-mapList : (1 _ : List Int) -> List Int
+mapList : (List Int) -> List Int
 mapList [] = []
 mapList (x :: xs) = x + 1 :: mapList xs
 
@@ -2258,41 +2286,7 @@ main : IO ()
 main = printLn (length (mapList [0 .. 9999]))
 ```
 
-
-### Countdown
-
-Another typical synthetic benchmark is a countdown function.
-
-```haskell
-countdown : Int -> Int
-countdown 0 = 0
-countdown n = countdown (n-1)
-
-main : IO ()
-main = printLn (countdown 50000000)
-```
-
-### Mutating countdown
-
-This time we wrap our `Int` in a data type that should be optimised away by having its content be mutated rather than being allocated at every loop.
-
-```haskell
-data IntData = MkInt Int | MkNat Nat
-
-Show IntData where
-  show (MkInt int) = show int
-  show (MkNat nat) = show nat
-
-%mutating
-countdown : (IntData) -> IntData
-countdown (MkInt 0) = MkInt 0
-countdown (MkInt n) = countdown (MkInt (n-1))
-countdown (MkNat Z) = MkNat Z
-countdown (MkNat (S n)) = countdown (MkNat n)
-
-main : IO ()
-main = printLn (countdown (MkInt 50000000))
-```
+A small detail to notice here is that the function is non-linear, indeed using the signature `mapList : (1 _ : List Int) -> List Int` will not compile because `n + 1` does not consume `n` linearly.
 
 ### A simple SAT solver as benchmark
 
@@ -2316,9 +2310,9 @@ Our optimisation is subsumed by the “newtype-optimisation” which erases any 
 
 ## Measurements
 
-The benchmarks were run with a command link script written in idris itself which takes a source folder and recursively traverses it in order to find programs to execute and measure their runtime.
+The benchmarks were run with Idris-bench, a command link script written in idris itself which takes a source folder and recursively traverses it in order to find programs to execute and measure their runtime.
 
-The analysis of the result was performed with another command line script which reads the output of out benchmark program and output data like minimum, maximum, mean and variance along with arrays for plotting our results on a graph.
+The analysis of the result was performed with Idris-stat, another command line script which reads the output of out benchmark program and output data like minimum, maximum, mean and variance along with arrays for plotting our results on a graph.
 
 ### Idris-bench
 
@@ -2335,10 +2329,10 @@ Idris-bench takes the following arguments:
 
 ### Idris-stats
 
-Once our results have been generated we are going to analyse them by computing the minimum time, maximum time, mean and variance of the collection of benchmark results. For this we are going to rely on another script: idris-stats. It take out CSV output and compute the data we need and output them as another CSV file. Again the code can be found here [https://github.com/andrevidela/idris-bench/blob/master/script/idris-stats.idr](https://github.com/andrevidela/idris-bench/blob/master/script/idris-stats.idr).
+Once our results have been generated with idris-bench, we are going to analyse them by computing the minimum time, maximum time, mean and variance of the collection of benchmark results. Idris-stats will take our CSV output and compute the data we need and output them as another CSV file. Again the code can be found here [https://github.com/andrevidela/idris-bench/blob/master/script/idris-stats.idr](https://github.com/andrevidela/idris-bench/blob/master/script/idris-stats.idr).
 
 The program takes the file to analyse as single argument. The file is expected to be a CSV file with the following format:
-```haskell
+```
 name of first benchmark, result1, result2, result3, etc
 name of second benchmark, result1, result2, result3, etc
 ...
@@ -2369,6 +2363,7 @@ In addition, creating lots of short lived objects in memory will create memory p
 ## Running the benchmarks 
 
 All the benchmarks were run on a laptop with the following specs:
+
 - Intel core-i5 8257U (8th gen), 256KB L2 cache, 6MB L3 cache
 - 16Gb of ram at 2133Mhz
 
@@ -2379,6 +2374,7 @@ While this computer has a base clock of 1.4Ghz, it features a boost clock of 3.9
 In this section I will present the results obtained from the compiler optimisation.  The methodology and the nature of the benchmarks is explained in the “Benchmarks & methodology” section.
 
 Out first test suite runs the benchmark on our 3 fibonacci variants. As a refresher they are as follow:
+
 - The first one is implemented traditionally, carrying at all times 2 Ints representing the last 2 fibonacci numbers and computing the next one
 - Second one boxes those Ints into a datatype that will be allocated every time it is changed
 - The Third one will make use of our optimisation and mutate the boxes values instead of discarding the old one and allocating a new one.
@@ -2421,7 +2417,9 @@ Here are there results of running our benchmarks 100 times in a row:
 This is the result of calling our data analysis program on the csv file generated by our benchmarking program. The benchmarking program was called with those options
 
 ```haskell
-build/exec/benchmarks -d ../idris2-fib-benchmarks -o results.csv -p $(which idris2dev) 
+build/exec/benchmarks -d ../idris2-fib-benchmarks 
+                      -o results.csv -p idris2dev 
+                      -c 99
 ```
 
 And the statistical analysis program with no options except for the file:
@@ -2432,7 +2430,7 @@ build/exec/stats results_mutation_100_attempts_with_startup.csv
 
 The results are in the following format:
 
-```haskell
+```
 name of benchmark, minimum, maximum, average, variance
 ```
 
@@ -2478,17 +2476,15 @@ Takes 0.13 seconds to run despite doing nothing. This time is the startup time a
 
 ### Results 2: Fibonacci without startup time
 
-In order to remove the startup time we are going to change the emitted bytecode to wrap our main function inside a time-measuring function. Since the timer won't start until the program is ready to run the startup time will be eliminated. Running our empty program we get
+In order to remove the startup time we are going to change the emitted bytecode to wrap our main function inside a time-measuring function `(time main)`. Since the timer won't start until the program is ready to run the startup time will be eliminated. Running our empty program we get the following (expected) result:
 
 ```
 > 0.000000000s elapsed cpu time
 ```
 
-Which is what we expect.
-
 This time we will run our benchmarks 1000 times using the same command as before. We expect to see the same results but the difference should give us a greater interval of confidence. Running our statistical analysis gives us those results
 
-```
+```haskell
 ../Idris2_fib_benchmark/fibTestNoMutation.idr,
 1.696760896,
 1.977075901,
@@ -2525,7 +2521,7 @@ In order to test the JIT hypothesis we are going to run the same test, _without_
 
 In order to reduce the running time from seconds to milliseconds we simply change the loop count from `8*10^6` to `8*10^4` reducing it by two orders of magnitude reduces the running time accordingly.
 
-```
+```haskell
 ../Idris2_fib_benchmark/fibTestNoMutation.idr,
 0.007216185,0.008861124,
 0.007520532116999987,
@@ -2554,13 +2550,13 @@ And indeed this data does not disprove our JIT hypothesis (but it does not confi
 
 Those results showcase two things: That our optimisation works, and that it is not significant enough to be strictly superior to other forms of optimisations. Ideally the best way to test our optimisation would be to write our own runtime which runs on _bare metal_ or some approximation of it (WASM/LLVM) which would (probably) be even faster than scheme, and give us more control over which optimisations play nicely together and which ones are redundant or even harmful to performance.
 
-Idris2 has an alternative javascript backend, however, the javascript code generation is unable to translate our programs into plain loops free of recursion. Because of this, our benchmark exceeds the maximum stack size and the program aborts. When the stack size is increased the program segfaults.
+Idris2 has an alternative javascript backend, however, the javascript code generation is unable to translate our programs into plain loops free of recursion. Because of this, our benchmark exceeds the maximum stack size and the program aborts. When the stack size is increased the program segfaults. This could be solved with the use of trampolines in the runtime, instead of plain recursion.
 
 ### Results 4: mapping
 
 In this exercise we are going to aggregate the result of our control and our experimental run of `map`; which increments a list of number and returns its size. We ran each program a 100 times using `idris-bench`. As before we expect a negligible average speedup but a significant decrease in variance.
 
-```
+```haskell
 ../map_test/map.idr,
 8.73337e-4,
 0.005067636,
@@ -2582,7 +2578,7 @@ This time our performance improvements are more noticeable in average than befor
 
 ## Sat solver
 
-For this benchmark we didn’t use `idris-bench` rather we compiled two versions of `isat`, one with the inlining optimisation, and one without. And ran each version 10 times on the same input (in appendix) :
+For this benchmark we didn’t use `idris-bench` rather we compiled two versions of `isat` ([https://git.sr.ht/~cypheon/idris-minisat](https://git.sr.ht/~cypheon/idris-minisat)), one with the inlining optimisation, and one without. And ran each version 10 times on the same input (in appendix) :
 
 ```
 sat      | average            | variance
@@ -2634,27 +2630,27 @@ There are multiple barriers that make linearity harder to use than one might exp
 
 ### Not linear enough
 
-The first one appears when the programmer tries to make thoughtful usage of linear and erased annotation but finds that other parts of existing libraries do not support linearity. Here are a couple of examples
+The first one appears when the programmer tries to make thoughtful usage of linear and erased annotation but finds that other parts of existing libraries do not support linearity. The following program:
 
 ```haskell
 operate : (1 n : Nat) -> (1 m : Nat) -> Int
 operate n m = n + m
 ```
 
-gives the error 
+Gives the error:
 
-```haskell
-Trying to use linear name n in non-linear context
+```
+> Trying to use linear name n in non-linear context
 ```
 
-Because the `+` interface is defined as 
+Because the `+` interface is defined as:
 
 ```haskell
 interface Num ty where
     (+) : ty -> ty -> ty
 ```
 
-Despite addition on `Nat` being defined linearly
+Despite addition on `Nat` being defined linearly:
 
 ```haskell
 plus : (1 n : Nat) -> (1 m : Nat) -> Nat
@@ -2675,9 +2671,9 @@ instance Monad MyData where
     ...
 ```
 
-```haskell
-Expected Type -> Type
-got (0 ty : Type) -> Type
+```
+> Expected Type -> Type
+> got (0 ty : Type) -> Type
 ```
 
 One way to solve those issues would be to have linearity polymorphism and be able to abstract over linearity annotations. For example the map function could be written as
@@ -2710,11 +2706,9 @@ So that it can be used with both linear and non-linear variables.
 
 ### Too linear now
 
-We've already mentionned before how benefitial it would be for our optimisation strategy to be _100%_ linear in every aspect. We also mentioned how this is a problem to implement basic functionality like `drop` and `copy`, but those are artifical examples, rarely does a programmer need to call `copy` or `drop` in industrial applications. Therefore I will present a couple of situation where being _entirely_ linear results in tricky code or impossible code and then propose a solution.
+We've already mentioned before how beneficial it would be for our optimisation strategy to be _100%_ linear in every aspect. We also mentioned how this is a problem to implement basic functionality like `drop` and `copy`, but those are artificial examples, rarely does a programmer need to call `copy` or `drop` in industrial applications. In the following example I will show how linear types hold back programming and how QTT can fix it.
 
-#### Logging
-
-This is a common scenario, you're trying to debug effectful code, and for this you're spreading around log statements hoping that running the program will give you insight into how it's running.
+A common scenario when debugging effectful code is sprinkling around log statements hoping that running the program will give insight into how it's running.
 
 ```haskell
 do datas <- getData arg1 arg2
@@ -2743,21 +2737,49 @@ do datas <- getData arg1 arg2
       UnSynchronized v ⇒ functionCall 0 v 
       Invalid ⇒ pure $ returnError "failed to check"
 ```
+
+There are two solutions for this problem that are worth exploring. The first one is to introduce `Nat` as the multiplicity semiring and write:
+
+```haskell
+do datas <- getData arg1 arg2
+   2 (Just success) <- trySomething datas (options.memoized)
+     | _ ⇒ pure $ returnError "couldn't make it work"
+   putStrLn $ show success
+   case !(check_timestamp success) of
+       …
+```
+
+Which will allow `success` to be bound with linearity `2` and therefor used twice. We’ve already seen how multiplicities are useful for memory management, but more flexibility also results in better ergonomics.
+
+The other solutions to this problem would be to allow _borrowing_ of read-only variables:
+
+```haskell
+do datas <- getData arg1 arg2
+   Just success <- trySomething datas (options.memoized)
+     | _ ⇒ pure $ returnError "couldn't make it work"
+   putStrLn $ show &success -- this doesn't count as a use
+   case !(check_timestamp success) of
+```
+
+We’ve seen that read-only variables have been a topic for linearly typed system with _Linear Types can change the world_\cite{linear_types_update}, where linear read-only variables are allowed within some restriction on their scope. It would be interesting to implement a similar set of rules, adapted for QTT, that allows multiple use of linear types as long as they are read-only (Maybe even reuse our `%mutating` implementation to differentiate between read-only and mutating functions).
+
 \newpage
 
 # Conclusion
 
 I have learned a lot during this master project. Not only about linear types, quantitative types, graded modal types, containers, categories, optimisation techniques, benchmarking, program safety, compiler design and implementation, etc. 
 
-I also learned about myself and how I best approach research topics. Research is not an activity to carry out alone, it is not a mindless job, and it is not limited to the ivory tower that is higher education. I learned that I do my best research work when I embrace my nature of being easily distracted by shining new research topics. I would never have understood graded modalities if I wasn’t distracted by semirings. I would never have understood semirings if I wasn’t distracted by porting some code to Idris2. I would have never started porting code to Idris2 if I wasn’t looking for an escape from writing test for my performance improvements.  
+Most importantly I learned about myself and how I best approach research topics. Research is not an activity to carry out alone, it is not a mindless job, and it is not limited to the ivory tower that is higher education. I learned that I do my best research work when I explore the paths that opens in the forest of knowledge after clearing one of them. I would never have understood graded modalities if I wasn’t distracted by semirings. I would never have understood semirings if I wasn’t frustrated porting some code to Idris2 and noticing the limitations of `0`, `1` and `ω`. I would have never started porting code to Idris2 if I wasn’t looking for an escape from writing test for my performance improvements.  
 
 While this behaviour is dangerous, in that it can result in nothing of value produced, it also taught me the importance of having a strong and reliable support group. Friends, both in research and otherwise, focus the mind, which results in a more focused work. Finally, research is not something one can _tune out of_, thoughts linger, ideas sprawl out of control and new connections are drawn during every event of daily life. I have discovered that sharing my research through teaching has been an extremely effective mean to contextualise my work and to put boundaries between personal and research life.
 
-As for linear types, just like me, they still have a long way to go. The work displayed here is only a minuscule sliver of what can be done, and needs to be done, for them to become commercially significant. Just like the main two topics of this thesis, I think the main areas linear types need to improve are ergonomics and performance. They are two pain points that functional programming has failed to fix, while other programming language have been successful basing their entire value proposition upon them.
+Quantitative types, just like me, still have a long way to go. The work displayed here is only a minuscule sliver of what can be done, and needs to be done, for them to become commercially significant. In line with the two main topics of this thesis, I think the areas quantiative types need to improve are ergonomics and performance. They are two pain points that functional programming has failed to fix, while other programming language have been successful basing their entire value proposition upon them (Rust, Javascript, Python, etc).
 
-Ergonomics have made huge strives forward with interactive development environment like we find in Idris, Agda or Coq. But their gimmicks cannot sustain the behemoth of features that commercially successful programming languages showcase. Linear types won’t turn the balance around, but they will help in some important aspects: ensuring APIs contracts and protocols are respected, showing those information in the type, and therefore in the documentation, help the compiler generate more helpful error messages, and help guide new users navigate complex programs by being explicit about usage rules that were left unwritten before.
+Ergonomics have made huge strides forward with interactive development environment like we find in Idris, Agda or Coq. But their gimmicks cannot sustain the behemoth of features that commercially successful programming languages showcase. Linear types won’t turn the balance around, but they will help in some important aspects: ensuring APIs contracts and protocols are respected, showing those information in the type, and therefore in the documentation, help the compiler generate more helpful error messages, and help guide new users navigate complex programs by being explicit about usage rules that were left unwritten before.
 
-Until recently, it wasn’t clear how the concept of performance could be approached and studied in functional programming. We did not have a way to get a hold of it. But just like we did not have a way to get a hold onto side-effect until monads, I strongly suspect linear types (and its variants) will allow us to turn performance from an abstract concept into a concrete term in a programming language, just like `IO` is a concrete term in functional programming languages.
+Until the recent development in resource tracking technologies, it wasn’t clear how the concept of performance could be approached and studied in functional programming. We did not have a way to get a hold of it. But just like we did not have a way to get a hold onto side-effect until monads, I strongly suspect quantitative types will allow us to turn performance from an abstract concept into a concrete term in a programming language, just like `IO` became a concrete term in functional programming languages.
+
+I hope you enjoyed this report on linear and quantitative types as much as I did writing it. I wish I explored the paths of knowledge that I discovered with more depth. Yet I am satisfied with the result of this year of exploration. I come out of it with a strong intuition about quantitative types, how to use them and how to improve them. I strongly believe this thesis, as the first detailed exploration of quantitative types used in practice with dependent types, will be the start of a series of great discoveries.
 
 \newpage
 
@@ -2967,4 +2989,6 @@ mutating milisec * 10⁵,3.87894,3.81214,3.70131,3.87206,3.64071,3.85495,3.87899
 
 [^15]:	This has already been formally proven by Bob Atkey [https://github.com/bobatkey/sorting-types/blob/master/agda/Linear.agda](https://github.com/bobatkey/sorting-types/blob/master/agda/Linear.agda)
 
-[^16]:	A _total order_ is an ordering for which every value is related to every other value.
+[^16]:	[http://typedefs.com](http://typedefs.com)
+
+[^17]:	A _total order_ is an ordering for which every value is related to every other value.

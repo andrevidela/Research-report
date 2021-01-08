@@ -1863,9 +1863,19 @@ Unfortunately, while the compiler accepts Nat-multiplicity programs, it keeps th
 
 \newpage
 
-# Performance Improvement using linear types
+# Performance improvement using linear types
   
-This section aims to answer the question “what performance improvement can we get by using linear types _today_?”
+This section aims to answer the question “what performance improvement can we get by using linear types _today_?” by implementing a well known optimisation technique that linear types allow: memory reuse.
+
+First we are going to talk about what are the assumptions necessary for our optimisation to work. As we will see, they are not as simple as one might expect. The original formulation for linear types suggest that every linear function could reuse the memory space taken by linear variables. But this is not necessarily the case in Idris2 and additional requirements will have to be met for the optimisation to trigger. We will see that those requirements are quire limiting and prompted the work in section 5.
+
+After clarifying our needs regarding our optimisation, we are going to look at the compiler changes necessary to implement our optimisation, this section is particularly useful as a compiler-engineering challenge and might help anyone who is interested in implementing a similar optimisation in other languages featuring linear types (such as linear Haskell for example).
+
+Then we will talk about the methodology employed and the expected results from testing our optimisation, this will involve benchmarking and some discussion on the nature of the tests.
+
+Finally the results are presented along with their discussion. The discussion helps understand the chronology in which those tests were performed and motivate our conclusion which will be done in section 7.
+
+## Conditions under which we can run our optimisation
 
 Idris2 already allows to define linear functions, but despite the extra information that the argument cannot be used twice, the compiler does not perform any special optimisation for linear types. One obvious observation one can make is that once a linear value has been consumed, its memory space can be reclaimed, or reused. In practice this manifests this way:
 
@@ -1896,11 +1906,11 @@ We have a data type with two cases, and update checks which case we have and the
 
 This function should perform in constant space (`O(1)`) but currently, the Idris compiler always allocates new values when a constructor is called. In addition, the old value is now ready to be freed but we have to wait on the garbage collector to catch it.
 
-Unfortunately, we cannot simply implement the free and update feature in order to see what kind of performance improvement we can get out of linear types. This is because a linear variable is not guaranteed to be unique when it is called on a linear function. One example of this sharing mechanism can be seen with function subtyping.
+Unfortunately, we cannot naively implement the free and update optimisation in order to see what kind of performance improvement we can get out of linear types. This is because a linear variable is not guaranteed to be unique when it is called on a linear function. One example of this sharing mechanism can be seen with function subtyping.
 
-## Linear function subtyping
+### Issues with finear function subtyping
 
-In order to make the interplay between unrestricted and linear functions easier, Idris2 features subtyping on functions. As a refresher, subtyping allows a function to accept another type than the one that it has been specified with, as long as the other type is a subtype of the original one. In the following example we are going to assume we have access to two types, `A` and `B`, and that `B` is a subtype of `A`, noted with `B <: A`
+In order to make the interplay between unrestricted and linear functions easier, Idris2 features subtyping on functions. As a refresher, subtyping allows a function to accept another type than the one that it has been specified with, as long as the other type is a _subtype_ of the original one. In the following example we are going to assume we have access to two types, `A` and `B`, with `B` is a subtype of `A`, noted with `B <: A`
 
 ```haskell
 
@@ -1918,14 +1928,16 @@ let a : A = …
  in ?rest
 ```
 
-In Idris2, types cannot have a subtyping relation, except function types. This is useful for higher-order functions such as map defined non-linearly:
+In Idris2, types cannot have a subtyping relation, except function types. 
+In fact, linear functions are considered to be a subtype of unrestricted functions. In formal notation it means `((1 _ : a) -> b) <: (a -> b)`. This details is extremely relevant for our optimisation because it means that _linearity does not guarantee uniqueness_, which is the property we are interested in when performing those optimisations.  
+The motivation for this subtyping is immediately visible when using them as higher order functions.
 
 ```haskell
 map : (f : a -> b) -> List a -> List b
 linearMap : (f : (1 _ : a) -> b) -> (1 _ : List a) -> List b
 ```
 
-Those functions do the same things but won’t typecheck the same way. Given an unrestricted `f` the second function will refuse to typecheck. Whereas feeding a linear function to `map` will compile correctly.
+Those functions do the same thing but won’t typecheck the same way. Given an unrestricted `f` the second function will refuse to typecheck. Whereas feeding a linear function to `map` will compile correctly.
 
 ```haskell
 inc : Nat -> Nat
@@ -1945,10 +1957,15 @@ linearMap inc [1,2,3]
 linearMap linInc [1,2,3]
 ```
 
-This is because linear functions are considered to be a subtype of unrestricted functions. In formal notation it means `((1 _ : a) -> b) <: (a -> b)`. This details is extremely relevant for our optimisation because it means that _linearity does not guarantee uniqueness_, which is the property we are interested in when performing those optimisations.  In the following example we show how this breaks down our assumption of safe updates
+In the following example we show how this breaks down our assumption of safe updates
 
 ```haskell
+
 update : (1 _ : Nat) -> Nat
+update n = ... -- The body of the function might assume that `n`
+               -- is unique but this is not true when `update`
+               -- is passed as argument to a function like in the 
+               -- following
 
 do let list1 = [1,2,3]
    let list2 = list1
@@ -1956,27 +1973,47 @@ do let list1 = [1,2,3]
    printLn list2
 ```
 
-This program typechecks, even if we are using a linear function in an unrestricted setting. If the update was performed naively we should expect the output to be:
-
-```haskell
-> [2, 3, 4]
-> [2, 3, 4]
-```
-
-Instead of the (correct) output:
+This program typechecks, even if we are using a linear function in an unrestricted setting. 
+We expect the output to be:
 
 ```haskell
 > [2, 3, 4]
 > [1, 2, 3]
 ```
 
+But if the update was performed naively we should would get this instead:
+
+```haskell
+> [2, 3, 4]
+> [2, 3, 4]
+```
+
+
 This suggests that our intuition that linear functions can be used for safe updates and safe memory frees is not restrictive enough. We need an additional level of restriction to ensure _uniqueness_ of the values instead of linearity.
 
+### Issues with the limited scope of the optimisation
+
+It turns out that, while our initial statement about our compiler optimisation seems quite broad, the specifics of where this situation occurs are in reality quite limiting:
+
+1. We need to work with a linear function
+2. We need to create a value in the local scope
+3. We need to mutate the value in the local scope after creating it
+
+`1` is limiting because most of today's idris program do not contain any linearity annotation. This is because most Idris programs are written in Idris 1 rather than Idris 2 and naively ported.
+
+Number 2 is a limitation because linear functions can only make the assumption their arguments are unique when they are not used as a higher order function. This would be fine in an imperative programming language where it is idiomatic do declare and allocate value and then use them, rather than compose higher-order functions.
+
+Finally, 3 occurs rarely because creating a variable and mutating it redundant. If we create a value and mutate it, we could just
+as well create it directly with the mutated value. That is, instead of doing
+`let v = 3; v' = v + 1 in ...` we can just do `let v = 4 in ...`. Of course this is not always the case but highlights how specific are the conditions for this optimisation to run. 
+
+In the next section I will talk about the changes that are necessary to a compiler for a functional language such as Idris. The changes should reflect the nature of our restrictions in a language that features pattern matching, a core lambda-calculus and immutable data structures.
 
 
-## The nature of the changes required for linear optimisations
 
-Since linearity is not enough to ensure uniqueness, we are going to add an additional restriction:  We can only mutate a variable if it has been instantiated within in the immediate surrounding scope of the program. In the following example, `update` will perform an in-place mutation because it has been called with a variable that and been created in scope.
+## Implementing our optimisation
+
+Here is a concrete example of the situation we can optimise using linear types with Idris:
 
 ```haskell
 update : (1 _ : List a) -> List a
@@ -1985,7 +2022,7 @@ let 1 v = x :: xs in
     update v
 ```
 
-This ensure uniqueness because the linearity of the function prevents the variable from having been shared before it's been used with `update`. 
+As we've seen in the previous section, uniqueness is ensured by the fact that `v` is declared in the immediate scope of its use, and is annotated with linearity 1. 
 
 The changes to the Idris AST are as follow:
 
@@ -2010,11 +2047,11 @@ Conceptually the compiler architecture is quite simple, in the following illustr
    ──┬───
      |
 ┌────┴────┐
-|checkTerm|
+|checkTerm|  < We make changes here
 └────┬────┘
      │
      ▼
- Term vars
+ Term vars   < Here
  ────┬────
      |
   ┌──┴───┐
@@ -2022,7 +2059,7 @@ Conceptually the compiler architecture is quite simple, in the following illustr
   └──┬───┘
      |
      ▼
- CExp vars
+ CExp vars   < Here
  ────┬────
      |
   ┌──┴───┐
@@ -2034,7 +2071,7 @@ Conceptually the compiler architecture is quite simple, in the following illustr
   ───┬─────
      |
   ┌──┴───┐
-  │schExp│
+  │schExp│   < And here
   └──┬───┘
      |
      ▼
@@ -2046,9 +2083,10 @@ scheme output
 
 Since our changes do not touch the type checker or elaborator, they do not change the `checkTerm` stage. However, since we do need information from the control flow and the access the case tree we need to perform our changes between `Term` and `CExp`.
 
-### Implementation details
+### Adding the mutating flag
 
-The goal is to be able to write this program
+Since this optimisation cannot be triggered automatically for every linear function, we are going to tell the compiler where to apply it using a flag directive to functions we want to optimise. In practice we want the following program to compile and be optimized:
+
 ```haskell
 %mutating
 update : Ty -> Ty
@@ -2095,7 +2133,7 @@ The two programs are very similar but the second one mutates the argument direct
 
 There is however a very important limitation:
 
-#### We only mutate uses of the constructor we are matching on
+#### Only mutate uses of the constructor we are matching on
 
 The following program would see no mutation:
 
@@ -2121,7 +2159,7 @@ Similarly if we are given a `ValTwice` and are asked to mutate it into a value `
 
 Ideally our compiler would be able to identify data declaration that share the same layout and replace allocation for them by mutation, but for the purpose of this thesis we will ignore this optimisation and carefully design our benchmarks to make use of it. Which brings us to the next section
 
-### Mutating instruction
+### Mutating instruction in the AST
 
 For this to work we need to add a new constructor to the AST that represents _compiled_ programs `CExp`. We add the constructor `CMut`:
 
@@ -2171,8 +2209,8 @@ There is however an additional details that hasn’t been expressed and that is 
 Even though the first one is obvious, it will be left out for trivial reasons: lots of the standard library is not defined linearly such that the following will not compile:
 
 ```haskell
-lolInts : (1 _ : Int) -> Int
-lolInts n = n + 1
+linInc : (1 _ : Int) -> Int
+linInc n = n + 1
 ```
 
 This is because `(+)` is not declared linearly. This could be solved with an alternative standard library which is purely linear.
@@ -2300,6 +2338,8 @@ The last step of this chain of changes is to inspect the `DataCon` constructor d
       = pure $ CMut fc ref []
 ```
 
+### Ensuring Uniqueness
+
 The final piece of the puzzle is to ensure variables are _unique_, and for this we are going to use the property that linear variables that have been constructed in scope are unique:
 
 ```haskell
@@ -2342,20 +2382,52 @@ An astute reader might notice that this implementation has multiple shortcomings
 
 Thankfully, most of those limitations are a matter of user ergonomics and not program performance. Which means we are now ready to benchmark linear programs!
 
-## Benchmarks & methodology
+## Methodology
+
+
+In order to test the effectiveness of this optimisation I ran a series of benchmarks using a modified version of the Idris2 compiler. The changes are sumarized in section 6.2. This section presents the methodology employed to measure the effectiveness of the optimisation.
+
+First I am going to talk about the core assumptions necessary to measure performance. Then I will present 3 benchmark programs that will help verify or contradict our assumption about performance.
+Finally I will present the tools used to run the benchmarks and the conditions in which they were run.
+
+### Core assumptions
+
+
+
+Our expectation is that our programs will run faster for 2 reasons:
+
+- Allocation is slower than mutation
+- Mutation avoids short lived variables that need to be garbage collected
+
+Indeed allocation will always be slower than simply updating parts of the memory. Memory allocation requires finding a new memory spot that is big enough, writing to it, and then returning the pointer to that new memory address. Sometimes, allocation of big buffers will trigger a reshuffling of the memory layout because the available memory is so fragmented that a single continuous buffer of memory of the right size isn't available.
+
+Obviously all those behaviours are hidden from the programmer through _virtual memory_ which allows to completely ignore the details of how memory is actually laid out and shared between processes. Operating systems do a great job a sandboxing memory space and avoid unsafe memory operations. Still, those operations happen, and make the performance of a program a lot less consistent than if we did not have to deal with it.
+
+In addition, creating lots of short lived objects in memory will create memory pressure and trigger garbage collection during the runtime of our program. A consequence of automatic garbage collection is that memory management is now outside the control of the programmer and can trigger at times that are undesirable for the purpose of the program. Real-time applications in particular suffer from garbage collection because it makes the performance of the program hard to predict, an unacceptable trade-off when execution need to be guaranteed to run within a small time-frame.
 
 In order to test our performance hypothesis I am going to use a series of programs and run them multiple times under different conditions in order to measure different aspects of performance. Typically, observing how memory usage and runtime varies depending on the optimisation we use.
 
-Each benchmark will be compared to its control which will be the original compiler without any custom optimisation. The variable we are going to introduce is the new mutation instruction.
+
+
+Each benchmark will be compared to its control. The control will be the same program but running without any optimisations, this way, any deviation from the control can be attributed to our compiler change.
 
 It is important to stress that those are _synthetic benchmarks_ designed to showcase our improvements, and do not necessarily represent their effect in production software. This has often been the source of many misleading claims about performance and is the topic of endless discussion. The nofib\cite{nofib} project ([https://gitlab.haskell.org/ghc/nofib](https://gitlab.haskell.org/ghc/nofib)) makes the effort to distribute a set of programs more representative of real-world production software, especially for functional languages. In our case, synthetic benchmarks will be enough to tell if linear types provide any benefit worth pursuing.
- 
-Originally, the Idris2 compiler itself was intended to be used as a benchmark by measuring the time it takes to compile itself. However, due to the nature of our optimisation there are not enough opportunities to make noticeable performance improvement, due to the predominantly non-linear style of writing in the compiler.
 
-### Traditional Fibonacci
+## Benchmarks
 
-Our first benchmark is the traditional fibonacci exercise. This will serve as a baseline for our optimisation. We are then going to update this version to include a redundant allocation and attempt to eliminate it using our optimisation. 
-This first version is the one you would expect from a traditional implementation in a functional programming language:
+Now that we have stated the assumptions under which we are working and the results we are looking for, I am going to present 3 programs that will test our hypothesis. 
+
+### Fibonacci
+
+Our first benchmark is the traditional fibonacci exercise. Three variants of this program will be used:
+
+- The base version with no optimisation
+- A modified version that incurs memory allocation
+- The same modified version but with our optimisation applied
+
+---- 
+
+The first version is the one you would expect from a traditional implementation in a functional programming language:
 
 ```haskell
 tailRecFib : Nat -> Int
@@ -2370,15 +2442,16 @@ tailRecFib (S (S k)) = rec 1 1 k
 
 As you can see it does not perform any extraneous allocation since it only makes use of primitive values like `Int` which are not heap-allocated. If our optimisation works perfectly, we expect to reach the same performance signature as this implementation.
 
-### Allocating Fibonacci
+---- 
 
-This version of Fibonacci does allocate a new value for each call of the `update` function. We expect this version to perform worse than the previous one, both in memory and runtime, because those objects are allocated on the heap (unlike ints), and allocating and reclaiming storage takes more time than mutating values.
+The second version allocates a new value for each call of the `update` function. We expect this version to perform worse than the previous one, both in memory and runtime, because those objects are allocated on the heap (unlike ints), and allocating and reclaiming storage takes more time than mutating values.
 
 ```haskell
 data FibState : Type where
   MkFibState : (prev, curr :  Int) -> FibState
 
-next : FibState -> FibState
+                            --   ┌ Allocation happens here
+next : FibState -> FibState --   ▼
 next (MkFibState prev curr) = MkFibState curr (prev + curr)
 
 rec : FibState -> Nat -> Int
@@ -2391,9 +2464,9 @@ tailRecFib (S Z) = 1
 tailRecFib (S (S k)) = rec (MkFibState 1 1) k
 ```
 
-### Mutating Fibonacci
+----  
 
-This third version is almost the same as the previous one except our `update` function should now avoid allocating any memory, while this adds a function call compared to the first version we do expect this version to have a similar performance profile as the first one
+The last version is almost the same as the previous one except our `update` function should now avoid allocating any memory, while this adds a function call compared to the first version we do expect this version to have a similar performance profile as the first one.
 
 ```haskell
 import Data.List
@@ -2402,6 +2475,7 @@ import Data.Nat
 data FibState : Type where
   MkFibState : (prev, curr :  Int) -> FibState
 
+-- Allocation should be removed when using the flag
 %mutating
 next : (1 _ : FibState) -> FibState
 next (MkFibState prev curr) = MkFibState curr (prev + curr)
@@ -2416,6 +2490,9 @@ tailRecFib (S (S k)) = rec (MkFibState 1 1) k
     rec state (S j) = rec (next state) j
 ```
 
+For those three programs we expect the first one to be the fastest, and the second one to be the slowest. Our third implementation should be identical in terms of performance as the first one. 
+
+We will run our benchmarks on the Chez backend, and we know that the chez backend is already really smart. With that in mind we expect the absolute difference between the three results to be within tens of seconds of each other. However, since what we are removing is not running time per se, but _garbage collection uncertainty_ we expect the variance (and therefore standard deviation) to be higher on the second benchmark than in the first or third.
 
 ### Mapping lists
   
@@ -2429,8 +2506,6 @@ mapList (x :: xs) = x + 1 :: mapList xs
 main : IO ()
 main = printLn (length (mapList [0 .. 9999]))
 ```
-
-### Allocation free mapping
 
 Similarly to the deforestation algorithm we are going to see if we can improve the performance of linear functions across data structures like lists. When mapping across a list with a function of type `a -> a` that only mutates the input we can avoid allocating an
 
@@ -2446,7 +2521,9 @@ main = printLn (length (mapList [0 .. 9999]))
 
 A small detail to notice here is that the function is non-linear, indeed using the signature `mapList : (1 _ : List Int) -> List Int` will not compile because `n + 1` does not consume `n` linearly.
 
-### A simple SAT solver as benchmark
+In a similar fashion as the fibonacci benchmark, we are not removing running time, but uncertainty from having the garbage collector running. This means the second implementation should have a smaller variance than the first one.
+
+### A SAT solver
 
 Sat solvers themselves aren't necessarily considered "real-world" programs in the same sense that compilers or servers are. However they have two benefits:
 
@@ -2464,13 +2541,16 @@ In this case we are interested in solving the core loop of the state monad that 
            r2 s')
 ```
 
-Our optimisation is subsumed by the “newtype-optimisation” which erases any boxing around types with a single constructor. We can however safely inline this function since `(>>=)` will only be composed with itself, since it takes linear arguments the inlining when composed is safe.
+Our optimisation is subsumed by the “newtype-optimisation” which erases any boxing around types with a single constructor. We can however safely inline this function since `(>>=)` will only be composed with itself, since it takes linear arguments the inlining when composed is safe. This time we expect the running time to be consistently smaller. Additionally, since we can make SAT problems arbitrary complicated we can have a benchmark that measures in tens of seconds and record differences in runtime in the order of seconds rather than micro-seconds.
 
-## Measurements
+## How to run the benchmarks
 
-The benchmarks were run with Idris-bench, a command link script written in idris itself which takes a source folder and recursively traverses it in order to find programs to execute and measure their runtime.
 
-The analysis of the result was performed with Idris-stat, another command line script which reads the output of out benchmark program and output data like minimum, maximum, mean and variance along with arrays for plotting our results on a graph.
+Results are only useful if they are reproducible. This section aims to inform the reader of the conditions in which the benchmarks have been run and which tools have been used in order to collect and analyse the results. This with the goal to make those results reproducible by you, the reader, either exactly by re-using the tools, or by replicating the functionality of the tools presented.
+
+Since the benchmarks have to be run many times and have to be run in  an identical and reproducible setting I've written a program that will do just that: Idris-bench. Idris-bench will run all the idris2 programs in a folder using a given compiler version, a number of runs for each program and will measure how long each run took, and will aggregate the results in a csv file.
+
+Additionally, as mentionned in section 6.1, we are going to be very interested in the standard deviation of our results, this is why i have written another tool to analyse the results: Idris-stats. Idris-stats ingests the csv files from idris-bench and outputs statistical information about it in another csv file.
 
 ### Idris-bench
 
@@ -2484,6 +2564,8 @@ Idris-bench takes the following arguments:
 	- Alternatively `--stdout` can be given in order to print out the results on the standard output.
 - `-c | --count` The number of times each file has to be benchmarked. This is to get multiple results and avoid lucky/unluck variations.
 - `--node` If the node backend should be used instead. If this flag is absent, the Chez backend will be used instead
+
+A hidden feature of it is the ability to use `realRunTime` in order to parse the result of the time spend executing a program. This requires recompiling the idris-bench binary and is not docummented. The reason is that it makes the assumption that the scheme backend has been modified to wrap programs into a call to `(time ...)`, which is not a feature officially supported by the compiler but which prove to be useful. Indeed, doing so will make the program output the time spend executing _after_ the startup time from the Chez runtime whereas the default mode includes the startup time.
 
 ### Idris-stats
 
@@ -2504,21 +2586,7 @@ For each row we compute the minimum value, the maximum value, the mean and the v
 $$ \operatorname{Var}(X) = \frac{1}{n} \sum_{i=1}^n (x_i - \mu)^2 $$
 
 
-
-### Expected results
-
-Our expectation is that our programs will run faster for 2 reasons:
-
-- Allocation is slower than mutation
-- Mutation avoids short lived variables that need to be garbage collected
-
-Indeed allocation will always be slower than simply updating parts of the memory. Memory allocation requires finding a new memory spot that is big enough, writing to it, and then returning the pointer to that new memory address. Sometimes, allocation of big buffers will trigger a reshuffling of the memory layout because the available memory is so fragmented that a single continuous buffer of memory of the right size isn't available.
-
-Obviously all those behaviours are hidden from the programmer through _virtual memory_ which allows to completely ignore the details of how memory is actually laid out and shared between processes. Operating systems do a great job a sandboxing memory space and avoid unsafe memory operations. Still, those operations happen, and make the performance of a program a lot less consistent than if we did not have to deal with it.
-
-In addition, creating lots of short lived objects in memory will create memory pressure and trigger garbage collection during the runtime of our program. A consequence of automatic garbage collection is that memory management is now outside the control of the programmer and can trigger at times that are undesirable for the purpose of the program. Real-time applications in particular suffer from garbage collection because it makes the performance of the program hard to predict, an unacceptable trade-off when execution need to be guaranteed to run within a small time-frame.
-
-## Running the benchmarks 
+### Running Instructions
 
 All the benchmarks were run on a laptop with the following specs:
 
@@ -2527,7 +2595,26 @@ All the benchmarks were run on a laptop with the following specs:
 
 While this computer has a base clock of 1.4Ghz, it features a boost clock of 3.9Ghz (a feature of modern CPUs called “turbo-boost”) which is particularly useful for single-core application like ours. However, turbo-boost might introduce an uncontrollable level of variance in the results since it triggers based on a number of parameters that aren't all under control (like ambient temperature, other programs running, etc). Because of this I've disabled turbo boost on this machine and run all benchmarks at a steady 1.4Ghz.
 
-## Results
+The benchmarks have been run using Idris-bench using the following options:
+
+For 100 runs of the fibonacci suite:
+
+```haskell
+build/exec/benchmarks -d ../idris2-fib-benchmarks 
+                      -o results.csv 
+                      -p idris2dev 
+                      -c 99
+```
+
+The result files were then fed into Idris-stat:
+
+```haskell
+build/exec/stats results.csv
+```
+
+Which outputs its analysis to stdout.
+
+## Results & discussion
   
 In this section I will present the results obtained from the compiler optimisation.  The methodology and the nature of the benchmarks is explained in the “Benchmarks & methodology” section.
 
@@ -2537,11 +2624,9 @@ Out first test suite runs the benchmark on our 3 fibonacci variants and out list
 - Second one boxes those Ints into a datatype that will be allocated every time it is changed
 - The Third one will make use of our optimisation and mutate the boxes values instead of discarding the old one and allocating a new one.
 
-The last one is an example of mapping across a list, a very common operation in functional programming languages. Our last one is an example of inlining in a program making use of a linear state monad.
-
 The hypothesis is as follows: Chez is a very smart and efficient runtime, and our example is small and simple. Because of this, we expect a small difference in runtime between those three versions. However, the memory pressure incurred in the second example will trigger the garbage collector to interfere with execution and introduce uncertainty in the runtime of the program. This should translate in our statistical model as a greater variance in the results rather than a strictly smaller mean.
 
-### Results 1: Fibonacci
+### Fibonacci 
 
 Here are there results of running our benchmarks 100 times in a row:
 
@@ -2572,30 +2657,6 @@ Here are there results of running our benchmarks 100 times in a row:
  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 ```
 
-![](Screenshot%202020-08-25%20at%2017.59.43.png)
-This is the result of calling our data analysis program on the csv file generated by our benchmarking program. The benchmarking program was called with those options
-
-```haskell
-build/exec/benchmarks -d ../idris2-fib-benchmarks 
-                      -o results.csv 
-                      -p idris2dev 
-                      -c 99
-```
-
-And the statistical analysis program with no options except for the file:
-
-```haskell
-build/exec/stats results_mutation_100_attempts_with_startup.csv
-```
-
-The results are in the following format:
-
-```
-name of benchmark, minimum, maximum, average, variance
-```
-
-The three arrays at the end correspond to an aggregation of the data in “buckets”. Our statistical tool make a histogram of the values using 30 buckets. The first bucket is the minimum time measured across all benchmarks and the last bucket is the maximum time measured across all benchmarks. There are 28 other buckets in between those two extremities. The array represents the number of results that land for each bucket. 
-
 As you can see the results are pretty consistent with our predictions but the values themselves aren't statistically significant. In order to get a better picture we are going to run the same benchmark 1000 times instead of 100.
 
 ```haskell
@@ -2612,7 +2673,8 @@ As you can see the results are pretty consistent with our predictions but the va
 1.5392219150999998e-8
 
 ../Idris2_fib_benchmark/fibTailRec.idr,
-4.89e-4,0.001974,
+4.89e-4,
+0.001974,
 6.241300000000006e-4,
 3.8718697099999886e-8
 
@@ -2623,7 +2685,7 @@ As you can see the results are pretty consistent with our predictions but the va
 [217, 527, 80, 44, 23, 14, 12, 11, 7, 6, 10, 2, 6, 11, 5,
 4, 4, 2, 1, 2, 1, 1, 0, 3, 3, 1, 2, 0, 0, 1]
 ```
-![](Screenshot%202020-08-25%20at%2018.00.17.png)
+
 The results are pretty similar which gives us a greater confidence in their accuracy.
 
  There is however something we can do to improve our measurement and that is to subtract the startup time of the scheme runtime. Indeed every program is measured using the difference between the time it started and the time it ended. But this time also includes the time it takes to launch scheme and then execute a program on it. Indeed the following program:
@@ -2635,7 +2697,7 @@ main = pure ()
 
 Takes 0.13 seconds to run despite doing nothing. This time is the startup time and can go up to 0.3 seconds.
 
-### Results 2: Fibonacci without startup time
+#### Fibonacci without startup time
 
 In order to remove the startup time we are going to change the emitted bytecode to wrap our main function inside a time-measuring function `(time …)`. Since the timer won't start until the program is ready to run the startup time will be eliminated. Running our empty program we get the following (expected) result:
 
@@ -2676,7 +2738,7 @@ As you can see the results aren't exactly as expected, both our _average_ and ou
 
 One possible explanation is that scheme performs JIT compilation and correctly identifies the hot-loop in our unoptimised example but is unable to perform such optimisation with our mix of pure and mutating code.
 
-### Results 3: Fibonacci without startup time, small loop
+#### Fibonacci without startup time, small loop
 
 In order to test the JIT hypothesis we are going to run the same test, _without_ startup time but with a much smaller loop so that the results are measured in milliseconds rather than seconds. This should be enough to prevent the runtime from identifying the loop and performing its optimisation.
 
@@ -2706,14 +2768,14 @@ In order to reduce the running time from seconds to milliseconds we simply chang
 [303, 470, 161, 41, 13, 7, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 ```
-![](Screenshot%202020-08-25%20at%2017.59.21.png)
+
 And indeed this data corroborates our hypothesis but does not confirm that JIT was responsible for the previous performance results. However, since this thesis is not about the intricacies of the scheme runtime we are going to let the issue rest for now. 
 
 Those results showcase two things: That our optimisation works, and that it is not significant enough to be strictly superior to other forms of optimisations. Ideally the best way to test our optimisation would be to write our own runtime which runs on _bare metal_ or some approximation of it (WASM/LLVM) which would (probably) be even faster than scheme. It would also give us more control over which optimisations play nicely together (for example with JIT) and which ones are redundant or even harmful to performance.
 
 Idris2 has an alternative javascript backend, however, the javascript code generation is unable to translate our programs into plain loops free of recursion. Because of this, our benchmark exceeds the maximum stack size and the program aborts. When the stack size is increased the program segfaults. This could be solved with the use of trampolines in the runtime, instead of plain recursion.
 
-### Results 4: mapping
+### Mapping a list
 
 In this exercise we are going to aggregate the result of our control and our experimental run of `map`; which increments a list of number and returns its size. We ran each program a 100 times using `idris-bench`. As before we expect a negligible average speedup but a significant decrease in variance.
 
@@ -2736,9 +2798,9 @@ In this exercise we are going to aggregate the result of our control and our exp
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 ```
 
-![](Screenshot%202020-09-26%20at%2016.09.32.png)
+
   
-This time our performance improvements are more noticeable in average than before. Tough it might be because the benchmark is measured in tens of microseconds.
+This time our performance improvements are more noticeable in average than before. Tough it might not be significant since it runs in tens of microseconts
 
 ## Sat solver
 
@@ -2751,7 +2813,7 @@ normal   | 384008.545454545   | 337134927.872727
 mutating | 371382.454545455   | 264041625.672727
 ```
 
-The results show an improvement of about 3.3% in average which is encouraging. This small improvement could be taken further by implementing_safe inlining by default_ on every variable that is linearly bound, since it does not hurt performance. And hope that the inlined function will be subject to further optimisations after being inlined.
+The results show an improvement of about 3.3% in average which is encouraging. This small improvement could be taken further by implementing _safe inlining by default_ on every variable that is linearly bound, since it does not hurt performance. And hope that the inlined function will be subject to further optimisations after being inlined.
 
 \newpage
 

@@ -96,6 +96,7 @@
   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 \setcounter{secnumdepth}{-\maxdimen} % remove section numbering
 \usepackage{pmboxdraw}
+\usepackage{wrapfig}
 \usepackage{fontspec}
 \setmonofont{Menlo}[]
 \usepackage{fancyvrb}[]
@@ -117,7 +118,7 @@
 \hypertarget{abstract}{%
 \section{Abstract}\label{abstract}}
 
-Idris2 is a programming language featuring Quantitative type theory, a
+Idris2 is a programming language featuring Quantitative Type Theory, a
 Type Theory centered around tracking \emph{usage quantities} in addition
 to dependent types. This is the result of more than 30 years of
 development spawned by the work of Girard on Linear logic. Until
@@ -132,6 +133,7 @@ intention, provide more information to the compiler to better analyse
 the program written, and enable the output bytecode to run faster.
 
 \newpage
+\setcounter{tocdepth}{2}
 \setcounter{secnumdepth}{2}
 \tableofcontents
 \newpage
@@ -143,8 +145,8 @@ In this project I will demonstrate different uses and results stemming
 from a programming practice that allows us to specify how many times
 each variable is being used. This information is part of the type
 system, in our case we are tracking if a variable is allowed to be used
-exactly once, or if it has no restrictions. Such types system is called
-a ``linear type system''.
+exactly once, or if it has no restrictions. Such type system is called a
+``linear type system''.
 
 As we will see, there is a lot more to this story, so as part of this
 thesis, I will spend some time introducing dependent types as well as
@@ -170,8 +172,8 @@ only make assumptions about basic understanding of imperative and
 functional programming.
 
 \hypertarget{some-vocabulary-and-jargon}{%
-\subsection{Some vocabulary and
-jargon}\label{some-vocabulary-and-jargon}}
+\subsection{Some Vocabulary and
+Jargon}\label{some-vocabulary-and-jargon}}
 
 Technical papers are often hard to approach for the uninitiated because
 of their heavy use of unfamiliar vocabulary and domain-specific jargon.
@@ -240,20 +242,21 @@ pass it the type \texttt{Int}, it becomes the complete type
 \texttt{Maybe\ Int}.
 
 \hypertarget{programming-recap}{%
-\subsection{Programming recap}\label{programming-recap}}
+\subsection{Programming Recap}\label{programming-recap}}
 
 If you know about programming, you've probably heard about types and
 functions. Types are ways to classify values that the computer
 manipulates and functions are instructions that describe how those
 values are changed.
 
-In \emph{imperative programming} functions can perform powerful
+In \emph{imperative programming}, functions can perform powerful
 operations like ``malloc'' and ``free'' for memory management or make
 network requests through the internet. While powerful in a practical
-sense, those functions are really hard to study because they are hard to
-define in a mathematical way. In order to make life easier we only
-consider functions in the \emph{mathematical} sense of the word : A
-function is something that takes an input and returns an output.
+sense, those functions are really hard to study because it is not
+obvious how to define them in a mathematical way. In order to make our
+life easier we only consider functions in the \emph{mathematical} sense
+of the word : A function is something that takes an input and returns an
+output.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -267,21 +270,21 @@ input and what type is expected as the output.
 \begin{Shaded}
 \begin{Highlighting}[]
 \NormalTok{input    output}
-\NormalTok{    v    v}
+\NormalTok{    ▼    ▼}
 \NormalTok{f }\OperatorTok{:} \DataTypeTok{A} \OtherTok{{-}\textgreater{}} \DataTypeTok{B}
-\OperatorTok{\^{}}
+\NormalTok{▲}
 \NormalTok{name }
 \end{Highlighting}
 \end{Shaded}
 
 This simplifies our model because it forbids the complexity related to
-complex operations like arbitrary memory modification or network access
-\footnote{We can recover those features by using patterns like ``monad''
-  but it is not the topic of this brief introduction.}. Functional
-programming describes a programming practice centered around the use of
-such functions. In addition, traditional functional programming
-languages have a strong emphasis on their type system which allows the
-types to describe the structure of the values very precisely.
+operations like arbitrary memory modification or network
+access\footnote{We can recover those features by using patterns like
+  ``monad'' but they do not fit in the scope of this brief introduction.}.
+Functional programming describes a programming practice centered around
+the use of such functions. In addition, traditional functional
+programming languages have a strong emphasis on their type system which
+allows the types to describe the structure of the values very precisely.
 
 During the rest of this thesis we are going to talk about Idris2, a
 purely functional programming language featuring Quantitiative Type
@@ -294,7 +297,7 @@ QTT itself, we have to explain what is Idris and what are dependent
 types.
 
 \hypertarget{idris-and-dependent-types}{%
-\subsection{Idris and dependent types}\label{idris-and-dependent-types}}
+\subsection{Idris and Dependent Types}\label{idris-and-dependent-types}}
 
 Before we jump into Idris2, allow me to introduce Idris\cite{idris1},
 its predecessor. Idris is a programming language featuring dependent
@@ -308,7 +311,7 @@ from functions. This also means the difference between ``type-level''
 and ``term-level'' is blurred.
 
 \hypertarget{simple-example}{%
-\subsubsection{Simple example}\label{simple-example}}
+\subsubsection{Simple Example}\label{simple-example}}
 
 Let us start with a very simple example of a function in Idris, without
 dependent types. This function returns whether or not a list\footnote{A
@@ -347,7 +350,7 @@ dissecting the Type signature:
 \NormalTok{   isEmpty }\OperatorTok{:} \DataTypeTok{List}\NormalTok{ a }\OtherTok{{-}\textgreater{}} \DataTypeTok{Bool}
 \CommentTok{{-}{-}                ▲}
 \CommentTok{{-}{-}                │ }
-\CommentTok{{-}{-}                └Type parameter}
+\CommentTok{{-}{-}                └ Type parameter}
 \end{Highlighting}
 \end{Shaded}
 
@@ -407,7 +410,7 @@ matching\cite{view_from_the_left} manifests itself when we introduce
 \emph{type holes}.
 
 \hypertarget{dependent-types-example}{%
-\subsubsection{Dependent types example}\label{dependent-types-example}}
+\subsubsection{Dependent Types Example}\label{dependent-types-example}}
 
 Now let us look at an example with dependent types.
 
@@ -556,9 +559,10 @@ Which we can fill with literal values like \texttt{123} or
 types?}\label{whats-wrong-with-non-dependent-types}}
 
 Non-dependent type systems cannot represent the behaviour described by
-\texttt{intOrString} and have to resort to patterns like \texttt{Either}
-\footnote{Defined as : ``data Either a b = Left a \textbar{} Right b} to
-encapsulate the two possible cases our program can encounter.
+\texttt{intOrString} and have to resort to patterns like
+\texttt{Either}\footnote{Defined as : ``data Either a b = Left a
+  \textbar{} Right b} to encapsulate the two possible cases our program
+can encounter.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -690,7 +694,7 @@ version. This is why dependent types are desirable, they help:
 \end{itemize}
 
 \hypertarget{the-story-begins}{%
-\subsection{The story begins}\label{the-story-begins}}
+\subsection{The Story Begins}\label{the-story-begins}}
 
 This concludes our introductory chapter. Dependent types are a thesis
 topic in themselves, but this introduction should be enough to give you
@@ -781,7 +785,7 @@ less efficient.
 
 While deforestation itself might not be the algorithm that we want to
 implement today, it is likely we can come up with a similar set of
-optimisation rules in Idris2 that rely on linearity.
+optimisation rules in Idris2 that relies on linearity.
 
 Using linearity to avoid duplicating computation was again investigated
 in \emph{Once upon a Type}\cite{once_upon_a_type} which formalises the
@@ -826,8 +830,8 @@ programming, one could imagine using it as a backend for a reference
 counted runtime.
 
 Linear types need not be used exclusively for compiler optimisations but
-can also greatly improve programming ergonomics and safety as we see
-in\_Practical affine types\_\cite{affine_types}; which aims to answer
+can also greatly improve programming ergonomics and safety as we see in
+\emph{Practical affine types}\cite{affine_types}; which aims to answer
 ``What does it mean to have access to linear and affine types \emph{in
 practice}''? Indeed, most of the results we've talked about develop a
 theory for linear types using a variant of linear logic, and then
@@ -878,7 +882,7 @@ same context\footnote{I personally find the unified context to be a very
   elegant solution.}.
 
 \hypertarget{cutting-edge-linear-types}{%
-\subsection{Cutting edge linear types}\label{cutting-edge-linear-types}}
+\subsection{Cutting Edge Linear Types}\label{cutting-edge-linear-types}}
 
 Granule is a language that features \emph{quantitative reasoning via
 graded modal types} and features indexed types\footnote{A type parameter
@@ -889,8 +893,8 @@ graded modal types} and features indexed types\footnote{A type parameter
   \texttt{{[}\textasciigrave{}"a",\ “b”{]}} then the type would become
   \texttt{Vect\ 2\ String}, the index would change from \texttt{3} to
   \texttt{2}, but the type parameter would stay as \texttt{String}.}.
-This effort is the result of years of research in the domain of effect,
-co-effect, resource-aware calculus and co-monadic
+This effort is the result of years of research in the domain of effects,
+co-effects, resource-aware calculus and co-monadic
 computation\cite{monad_or_comonad}. Granule itself makes heavy use of
 \emph{graded monads}\cite{effect_coeffects_grading} which allow to
 precisely annotate co-effects\cite{coeffect_computation} in the type
@@ -908,7 +912,7 @@ intend to use \emph{both} dependent types \emph{and} linear types within
 the same language. However, no satisfying theory came until \emph{I got
 plenty o nuttin}\cite{nuttin} and its descendant, \emph{Quantitative
 type theory} \cite{qtt}. A previous
-attempt\cite{integrating_linear_dependent}noted that a single language
+attempt\cite{integrating_linear_dependent} noted that a single language
 could have both a linear arrow and a dependent arrow and while the
 linear arrow can depend on non-linear terms, the linear arrow cannot be
 dependent. This is achieved again by splitting our context in two
@@ -922,7 +926,7 @@ changes:
 \item
   Dependent typing uses \emph{erased} variables
 \item
-  Multiplicities are tracked on the \_binder\_rather than being a
+  Multiplicities are tracked on the \emph{binder} rather than being a
   feature of the type of a variable.
 \end{itemize}
 
@@ -931,7 +935,7 @@ theory\cite{martin-lof} and Linear Logic\cite{linear-logic}, the
 proposed result does not touch upon the potential performance
 improvement that such a language could feature but removing indices from
 the runtime\cite{store_indices}. However, it has the potential to bring
-together Linear types and dependent types in a way that allows precise
+together linear types and dependent types in a way that allows precise
 resource tracking and strong performance guarantees. Resource tracking
 through semirings is not a novel idea, but has been explored through the
 lens of and explicit comonadic computation \cite{parametric_effects}
@@ -966,19 +970,20 @@ proven to be commercially viable in languages like Swift or Python. The
 specific results presented here are focused on the performance benefits
 in avoiding unnecessary copies and reducing the amount of increment and
 decrement operation when manipulating the reference count at runtime. We
-are going to revisit this statement in a later section and frame it in
-the context of quantitative types.
+are going to revisit this statement in section
+\ref{subsec:linear-ref-counting} and frame it in the context of
+quantitative types.
 
 \hypertarget{innovative-uses-of-linear-types}{%
-\subsection{Innovative uses of linear
-types}\label{innovative-uses-of-linear-types}}
+\subsection{Innovative Uses of Linear
+Types}\label{innovative-uses-of-linear-types}}
 
 In this final section of the context review I will present some
 interesting uses for linear types in some detail.
 
 \hypertarget{opening-the-door-to-new-opportunities}{%
-\subsubsection{Opening the door to new
-opportunities}\label{opening-the-door-to-new-opportunities}}
+\subsubsection{Opening the Door to New
+Opportunities}\label{opening-the-door-to-new-opportunities}}
 
 Protocol descriptions and dependent types work marvellously well. State
 machines can be represented by data types and their index can ensure we
@@ -1109,8 +1114,8 @@ Which is much more natural than having to rewrite our door protocol and
 rewrite our interpreter for the operations of the protocol.
 
 \hypertarget{more-granular-dependencies}{%
-\subsubsection{More granular
-dependencies}\label{more-granular-dependencies}}
+\subsubsection{More Granular
+Dependencies}\label{more-granular-dependencies}}
 
 Granule is a programming language with \emph{graded modal types}, types
 which rely on \emph{graded modalities}. Those are annotations that span
@@ -1186,7 +1191,7 @@ dependency between quantities and terms in the
 language\cite{dependent_graded}.
 
 \hypertarget{invertible-functions}{%
-\subsubsection{Invertible functions}\label{invertible-functions}}
+\subsubsection{Invertible Functions}\label{invertible-functions}}
 
 Yet another use of linearity is to use them to implement
 \emph{invertible functions}. That is functions that have a counterpart
@@ -1254,7 +1259,7 @@ Which ensures that the argument is an \texttt{S} of \texttt{k} for any
 \newpage
 
 \hypertarget{idris2-and-linear-types}{%
-\section{Idris2 and linear types}\label{idris2-and-linear-types}}
+\section{Idris2 and Linear Types}\label{idris2-and-linear-types}}
 
 We've seen in the introduction how Idris features dependent types and
 some basic demonstrations about how to use them. Idris2 takes things
@@ -1275,7 +1280,7 @@ to explore some examples of linear functions and linear types, starting
 with very simple functions such as incrementing numbers.
 
 \hypertarget{incremental-steps}{%
-\subsection{Incremental steps}\label{incremental-steps}}
+\subsection{Incremental Steps}\label{incremental-steps}}
 
 When designing examples, natural numbers are a straightforward data type
 to turn to. Their definition is extremely simple:
@@ -1352,8 +1357,8 @@ original argument was linear, \texttt{n} is linear too and is indeed
 used later with \texttt{sum\ n\ m}.
 
 \hypertarget{dropping-and-picking-it-up-again}{%
-\subsection{Dropping and picking it up
-again}\label{dropping-and-picking-it-up-again}}
+\subsection{Dropping and Picking It up
+Again}\label{dropping-and-picking-it-up-again}}
 
 Obviously, this programming discipline does not allow us to express
 every program the same way as before. Here are two typical examples that
@@ -1394,12 +1399,11 @@ its left, \texttt{0} or \texttt{1}, that informs us how many times each
 variable has to be used (If there is no restriction, the usage number is
 simply left blank).
 
-As you can see we need to use \texttt{v} (since it is marked with
-\texttt{1}) but we are only allowed to return \texttt{()}. This would be
-solved if we had a function of type
-\texttt{(1\ v\ :\ a)\ -\textgreater{}\ ()} to consume the value and
-return \texttt{()}, but this is exactly the signature of the function we
-are trying to implement!
+Here we need to use \texttt{v} (since it is marked with \texttt{1}) but
+we are only allowed to return \texttt{()}. This would be solved if we
+had a function of type \texttt{(1\ v\ :\ a)\ -\textgreater{}\ ()} to
+consume the value and return \texttt{()}, but this is exactly the
+signature of the function we are trying to implement!
 
 If we try to implement the function by returning \texttt{()} directly we
 get the following:
@@ -1480,11 +1484,14 @@ because we do not know how to construct a value of type \texttt{a}.
 
 While there are experimental ideas that allow us to recover those
 capabilities, they are not currently present in Idris2. We will talk
-about those limitations and how to overcome them in section 4.
+about those limitations and how to overcome them in section
+\ref{sec:qtt-ergonomics}.
 
 \hypertarget{dancing-around-linear-types}{%
-\subsection{Dancing around linear
-types}\label{dancing-around-linear-types}}
+\subsection{Dancing Around Linear
+Types}\label{dancing-around-linear-types}}
+
+\label{subsec:dancing-around}
 
 Linear values cannot be duplicated or ignored, but provided we know how
 the values are constructed, we can work hard enough to tear them apart
@@ -1567,10 +1574,10 @@ all assumed to exist in the compiler and are not declared using the
 typical \texttt{data} syntax. This poses a problem for our
 implementation of \texttt{Copy} and \texttt{Drop} since we do not have
 access to their constructors nor structure. A solution to this problem
-will be provided in section 5.1.
+will be provided in section \ref{subsec:mapping-primitives} .
 
 \hypertarget{linear-intuition}{%
-\subsection{Linear intuition}\label{linear-intuition}}
+\subsection{Linear Intuition}\label{linear-intuition}}
 
 One key tool in understanding this thesis is to develop an intuition for
 linear types. Linear types are rare in other programming languages which
@@ -1581,8 +1588,8 @@ To that end we are going to explore a number of examples that illustrate
 how linearity can be understood.
 
 \hypertarget{you-cant-have-your-cake-and-eat-it-too}{%
-\subsubsection{You can't have your cake and eat it
-too}\label{you-cant-have-your-cake-and-eat-it-too}}
+\subsubsection{You Can't Have Your Cake and Eat It
+Too}\label{you-cant-have-your-cake-and-eat-it-too}}
 
 Imagine this procedure:
 
@@ -1652,8 +1659,8 @@ keep it too.
 \newpage
 
 \hypertarget{drawing-unexpected-parallels}{%
-\subsubsection{Drawing unexpected
-parallels}\label{drawing-unexpected-parallels}}
+\subsubsection{Drawing Unexpected
+Parallels}\label{drawing-unexpected-parallels}}
 
 Take the following picture:
 
@@ -1698,7 +1705,8 @@ up with a \texttt{drawing} that we can now use!\footnote{You will notice
   is because the goal of this exercise is to have fun.}
 
 \hypertarget{safe-inlining-with-1}{%
-\subsubsection{Safe inlining with 1}\label{safe-inlining-with-1}}
+\subsubsection{\texorpdfstring{Safe Inlining with
+\texttt{1}}{Safe Inlining with 1}}\label{safe-inlining-with-1}}
 
 Linear variables have to be used exactly once, no less, no more. An
 extremely nice property this gives us can be summarised with the
@@ -1780,8 +1788,8 @@ The result of inlining \texttt{x} would be as follows\footnote{This
 \end{Shaded}
 
 \hypertarget{erased-runtime-for-0}{%
-\subsubsection{\texorpdfstring{Erased runtime for
-\texttt{0}}{Erased runtime for 0}}\label{erased-runtime-for-0}}
+\subsubsection{\texorpdfstring{Erased Runtime for
+\texttt{0}}{Erased Runtime for 0}}\label{erased-runtime-for-0}}
 
 In Idris2, variables can also be annotated with linearity \texttt{0},
 this means that the value is \emph{inaccessible} and cannot be used. But
@@ -1926,7 +1934,8 @@ Even if \texttt{n} appears in the body of the function, appearing in a
 type signature does not count as a use.
 
 \hypertarget{no-branching-with-0}{%
-\subsubsection{No branching with 0}\label{no-branching-with-0}}
+\subsubsection{\texorpdfstring{No Branching with
+\texttt{0}}{No Branching with 0}}\label{no-branching-with-0}}
 
 In general, we cannot match on erased variables, there is however an
 exception to this rule. Whenever matching on a variable \emph{does not}
@@ -2021,7 +2030,9 @@ branch, trying to remove \texttt{S\ n}.
 
 \hypertarget{quantitative-type-theory-in-practice}{%
 \section{Quantitative Type Theory in
-practice}\label{quantitative-type-theory-in-practice}}
+Practice}\label{quantitative-type-theory-in-practice}}
+
+\label {sec:qtt-practice}
 
 QTT is still a recent development and because of its young age, it has
 not seen widespread use in commercial applications. The Idris2 compiler
@@ -2033,17 +2044,13 @@ but one of the goals of this thesis was to list and discover some new
 and innovative uses for linear types and QTT. In this chapter I will
 mention some specific uses for QTT that I discovered during my study.
 
-\hypertarget{limitations-and-solutions-for-quantitative-types}{%
-\subsection{Limitations and solutions for quantitative
-types}\label{limitations-and-solutions-for-quantitative-types}}
+\hypertarget{linear-multiplication}{%
+\subsection{Linear Multiplication}\label{linear-multiplication}}
 
 We've seen how we can write addition of natural numbers using linear
 types. But can we write a multiplication algorithm using linear types?
 Let us inspect the traditional multiplication algorithm and see if we
 can update it with linear types.
-
-\hypertarget{linear-multiplication}{%
-\subsubsection{Linear multiplication}\label{linear-multiplication}}
 
 Here is a multiplication function without any linear variables
 
@@ -2171,11 +2178,11 @@ linear types, and that is the concept of permutation.
 FSM-Oracle describes petri-nets using
 \href{http://www.zanasi.com/fabio/files/paperCALCO19b.pdf}{\emph{hypergraphs}}
 \cite{cartographer} those hypergraphs use
-\href{https://github.com/statebox/fsm-oracle/blob/master/src/Permutations/Permutations.idr\#L31}{\emph{permutations}~}\footnote{\url{https://github.com/statebox/fsm-oracle/blob/master/src/Permutations/Permutations.idr\#L31}}
-in order to model that wire inside it can be moved around. This concept
-is key in a correct and proven implementation of hypergraphs. However,
-permutations turn out to be extremely complex to implement using only
-dependent types, as shown by the files
+\href{https://github.com/statebox/fsm-oracle/blob/master/src/Permutations/Permutations.idr\#L31}{\emph{permutations}}\footnote{\url{https://github.com/statebox/fsm-oracle/blob/master/src/Permutations/Permutations.idr\#L31}}
+in order to model that a wire inside it can be moved around. This
+concept is key in a correct and proven implementation of hypergraphs.
+However, permutations turn out to be extremely complex to implement
+using only dependent types, as shown by the files
 \href{https://github.com/statebox/fsm-oracle/blob/master/src/Permutations/PermutationsCategory.idr}{trying
 to fit}\footnote{\url{https://github.com/statebox/fsm-oracle/blob/master/src/Permutations/PermutationsCategory.idr}}
 their definition into a
@@ -2219,7 +2226,7 @@ full glory, here is an example of what we are dealing with:
 
 This function ensures that composition of permutation is associative. It
 relies on helper functions such as \texttt{shuffleComp} which are not
-even implemented in Idris 1 because it is too hard to implement.
+even implemented in Idris1 because it is too hard to implement.
 
 Linear types can thankfully ease the pain by providing a very simple
 representation of permutations :
@@ -2390,7 +2397,7 @@ verified our Categorical structure, and linear types to implement
 meet and merge in a way that is both practical and elegant.
 
 \hypertarget{levitation-improvements}{%
-\subsection{Levitation improvements}\label{levitation-improvements}}
+\subsection{Levitation Improvements}\label{levitation-improvements}}
 
 \emph{The gentle art of levitation}\cite{levitation} shows that a
 dependently typed language has enough resources to describe all indexed
@@ -2447,8 +2454,8 @@ the Idris2 compiler to generate definitions for interfaces such as
 \texttt{Functor} and \texttt{Applicative}.
 
 \hypertarget{compile-time-string-concatenation}{%
-\subsection{Compile-time string
-concatenation}\label{compile-time-string-concatenation}}
+\subsection{Compile-time String
+Concatenation}\label{compile-time-string-concatenation}}
 
 Strings are ubiquitous in programming. That is why a lot of programming
 languages have spent a considerable effort in optimising string usage
@@ -2589,8 +2596,8 @@ string interpolation since this transformation happens at compile time.
 Having the string come from a function call, however, means we do not
 know if it has been shared before or not, which means we cannot
 guarantee (unless we restrict our programming language further) that the
-string was not shared before, therefore the string cannot be replaced at
-compile time.
+string was not shared before, and therefore the string cannot be
+replaced at compile time.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -2615,19 +2622,27 @@ perform a runtime concatenation.
 
 \hypertarget{quantitative-type-theory-and-programming-ergonomics}{%
 \section{Quantitative Type Theory and Programming
-ergonomics}\label{quantitative-type-theory-and-programming-ergonomics}}
+Ergonomics}\label{quantitative-type-theory-and-programming-ergonomics}}
 
-In the previous section, we highlighted uses of linear types in Idris2.
-In this section we are going to show the limitations of linear types in
-terms of ergonomics and provide solutions for them.
+\label{sec:qtt-ergonomics}
+
+In section \ref{sec:qtt-practice} we highlighted uses of linear types in
+Idris2. In this section we are going to show the limitations of linear
+types in terms of ergonomics and provide solutions for them. A lot of
+those limitations stem from our intent to use linear types for
+performance analysis in section \ref{sec:performance} and are discussed
+in detail in section \ref{subsec:discussion}.
 
 \hypertarget{mapping-primitive-to-data-types-and-vice-versa}{%
-\subsection{Mapping primitive to data types and
-vice-versa}\label{mapping-primitive-to-data-types-and-vice-versa}}
+\subsection{Mapping Primitive to Data Types and
+Vice-versa}\label{mapping-primitive-to-data-types-and-vice-versa}}
 
-At the end of section 3 we encountered a problem with primitive types
-and linearity. We could not implement \texttt{copy} and \texttt{drop}
-because we do not have access to the constructors of primitive types.
+\label{subsec:mapping-primitives}
+
+At the end of section \ref{subsec:dancing-around} we encountered a
+problem with primitive types and linearity. We could not implement
+\texttt{copy} and \texttt{drop} because we do not have access to the
+constructors of primitive types.
 
 This is because those types are not defined using the \texttt{data}
 syntax used for normal declarations. Rather, they are assumed to exist
@@ -2647,15 +2662,19 @@ have now become plain data with regular constructors:
 
 \begin{Shaded}
 \begin{Highlighting}[]
+\CommentTok{{-}{-} A bit only has two states, like a boolean}
 \DataTypeTok{Bit} \OperatorTok{:} \DataTypeTok{Type}
 \DataTypeTok{Bit} \OtherTok{=} \DataTypeTok{Bool}
 
+\CommentTok{{-}{-} An int is a vector of 32 bits}
 \DataTypeTok{Int32} \OperatorTok{:} \DataTypeTok{Type}
 \DataTypeTok{Int32} \OtherTok{=} \DataTypeTok{Vect} \DecValTok{32} \DataTypeTok{Bit}
 
+\CommentTok{{-}{-} A character is a vector of 8 bits}
 \DataTypeTok{Char} \OperatorTok{:} \DataTypeTok{Type}
 \DataTypeTok{Char} \OtherTok{=} \DataTypeTok{Vect} \DecValTok{8} \DataTypeTok{Bit}
 
+\CommentTok{{-}{-} A string is a list of characters of arbitrary length}
 \DataTypeTok{String} \OperatorTok{:} \DataTypeTok{Type}
 \DataTypeTok{String} \OtherTok{=} \DataTypeTok{List} \DataTypeTok{Char}
 \end{Highlighting}
@@ -2696,6 +2715,8 @@ should:
 
 \begin{Shaded}
 \begin{Highlighting}[]
+\CommentTok{{-}{-} Here we ensure that our string is either "True"}
+\CommentTok{{-}{-} or "False".}
 \KeywordTok{data} \DataTypeTok{IsTrueOrFalse} \OperatorTok{:} \DataTypeTok{String} \OtherTok{{-}\textgreater{}} \DataTypeTok{Type} \KeywordTok{where}
   \DataTypeTok{IsTrue} \OperatorTok{:} \DataTypeTok{IsTrueOrFalse} \StringTok{"True"}
   \DataTypeTok{IsFalse} \OperatorTok{:} \DataTypeTok{IsTrueOrFalse} \StringTok{"False"}
@@ -2719,6 +2740,8 @@ treatment of primitives is the culprit.
 \DataTypeTok{MyString} \OperatorTok{:} \DataTypeTok{Type}
 \DataTypeTok{MyString} \OtherTok{=} \DataTypeTok{List} \DataTypeTok{MyChar}
 
+\CommentTok{{-}{-} Here we ensure that our string is either the \textbackslash{}0 character}
+\CommentTok{{-}{-} or the \textbackslash{}1 character.}
 \KeywordTok{data} \DataTypeTok{IsTrueOrFalse} \OperatorTok{:} \DataTypeTok{MyString} \OtherTok{{-}\textgreater{}} \DataTypeTok{Type} \KeywordTok{where}
   \DataTypeTok{IsTrue} \OperatorTok{:} \DataTypeTok{IsTrueOrFalse}\NormalTok{ [[}\DataTypeTok{O}\NormalTok{,}\DataTypeTok{O}\NormalTok{,}\DataTypeTok{O}\NormalTok{,}\DataTypeTok{O}\NormalTok{,}\DataTypeTok{O}\NormalTok{,}\DataTypeTok{O}\NormalTok{,}\DataTypeTok{O}\NormalTok{,}\DataTypeTok{O}\NormalTok{]]}
   \DataTypeTok{IsFalse} \OperatorTok{:} \DataTypeTok{IsTrueOrFalse}\NormalTok{ [[}\DataTypeTok{O}\NormalTok{,}\DataTypeTok{O}\NormalTok{,}\DataTypeTok{O}\NormalTok{,}\DataTypeTok{O}\NormalTok{,}\DataTypeTok{O}\NormalTok{,}\DataTypeTok{O}\NormalTok{,}\DataTypeTok{I}\NormalTok{,}\DataTypeTok{O}\NormalTok{]]}
@@ -2729,8 +2752,11 @@ treatment of primitives is the culprit.
 \end{Highlighting}
 \end{Shaded}
 
-\hypertarget{idris2-and-multiplicities}{%
-\subsection{Idris2 and multiplicities}\label{idris2-and-multiplicities}}
+\hypertarget{semirings-and-their-semantics-for-resource-tracking}{%
+\subsection{Semirings and Their Semantics for Resource
+Tracking}\label{semirings-and-their-semantics-for-resource-tracking}}
+
+\label{subsec:semiring-semantics}
 
 Linear types allow us to declare variable to be use either \texttt{0},
 \texttt{1} or any number of times. However, we've seen this approach is
@@ -2738,24 +2764,24 @@ pretty restrictive, in this thesis we are interested in how to use
 multiplicities and quantitative types for the benefit of the user in
 terms of ergonomics and performance.
 
-I posit that in order to bring about \emph{significant} change in
-performance, an equally significant (but not unreasonable) change must
-be made to the computational model. This section explores the idea of
-changing the memory model to reference counting rather than runtime
-garbage collection.
-
-\hypertarget{alternative-semirings-and-their-semantics}{%
-\subsubsection{Alternative semirings and their
-semantics}\label{alternative-semirings-and-their-semantics}}
+This section is the result of our finding in section
+\ref{sec:performance} about performance. While the results are
+encouraging, they suggest that more drastic changes are required in
+order to derive a competitive advantage over other programming
+environments. Specially the ones targeted at systems-programming.
+However, making linear types easier to use is an obvious first step
+toward expressing the semantics of performant programs in the type and
+is the reason for the following development.
 
 Quantitative type theory tracks usage through a generic semirings, any
-implementation of QTT can use any semiring for it to function. Idris2
-uses the following semiring:
+implementation of QTT can use any positive semiring for it to function.
+Idris2 uses the following semiring:
 
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{data} \DataTypeTok{ZeroOneOmega} \OtherTok{=} \DataTypeTok{Rig0} \OperatorTok{|} \DataTypeTok{Rig1} \OperatorTok{|} \DataTypeTok{RigW}
 
+\CommentTok{{-}{-} Addition on the Semiring}
 \NormalTok{rigPlus }\OperatorTok{:} \DataTypeTok{ZeroOneOmega} \OtherTok{{-}\textgreater{}} \DataTypeTok{ZeroOneOmega} \OtherTok{{-}\textgreater{}} \DataTypeTok{ZeroOneOmega}
 \NormalTok{rigPlus }\DataTypeTok{Rig0}\NormalTok{ a }\OtherTok{=}\NormalTok{ a}
 \NormalTok{rigPlus a }\DataTypeTok{Rig0} \OtherTok{=}\NormalTok{ a}
@@ -2763,6 +2789,7 @@ uses the following semiring:
 \NormalTok{rigPlus a }\DataTypeTok{Rig1} \OtherTok{=} \DataTypeTok{RigW}
 \NormalTok{rigPlus }\DataTypeTok{RigW} \DataTypeTok{RigW} \OtherTok{=} \DataTypeTok{RigW}
 
+\CommentTok{{-}{-} Multiplication on the Semiring}
 \NormalTok{rigMult }\OperatorTok{:} \DataTypeTok{ZeroOneOmega} \OtherTok{{-}\textgreater{}} \DataTypeTok{ZeroOneOmega} \OtherTok{{-}\textgreater{}} \DataTypeTok{ZeroOneOmega}
 \NormalTok{rigMult }\DataTypeTok{Rig0}\NormalTok{ \_ }\OtherTok{=} \DataTypeTok{Rig0}
 \NormalTok{rigMult \_ }\DataTypeTok{Rig0} \OtherTok{=} \DataTypeTok{Rig0}
@@ -2807,7 +2834,7 @@ Which is the finite group\footnote{A group is a semiring in which every
   element is invertible.} of size 5. Using this semiring would mean that
 we cannot have more than 5 of every variable. It would also mean that
 sharing a variable too many times result in linearity \texttt{0} which
-is pretty odd.
+makes this semiring unsuitable for resource tracking.
 
 One very useful semiring is the \texttt{InfNat} semiring, the natural
 numbers equipped with a \texttt{top} value:
@@ -2834,8 +2861,8 @@ one could imagine implementing \texttt{copy} like so:
 This encoding of resources is extremely expressive since it encapsulates
 both linearity and variable sharing. We are going to see how to use it
 for a very practical purpose in the section
-\protect\hyperlink{putting-everything-together}{Putting everything
-together}. In the meantime, here is another very useful semiring:
+\ref{subsec:linear-ref-counting}. In the meantime, here is another very
+useful semiring:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -2851,39 +2878,38 @@ and would allow us to write the following program:
 \CommentTok{{-}{-}           ┌ We changed our multiplicity to a range}
 \CommentTok{{-}{-}         ╭─┴──╮}
 \NormalTok{isEmpty }\OperatorTok{:}\NormalTok{ ([}\DecValTok{0}\OperatorTok{..}\DecValTok{1}\NormalTok{] v }\OperatorTok{:} \DataTypeTok{Maybe}\NormalTok{ a) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Bool}
-\NormalTok{isEmpty }\DataTypeTok{Nothing} \OtherTok{=} \DataTypeTok{True} \CommentTok{{-}{-} linear here}
-\NormalTok{isEmpty (}\DataTypeTok{Just}\NormalTok{ \_) }\OtherTok{=} \DataTypeTok{False} \CommentTok{{-}{-} non{-}linear here, erased in fact}
+\NormalTok{isEmpty }\DataTypeTok{Nothing} \OtherTok{=} \DataTypeTok{True}   \CommentTok{{-}{-} Fully consumed here}
+\NormalTok{isEmpty (}\DataTypeTok{Just}\NormalTok{ \_) }\OtherTok{=} \DataTypeTok{False} \CommentTok{{-}{-} Value ignored here}
 \end{Highlighting}
 \end{Shaded}
 
 There are infinitely many semirings, some make more sense than others.
 We could for example combine semirings in pairs, since pairs of
-semirings are also semirings. Another semiring is showcased
-in\_Granule\_\cite{granule} which has a good example of \emph{privacy
+semirings are also semirings. Another semiring is showcased in
+\emph{Granule}\cite{granule} which has a good example of \emph{privacy
 access} as a resource semiring.
 
 In conclusion, different semirings allow us to express different
-resource semantics, some more useful than others. In the next few pages
-I will explore how the \emph{precise usage} semiring \texttt{InfNat} is
-useful and will show a refactoring that allows us to use it in Idris2.
+resource semantics. In the next few pages I will explore how the
+\emph{precise usage} semiring \texttt{InfNat} is useful and will show a
+refactoring that allows us to use it in Idris2.
 
-\hypertarget{reference-counting-and-garbage-collection}{%
-\subsubsection{Reference counting and Garbage
-collection}\label{reference-counting-and-garbage-collection}}
+\hypertarget{memory-management-semantics}{%
+\subsection{Memory Management
+Semantics}\label{memory-management-semantics}}
 
 This section summarises three competing strategies for a memory
 management model that does not rely on manual memory management (which
-is known to be the source of countless bugs and security issues). This
-will serve as a motivation for the next section which will justify our
-use of quantitative types for performance.
+is known to be the source of countless bugs and security issues).
 
 \emph{Tracing garbage collection} (which we will refer to as ``GC'')
 generally refers to algorithms of automatic memory management such as
 \emph{mark \& sweep} or to runtimes using them such as the
-\emph{Boehm-GC}. The greatest benefit of garbage collection is that the
-burden of memory management is completely lifted from the programmer.
-But this feature is not always good news, the benefits come at the
-expense of predictability and control.
+\emph{Boehm-GC}\footnote{\url{https://en.wikipedia.org/wiki/Boehm_garbage_collector}}.
+The greatest benefit of garbage collection is that the burden of memory
+management is completely lifted from the programmer. But this feature is
+not always good news, the benefits come at the expense of predictability
+and control.
 
 Since the garbage collector runs automatically without any input from
 the programmer, there is no way to tell how often the garbage collector
@@ -2951,11 +2977,13 @@ quantities and memory could make Idris2 competitive with other
 commercial programming language and even systems programming.
 
 \hypertarget{putting-everything-together-linearity-and-reference-counting}{%
-\subsubsection{Putting everything together: Linearity and reference
-counting}\label{putting-everything-together-linearity-and-reference-counting}}
+\subsubsection{Putting Everything Together: Linearity and Reference
+Counting}\label{putting-everything-together-linearity-and-reference-counting}}
 
-The idea of mapping linear usage to reference counting isn't new
-\cite{linear_ref_count}, but with QTT, we can have a much greater
+\label{subsec:linear-ref-counting}
+
+The idea of mapping linear usage to reference counting isn't
+new\cite{linear_ref_count}, but with QTT, we can have a much greater
 control over the semantics of the semiring we use in order to make it
 correspond precisely with the behaviour of our runtime.
 
@@ -2980,6 +3008,8 @@ this, let us take an example they use, \texttt{makePairOf}:
 \begin{Highlighting}[]
 \NormalTok{makePairOf }\OperatorTok{:}\NormalTok{ a }\OtherTok{{-}\textgreater{}}\NormalTok{ (a, a)}
 \NormalTok{makePairOf x }\OtherTok{=}\NormalTok{ inc x ; (x, x)}
+\CommentTok{{-}{-}               ▲}
+\CommentTok{{-}{-}               └ Increment the reference count}
 \end{Highlighting}
 \end{Shaded}
 
@@ -3108,12 +3138,18 @@ simply use linearity as our reference counter we would expect 5
 Combining our first and last optimisation we can reduce the amount of
 \texttt{dec} from 5 to 2 and the amount of \texttt{inc} from 5 to 0.
 
-\hypertarget{steps-toward-a-working-implementation}{%
-\subsubsection{Steps toward a working
-implementation}\label{steps-toward-a-working-implementation}}
+\hypertarget{implementing-generic-semirings}{%
+\subsection{Implementing Generic
+Semirings}\label{implementing-generic-semirings}}
 
-The first and easiest step toward a working implementation of this idea
-is to extend the Idris2 compiler to support alternative multiplicities.
+In the following I am going to showcase the biggest changes necessary in
+order to implement resource tracking through different semirings in a
+fully fledged programming language such as Idris. Going through this
+exercise made me discover additional structures for proper resource
+tracking in a practical programming language (as opposed to a theorem
+prover). The goal of this section is to demonstrate the role of those
+additional structures and explain why they are necessary.
+
 The current Idris2 compiler uses
 \texttt{data\ RigCount\ =\ Rig0\ \textbar{}\ Rig1\ \textbar{}\ RigW} for
 linearity \texttt{0}, \texttt{1}, \texttt{ω} respectively. In order to
@@ -3121,15 +3157,19 @@ support a different semiring we need to abstract over the operations of
 semirings and update the existing codebase to make use of them instead
 of relying on our definition of \texttt{RigCount}.
 
-A \texttt{Semiring} is defined as follows:
+A \texttt{Semiring}\footnote{As a reminder, a semi ring is defined by
+  two operations, \texttt{+} and \texttt{*} and have neutral elements
+  \texttt{0} and \texttt{1} such that \texttt{0\ *\ n\ =\ 0},
+  \texttt{1\ *\ n\ =\ n} and \texttt{0\ +\ n\ =\ n}. See the glossary
+  for more details.} is defined as follows:
 
 \begin{Shaded}
 \begin{Highlighting}[]
 \NormalTok{interface }\DataTypeTok{Semiring}\NormalTok{ a }\KeywordTok{where}
-\NormalTok{  (}\OperatorTok{|+|}\NormalTok{) }\OperatorTok{:}\NormalTok{ a }\OtherTok{{-}\textgreater{}}\NormalTok{ a }\OtherTok{{-}\textgreater{}}\NormalTok{ a}
-\NormalTok{  plusNeutral }\OperatorTok{:}\NormalTok{ a}
-\NormalTok{  (}\OperatorTok{|*|}\NormalTok{) }\OperatorTok{:}\NormalTok{ a }\OtherTok{{-}\textgreater{}}\NormalTok{ a }\OtherTok{{-}\textgreater{}}\NormalTok{ a}
-\NormalTok{  timesNeutral }\OperatorTok{:}\NormalTok{ a}
+\NormalTok{  (}\OperatorTok{|+|}\NormalTok{) }\OperatorTok{:}\NormalTok{ a }\OtherTok{{-}\textgreater{}}\NormalTok{ a }\OtherTok{{-}\textgreater{}}\NormalTok{ a }\CommentTok{{-}{-} Addition}
+\NormalTok{  plusNeutral }\OperatorTok{:}\NormalTok{ a     }\CommentTok{{-}{-} Neutral for addition}
+\NormalTok{  (}\OperatorTok{|*|}\NormalTok{) }\OperatorTok{:}\NormalTok{ a }\OtherTok{{-}\textgreater{}}\NormalTok{ a }\OtherTok{{-}\textgreater{}}\NormalTok{ a }\CommentTok{{-}{-} Multiplication}
+\NormalTok{  timesNeutral }\OperatorTok{:}\NormalTok{ a    }\CommentTok{{-}{-} Neutral for multiplication}
 \end{Highlighting}
 \end{Shaded}
 
@@ -3158,7 +3198,7 @@ Become:
 \end{Shaded}
 
 In order to recover the functionality from pattern matching we introduce
-an eliminator for \texttt{Semiring}:
+an eliminator for \texttt{Semiring}, \texttt{elimSemi}:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -3173,34 +3213,41 @@ an eliminator for \texttt{Semiring}:
 \end{Highlighting}
 \end{Shaded}
 
-As well as a series of helper functions:
+Which reads ``if we are looking at the neutral element for \texttt{+}
+then return the value associated with zero, otherwise if we are looking
+at the neutral element for \texttt{*}, then return the value associated
+with one, otherwise, we are looking at a number that is not one of the
+neutrals from our semiring, and we need to eliminate it using our
+function \texttt{other}''.
+
+To replace pattern matching we also need a set of helper functions. They
+are all based upon \texttt{elimSemi} and all represent different
+semantics associated with our generic semiring. The most important ones
+are \texttt{isLinear} and \texttt{isErased} since they explicitly spell
+what we expect from the semantics of the language:
 
 \begin{Shaded}
 \begin{Highlighting}[]
+\CommentTok{{-}{-} Returns True if the value is the neutral for addition}
 \NormalTok{isErased }\OperatorTok{:}\NormalTok{ (}\DataTypeTok{Semiring}\NormalTok{ a, }\DataTypeTok{Eq}\NormalTok{ a) }\OtherTok{=\textgreater{}}\NormalTok{ a }\OtherTok{{-}\textgreater{}} \DataTypeTok{Bool}
 \NormalTok{isErased }\OtherTok{=}\NormalTok{ elimSemi }\DataTypeTok{True} \DataTypeTok{False}\NormalTok{ (}\FunctionTok{const} \DataTypeTok{False}\NormalTok{)}
 
+\CommentTok{{-}{-} Returns True if the value is the neutral for multiplication}
 \NormalTok{isLinear }\OperatorTok{:}\NormalTok{ (}\DataTypeTok{Semiring}\NormalTok{ a, }\DataTypeTok{Eq}\NormalTok{ a) }\OtherTok{=\textgreater{}}\NormalTok{ a }\OtherTok{{-}\textgreater{}} \DataTypeTok{Bool}
 \NormalTok{isLinear }\OtherTok{=}\NormalTok{ elimSemi }\DataTypeTok{False} \DataTypeTok{True}\NormalTok{ (}\FunctionTok{const} \DataTypeTok{False}\NormalTok{)}
 
+\CommentTok{{-}{-} Returns True if the value is not a neutral for any operation}
 \NormalTok{isRigOther }\OperatorTok{:}\NormalTok{ (}\DataTypeTok{Semiring}\NormalTok{ a, }\DataTypeTok{Eq}\NormalTok{ a) }\OtherTok{=\textgreater{}}\NormalTok{ a }\OtherTok{{-}\textgreater{}} \DataTypeTok{Bool}
 \NormalTok{isRigOther }\OtherTok{=}\NormalTok{ elimSemi }\DataTypeTok{False} \DataTypeTok{False}\NormalTok{ (}\FunctionTok{const} \DataTypeTok{True}\NormalTok{)}
-
-\NormalTok{branchZero }\OperatorTok{:}\NormalTok{ (}\DataTypeTok{Semiring}\NormalTok{ a, }\DataTypeTok{Eq}\NormalTok{ a) }\OtherTok{=\textgreater{}} \DataTypeTok{Lazy}\NormalTok{ b }\OtherTok{{-}\textgreater{}} \DataTypeTok{Lazy}\NormalTok{ b }\OtherTok{{-}\textgreater{}}\NormalTok{ a }\OtherTok{{-}\textgreater{}}\NormalTok{ b}
-\NormalTok{branchZero yes no rig }\OtherTok{=} \KeywordTok{if}\NormalTok{ isErased rig }\KeywordTok{then}\NormalTok{ yes }\KeywordTok{else}\NormalTok{ no}
-
-\NormalTok{branchOne }\OperatorTok{:}\NormalTok{ (}\DataTypeTok{Semiring}\NormalTok{ a, }\DataTypeTok{Eq}\NormalTok{ a) }\OtherTok{=\textgreater{}} \DataTypeTok{Lazy}\NormalTok{ b }\OtherTok{{-}\textgreater{}} \DataTypeTok{Lazy}\NormalTok{ b }\OtherTok{{-}\textgreater{}}\NormalTok{ a }\OtherTok{{-}\textgreater{}}\NormalTok{ b}
-\NormalTok{branchOne yes no rig }\OtherTok{=} \KeywordTok{if}\NormalTok{ isLinear rig }\KeywordTok{then}\NormalTok{ yes }\KeywordTok{else}\NormalTok{ no}
-
-\NormalTok{branchVal }\OperatorTok{:}\NormalTok{ (}\DataTypeTok{Semiring}\NormalTok{ a, }\DataTypeTok{Eq}\NormalTok{ a) }\OtherTok{=\textgreater{}} \DataTypeTok{Lazy}\NormalTok{ b }\OtherTok{{-}\textgreater{}} \DataTypeTok{Lazy}\NormalTok{ b }\OtherTok{{-}\textgreater{}}\NormalTok{ a }\OtherTok{{-}\textgreater{}}\NormalTok{ b}
-\NormalTok{branchVal yes no rig }\OtherTok{=} \KeywordTok{if}\NormalTok{ isRigOther rig }\KeywordTok{then}\NormalTok{ yes }\KeywordTok{else}\NormalTok{ no}
 \end{Highlighting}
 \end{Shaded}
 
-But this is still not enough since the compiler also makes assumptions
-about \emph{ordering} within the multiplicity. In the following program,
-we check that multiplicities are compatible by checking if the left one
-is smaller than the right one.
+Our first discovery is that those functions are not enough! Indeed, the
+compiler also makes assumptions about \emph{ordering} within the
+multiplicity. An assumption that was not visible before our
+generalisation and isn't directly implemented in QTT. In the following
+program, we check that multiplicities are compatible by checking if the
+left one is smaller than the right one.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -3217,17 +3264,21 @@ is smaller than the right one.
 \end{Highlighting}
 \end{Shaded}
 
-The same program can be refactored using an ordering on the semiring we
-use:
+You can see that the pattern matching doesn't spell out the relation
+between the first and the second argument. However, the same program can
+be refactored using an ordering on a generic semiring:
 
 \begin{Shaded}
 \begin{Highlighting}[]
 \NormalTok{rigSafe }\OperatorTok{:} \DataTypeTok{Semiring}\NormalTok{ r }\OtherTok{=\textgreater{}}\NormalTok{ r }\OtherTok{{-}\textgreater{}}\NormalTok{ r }\OtherTok{{-}\textgreater{}} \DataTypeTok{Core}\NormalTok{ ()}
 \NormalTok{rigSafe lhs rhs }\OtherTok{=} 
-\NormalTok{  when (lhs }\OperatorTok{\textless{}}\NormalTok{ rhs)}
+\NormalTok{  when (lhs }\OperatorTok{\textless{}}\NormalTok{ rhs) }\CommentTok{{-}{-} Here is where we need an ordering relation}
 \NormalTok{       (throw (}\DataTypeTok{LinearMisuse}\NormalTok{ fc }\OperatorTok{!}\NormalTok{(getFullName x) lhs rhs))}
 \end{Highlighting}
 \end{Shaded}
+
+This now reads much more naturally as ``if the left resource is smaller
+than the right one, then throw an error''.
 
 Semirings in general do not enforce an order, and we do not want to add
 too many restrictions to our multiplicity types to avoid making it less
@@ -3245,7 +3296,11 @@ and associativity to hold. In Idris2 this is formulated as:
 \begin{Shaded}
 \begin{Highlighting}[]
 \NormalTok{interface }\DataTypeTok{Preorder}\NormalTok{ a }\KeywordTok{where}
+
+  \CommentTok{{-}{-} the ordering relation}
 \NormalTok{  (}\OperatorTok{\textless{}=}\NormalTok{) }\OperatorTok{:}\NormalTok{ a }\OtherTok{{-}\textgreater{}}\NormalTok{ a }\OtherTok{{-}\textgreater{}} \DataTypeTok{Maybe} \DataTypeTok{Bool}
+
+  \CommentTok{{-}{-} The proofs of reflexivity and transitivity of the ordering}
 \NormalTok{  preorderRefl }\OperatorTok{:}\NormalTok{ \{x }\OperatorTok{:}\NormalTok{ a\} }\OtherTok{{-}\textgreater{}}\NormalTok{ x }\OperatorTok{\textless{}=}\NormalTok{ x }\OtherTok{=} \DataTypeTok{Just} \DataTypeTok{True}
 \NormalTok{  preorderTrans }\OperatorTok{:}\NormalTok{ \{x, y, z }\OperatorTok{:}\NormalTok{ a\} }\OtherTok{{-}\textgreater{}}\NormalTok{ x }\OperatorTok{\textless{}=}\NormalTok{ y }\OtherTok{=} \DataTypeTok{Just} \DataTypeTok{True} 
                                 \OtherTok{{-}\textgreater{}}\NormalTok{ y }\OperatorTok{\textless{}=}\NormalTok{ z }\OtherTok{=} \DataTypeTok{Just} \DataTypeTok{True} 
@@ -3254,16 +3309,16 @@ and associativity to hold. In Idris2 this is formulated as:
 \end{Shaded}
 
 For engineering reasons this is not exactly the version used in the
-Idris2 compiler but this should not detract from the observation that
-pure semirings are not enough.
+Idris2 compiler but this should not detract from the observation that a
+semiring alone is not enough.
 
-Finally, there is one last missing piece and that is a default value. In
-a lot of the existing implementation \texttt{RigW} is used as a default
-value when creating values with unknown linearity. This is because
-Idris2 is \emph{unrestricted by default} instead of \emph{linear by
-default}. In our case, the default value has a very neat property: it is
-greater or equal to every other values of the semiring. In technical
-term, in addition to having a semiring and a preorder we also need our
+Another missing piece is a default value. In a lot of the existing
+implementation \texttt{RigW} is used as a default value when creating
+values with unknown linearity. This is because Idris2 is
+\emph{unrestricted by default} instead of \emph{linear by default}. In
+our case, the default value has a very neat property: it is greater or
+equal to every other values of the semiring. In technical term, in
+addition to having a semiring and a preorder we also need our
 multiplicity type to have a \emph{top} value, which means we are
 actually dealing with a \emph{meet semi-lattice}.
 
@@ -3272,112 +3327,53 @@ Top is easily defined as follows:
 \begin{Shaded}
 \begin{Highlighting}[]
 \NormalTok{interface }\DataTypeTok{Preorder}\NormalTok{ a }\OtherTok{=\textgreater{}} \DataTypeTok{Top}\NormalTok{ a }\KeywordTok{where}
+  \CommentTok{{-}{-} top is the default multiplicity}
 \NormalTok{  top }\OperatorTok{:}\NormalTok{ a}
   \CommentTok{{-}{-} top absolves everything else}
 \NormalTok{  topAbs }\OperatorTok{:}\NormalTok{ \{x }\OperatorTok{:}\NormalTok{ a\} }\OtherTok{{-}\textgreater{}}\NormalTok{ x }\OperatorTok{\textless{}=}\NormalTok{ top }\OtherTok{=} \DataTypeTok{Just} \DataTypeTok{True}
 \end{Highlighting}
 \end{Shaded}
 
-Along with those definitions we will need functions for \emph{least
-upped bound} and \emph{greatest lower bound}:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{lub }\OperatorTok{:} \DataTypeTok{Preorder}\NormalTok{ a }\OtherTok{=\textgreater{}}\NormalTok{ a }\OtherTok{{-}\textgreater{}}\NormalTok{ a }\OtherTok{{-}\textgreater{}}\NormalTok{ a}
-\NormalTok{lub x y }\OtherTok{=} \KeywordTok{if}\NormalTok{ x }\OperatorTok{\textless{}=}\NormalTok{ y }\KeywordTok{then}\NormalTok{ y }\KeywordTok{else}\NormalTok{ x}
-
-\NormalTok{glb }\OperatorTok{:} \DataTypeTok{Preorder}\NormalTok{ a }\OtherTok{=\textgreater{}}\NormalTok{ a }\OtherTok{{-}\textgreater{}}\NormalTok{ a }\OtherTok{{-}\textgreater{}}\NormalTok{ a}
-\NormalTok{glb x y }\OtherTok{=} \KeywordTok{if}\NormalTok{ x }\OperatorTok{\textless{}=}\NormalTok{ y }\KeywordTok{then}\NormalTok{ x }\KeywordTok{else}\NormalTok{ y}
-\end{Highlighting}
-\end{Shaded}
-
 Now that we finally have all the pieces required by the Idris2 compiler
-we can replace every occurrence of \texttt{Rig0}, \texttt{Rig1} and
-\texttt{RigW} by our generic implementation of semirings.
+we can replace the existing semiring \texttt{0}, \texttt{1}, \texttt{ω}
+by any other that obeys the laws of a meet-semi-lattice.
 
-This update is done by making the constructors private and replacing the
-old definition of
-\texttt{data\ RigCount\ =\ Rig0\ \textbar{}\ Rig1\ \textbar{}\ RigW} by:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\DataTypeTok{RigCount} \OperatorTok{:} \DataTypeTok{Type}
-\DataTypeTok{RigCount} \OtherTok{=} \DataTypeTok{ZeroOneOmega}
-\end{Highlighting}
-\end{Shaded}
-
-This might not seem like much, but it allows us to be completely removed
-from the specific implementation of our semiring. Indeed, we can now
-replace out \texttt{ZeroOneOmega} semiring by \texttt{InfNat} and get
-the \emph{precise usage} semantics we were looking for.
-
-The diff reveals some very interesting insight about how linearity and
-its semantics interact with language feature such as pattern matching.
-Take this example :
+Finally, looking at how linearity interacts with pattern matching we see
+another restriction show up. Where previously we would see:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\OperatorTok{{-}}\NormalTok{ checkUsageOK used }\DataTypeTok{Rig0} \OtherTok{=} \FunctionTok{pure}\NormalTok{ ()}
-\OperatorTok{{-}}\NormalTok{ checkUsageOK used }\DataTypeTok{RigW} \OtherTok{=} \FunctionTok{pure}\NormalTok{ ()}
-\OperatorTok{{-}}\NormalTok{ checkUsageOK used }\DataTypeTok{Rig1}
-\OperatorTok{{-}}          \OtherTok{=} \KeywordTok{if}\NormalTok{ used }\OperatorTok{==} \DecValTok{1}
-\OperatorTok{{-}}               \KeywordTok{then} \FunctionTok{pure}\NormalTok{ ()}
-\OperatorTok{{-}}               \KeywordTok{else}\NormalTok{ throw (}\DataTypeTok{LinearUsed}\NormalTok{ fc used nm)}
-\OperatorTok{+}\NormalTok{ checkUsageOK used r }\OtherTok{=}\NormalTok{ when (isLinear r }\OperatorTok{\&\&}\NormalTok{ used }\OperatorTok{/=} \DecValTok{1}\NormalTok{)}
-\OperatorTok{+}\NormalTok{                            (throw (}\DataTypeTok{LinearUsed}\NormalTok{ fc used nm))}
+\NormalTok{checkUsageOK used }\DataTypeTok{Rig0} \OtherTok{=} \FunctionTok{pure}\NormalTok{ ()}
+\NormalTok{checkUsageOK used }\DataTypeTok{RigW} \OtherTok{=} \FunctionTok{pure}\NormalTok{ ()}
+\NormalTok{checkUsageOK used }\DataTypeTok{Rig1}
+         \OtherTok{=} \KeywordTok{if}\NormalTok{ used }\OperatorTok{==} \DecValTok{1}
+              \KeywordTok{then} \FunctionTok{pure}\NormalTok{ ()}
+              \KeywordTok{else}\NormalTok{ throw (}\DataTypeTok{LinearUsed}\NormalTok{ fc used nm)}
 \end{Highlighting}
 \end{Shaded}
 
-We notice that the semantics of this check are ``if the multiplicity is
+We now have:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{checkUsageOK used r }\OtherTok{=}\NormalTok{ when (isLinear r }\OperatorTok{\&\&}\NormalTok{ used }\OperatorTok{/=} \DecValTok{1}\NormalTok{)}
+\NormalTok{                           (throw (}\DataTypeTok{LinearUsed}\NormalTok{ fc used nm))}
+\end{Highlighting}
+\end{Shaded}
+
+Again, where the first snippet is unclear about the semantics of the
+operation, the second one reveals that we are checking if the number of
+uses matches the linearity. Or in other words, ``if the multiplicity is
 linear, and we have not used the variable exactly once, then throw an
-error''. But this check would be non-sensical for a different semiring
-as \texttt{ZeroOneOmega}. For example, for exact usage the rule should
-be ``is the multiplicity as a nat \emph{is different} from the number of
-uses then throw an error''. Or for intervals, the rule should be ``if
-the number of uses is outside the range of the interval, then throw an
-error''. This suggests that there is an additional structure to our
-semiring that we are missing, and that relates each value to a natural
-number representing the number of uses. Something like :
+error''.
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{interface }\DataTypeTok{CheckCount}\NormalTok{ a }\KeywordTok{where}
-\NormalTok{    checkCount }\OperatorTok{:}\NormalTok{ a }\OtherTok{{-}\textgreater{}} \DataTypeTok{Nat} \OtherTok{{-}\textgreater{}} \DataTypeTok{Bool}
-\end{Highlighting}
-\end{Shaded}
-
-But it is unclear if this is an artefact of our implementation, or if
-the theory itself require this additional structure in order to be
-implemented.
-
-Some other rules are just odd:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\OperatorTok{{-}}\NormalTok{       checkUsageOK fc used nm isloc }\DataTypeTok{Rig0} \OtherTok{=} \FunctionTok{pure}\NormalTok{ ()}
-\OperatorTok{{-}}\NormalTok{       checkUsageOK fc used nm isloc }\DataTypeTok{RigW} \OtherTok{=} \FunctionTok{pure}\NormalTok{ ()}
-\OperatorTok{{-}}\NormalTok{       checkUsageOK fc used nm }\DataTypeTok{True} \DataTypeTok{Rig1}
-\OperatorTok{{-}}           \OtherTok{=} \KeywordTok{if}\NormalTok{ used }\OperatorTok{\textgreater{}} \DecValTok{1}
-\OperatorTok{{-}}                \KeywordTok{then}\NormalTok{ throw (}\DataTypeTok{LinearUsed}\NormalTok{ fc used nm)}
-\OperatorTok{{-}}                \KeywordTok{else} \FunctionTok{pure}\NormalTok{ ()}
-\OperatorTok{{-}}\NormalTok{       checkUsageOK fc used nm isloc }\DataTypeTok{Rig1}
-\OperatorTok{{-}}           \OtherTok{=} \KeywordTok{if}\NormalTok{ used }\OperatorTok{==} \DecValTok{1}
-\OperatorTok{{-}}                \KeywordTok{then} \FunctionTok{pure}\NormalTok{ ()}
-\OperatorTok{{-}}                \KeywordTok{else}\NormalTok{ throw (}\DataTypeTok{LinearUsed}\NormalTok{ fc used nm)}
-\OperatorTok{+}\NormalTok{       checkUsageOK fc used nm isloc rig}
-\OperatorTok{+}           \OtherTok{=}\NormalTok{ when (isLinear rig }\OperatorTok{\&\&}\NormalTok{ ((isloc }\OperatorTok{\&\&}\NormalTok{ used }\OperatorTok{\textgreater{}} \DecValTok{1}\NormalTok{) }\OperatorTok{||} 
-\OperatorTok{+}\NormalTok{                                    (}\FunctionTok{not}\NormalTok{ isloc }\OperatorTok{\&\&}\NormalTok{ used }\OperatorTok{/=} \DecValTok{1}\NormalTok{)))}
-\OperatorTok{+}\NormalTok{                  (throw (}\DataTypeTok{LinearUsed}\NormalTok{ fc used nm))}
-\end{Highlighting}
-\end{Shaded}
-
-Here, the usage of \texttt{isLoc} suggests that there is additional
-refactoring to perform since we do not expect local variables to
-interfere with linearity checking.
-
-The rest of the change are pretty mechanical and do not display anything
-surprising. They are simple text replacement from \texttt{Rig0} to
-\texttt{r}
+This suggests that in order to implement pattern matching for a generic
+semiring, we also need to add a way to associate the multiplicity with a
+natural number so that we can compare it with a number of occurrences.
+Or we need a concept of \emph{leftover typing} where a resource can be
+partially consumed via subtracting. That is, if we have \texttt{5} of a
+resource, then we can partially use it \texttt{3} times, leaving us with
+\texttt{5\ -\ 3\ =\ 2} resources.
 
 \hypertarget{next-steps}{%
 \subsubsection{Next Steps}\label{next-steps}}
@@ -3388,7 +3384,7 @@ based on QTT. \emph{Meet semi-lattice} aren't mentioned in Quantitative
 Type Theory\cite{qtt} but they appear in Granule \cite{granule} while
 this is not entirely surprising it is noteworthy that both approach
 reach the same conclusion: ordered semirings are the foundation of a
-sound implantation of a calculus with quantities into a useful
+sound implementation of a calculus with quantities into a useful
 programming language.
 
 This implementation is only the first step into extended the language
@@ -3411,14 +3407,16 @@ new one and enjoy the benefits in terms of added functionality.
 
 Unfortunately, while the compiler accepts Nat-multiplicity programs, it
 keeps the semantics of \texttt{0}, \texttt{1}, \texttt{ω} because
-everything bigger than 1 is considered unrestricted In the linearity
+everything bigger than 1 is considered unrestricted in the linearity
 checker.
 
 \newpage
 
 \hypertarget{performance-improvement-using-linear-types}{%
-\section{Performance improvement using linear
-types}\label{performance-improvement-using-linear-types}}
+\section{Performance Improvement Using Linear
+Types}\label{performance-improvement-using-linear-types}}
+
+\label{sec:performance}
 
 This section aims to answer the question ``what performance improvement
 can we get by using linear types \emph{today}?'' by implementing a
@@ -3430,8 +3428,8 @@ might expect. The original formulation for linear types suggest that
 every linear function could reuse the memory space taken by linear
 variables. But this is not necessarily the case in Idris2 and additional
 requirements will have to be met for the optimisation to trigger. We
-will see that those requirements are quire limiting and prompted the
-work in section 5.
+will see in the conclusion that those requirements are quite limiting
+and prompted the work in section \ref{sec:qtt-ergonomics} .
 
 After clarifying our needs regarding our optimisation, we are going to
 look at the compiler changes necessary to implement our optimisation,
@@ -3446,13 +3444,14 @@ and some discussion on the nature of the tests.
 
 Finally, the results are presented along with their discussion. The
 discussion helps understand the chronology in which those tests were
-performed and motivate our conclusion which will be done in section 7.
+performed and motivate our conclusion which will be done in section
+\ref{subsec:discussion} .
 
 \hypertarget{conditions-under-which-we-can-run-our-optimisation}{%
-\subsection{Conditions under which we can run our
-optimisation}\label{conditions-under-which-we-can-run-our-optimisation}}
+\subsection{Conditions under Which We Can Run Our
+Optimisation}\label{conditions-under-which-we-can-run-our-optimisation}}
 
-Idris2 already allows to define linear functions, but despite the extra
+Idris2 already allows defining linear functions, but despite the extra
 information that the argument cannot be used twice, the compiler does
 not perform any special optimisation for linear types. One obvious
 observation one can make is that once a linear value has been consumed,
@@ -3471,11 +3470,11 @@ this way:
 \end{Shaded}
 
 The value \texttt{arg} can be freed immediately after being called by
-\texttt{predicate}. Indeed, it's been used, therefore it cannot be used
-again, which means its memory space won't ever be accessed again. In
-what follows we are going to reuse the intuition originally suggested by
-\cite{once_upon_a_type}\cite{linear_types_update}\cite{linear_use} and
-rephrase it as :
+\texttt{predicate}. Indeed, it has been used, and therefore it cannot be
+used again, which means its memory space won't ever be accessed again.
+In what follows we are going to reuse the intuition originally suggested
+by \cite{once_upon_a_type}\cite{linear_types_update}\cite{linear_use}
+and rephrase it as :
 
 \begin{quote}
 If you own a linear variable, and it is not shared, you can freely
@@ -3514,8 +3513,8 @@ guaranteed to be unique when it is called on a linear function. One
 example of this sharing mechanism can be seen with function subtyping.
 
 \hypertarget{issues-with-linear-function-subtyping}{%
-\subsubsection{Issues with linear function
-subtyping}\label{issues-with-linear-function-subtyping}}
+\subsubsection{Issues with Linear Function
+Subtyping}\label{issues-with-linear-function-subtyping}}
 
 In order to make the interplay between unrestricted and linear functions
 easier, Idris2 features subtyping on functions. As a refresher,
@@ -3628,51 +3627,18 @@ safe updates and safe memory frees is not restrictive enough. We need an
 additional level of restriction to ensure \emph{uniqueness} of the
 values instead of linearity.
 
-\hypertarget{issues-with-the-limited-scope-of-the-optimisation}{%
-\subsubsection{Issues with the limited scope of the
-optimisation}\label{issues-with-the-limited-scope-of-the-optimisation}}
-
-It turns out that, while our initial statement about our compiler
-optimisation seems quite broad, the specifics of where this situation
-occurs are in reality quite limiting:
-
-\begin{enumerate}
-\def\labelenumi{\arabic{enumi}.}
-\tightlist
-\item
-  We need to work with a linear function
-\item
-  We need to create a value in the local scope
-\item
-  We need to mutate the value in the local scope after creating it
-\end{enumerate}
-
-\texttt{1} is limiting because most of today's Idris program do not
-contain any linearity annotation. This is because most Idris programs
-are written in Idris 1 rather than Idris 2 and naively ported.
-
-Number 2 is a limitation because linear functions can only make the
-assumption their arguments are unique when they are not used as a
-higher-order function. This would be fine in an imperative programming
-language where it is idiomatic to declare and allocate value and then
-use them, rather than compose higher-order functions.
-
-Finally, 3 rarely occurs because creating a variable and mutating it
-redundant. If we create a value and mutate it, we could just as well
-create it directly with the mutated value. That is, instead of doing
-\texttt{let\ v\ =\ 3;\ v\textquotesingle{}\ =\ v\ +\ 1\ in\ ...}, we can
-do \texttt{let\ v\ =\ 4\ in\ ...}. Of course this is not always the case
-but highlights how specific are the conditions for this optimisation to
-run.
-
+In order to ensure uniqueness, we are only going to consider situations
+where a variable has been created in scope and is declared to be linear.
 In the next section I will talk about the changes that are necessary to
 a compiler for a functional language such as Idris. The changes should
 reflect the nature of our restrictions in a language that features
 pattern matching, a core lambda-calculus and immutable data structures.
 
 \hypertarget{implementing-our-optimisation}{%
-\subsection{Implementing our
-optimisation}\label{implementing-our-optimisation}}
+\subsection{Implementing Our
+Optimisation}\label{implementing-our-optimisation}}
+
+\label{subsec:implementing-optimisation}
 
 Here is a concrete example of the situation we can optimise using linear
 types with Idris:
@@ -3706,51 +3672,11 @@ Conceptually the compiler architecture is quite simple, in the following
 illustration we link trees transformation with their corresponding
 functions. Each tree is its own data declaration:
 
-\newpage
-
-\begin{verbatim}
-   PTerm
-   ──┬──
-     |
- ┌───┴────┐
- |desugarB|
- └───┬────┘
-     │
-     ▼
-   RawImp
-   ──┬───
-     |
-┌────┴────┐
-|checkTerm|  < We make changes here
-└────┬────┘
-     │
-     ▼
- Term vars   < Here
- ────┬────
-     |
-  ┌──┴───┐
-  │toCExp│
-  └──┬───┘
-     |
-     ▼
- CExp vars   < Here
- ────┬────
-     |
-  ┌──┴───┐
-  │forget│
-  └──┬───┘
-     |
-     ▼
-  NamedCExp
-  ───┬─────
-     |
-  ┌──┴───┐
-  │schExp│   < And here
-  └──┬───┘
-     |
-     ▼
-scheme output
-\end{verbatim}
+\begin{figure}
+\centering
+\includegraphics[width=0.4\textwidth]{compiler_pipeline_2.png}
+\caption{The entire compiler pipeline}
+\end{figure}
 
 \texttt{PTerm} represents the surface level language, it is desugared
 into \texttt{RawImp} which is a front end for our typed terms
@@ -3770,8 +3696,8 @@ information from the control flow and the access to the case tree we
 need to perform our changes between \texttt{Term} and \texttt{CExp}.
 
 \hypertarget{adding-the-mutating-flag}{%
-\subsubsection{Adding the mutating
-flag}\label{adding-the-mutating-flag}}
+\subsubsection{Adding the Mutating
+Flag}\label{adding-the-mutating-flag}}
 
 Since this optimisation cannot be triggered automatically for every
 linear function, we are going to tell the compiler where to apply it
@@ -3879,8 +3805,14 @@ for the purpose of this thesis we will ignore this optimisation and
 carefully design our benchmarks to make use of it.
 
 \hypertarget{mutating-instruction-in-the-ast}{%
-\subsubsection{Mutating instruction in the
+\subsubsection{Mutating Instruction in the
 AST}\label{mutating-instruction-in-the-ast}}
+
+\begin{figure}
+\centering
+\includegraphics[width=0.3\textwidth]{cmut_changes.png}
+\caption{Location of backend AST changes (CMut)}
+\end{figure}
 
 For this to work we need to add a new constructor to the AST that
 represents \emph{compiled} programs \texttt{CExp}. We add the
@@ -3934,8 +3866,8 @@ scheme program from a \texttt{NamedCExp}:
 \end{Shaded}
 
 \hypertarget{tracking-lost-references}{%
-\subsubsection{Tracking lost
-references}\label{tracking-lost-references}}
+\subsubsection{Tracking Lost
+References}\label{tracking-lost-references}}
 
 There is however an additional detail that hasn't been expressed and
 that is how to \emph{construct} a value of \texttt{CMut}. \texttt{CMut}
@@ -3973,8 +3905,16 @@ requires a bit of thought about \emph{where} to put it. Since the next
 condition requires us to change the \emph{case tree} of our function
 definition, we are going to add the boolean check in
 \texttt{src/TTImp/ProcessDef.idr} which will process every definition of
-our program. We are going to short-circuit the case-tree generation by
-replacing the compiled one by our modified version of it:
+our program.
+
+\begin{figure}
+\centering
+\includegraphics[width=0.4\textwidth]{tree_changes.png}
+\caption{Location of case tree changes}
+\end{figure}
+
+We are going to short-circuit the case-tree generation by replacing the
+compiled one by our modified version of it:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -4015,9 +3955,9 @@ where the second argument is the reference to reuse.
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{case}\NormalTok{ arg }\KeywordTok{of}
-     \DataTypeTok{ValTwice}\NormalTok{ v w }\OtherTok{=\textgreater{}} \CommentTok{{-}{-} access \textasciigrave{}arg\textasciigrave{} and mutate it with S (S v)}
+     \DataTypeTok{ValTwice}\NormalTok{ v w }\OtherTok{=\textgreater{}} \CommentTok{{-}{-} Access \textasciigrave{}arg\textasciigrave{} and mutate it with S (S v)}
                      \DataTypeTok{ValTwice}\NormalTok{ (}\DataTypeTok{S}\NormalTok{ (}\DataTypeTok{S}\NormalTok{ v)) (}\DataTypeTok{S}\NormalTok{ (}\DataTypeTok{S}\NormalTok{ w))}
-     \DataTypeTok{ValOnce}\NormalTok{ v }\OtherTok{=\textgreater{}} \CommentTok{{-}{-} access \textasciigrave{}arg\textasciigrave{} and mutate it with S v}
+     \DataTypeTok{ValOnce}\NormalTok{ v }\OtherTok{=\textgreater{}} \CommentTok{{-}{-} Access \textasciigrave{}arg\textasciigrave{} and mutate it with S v}
                   \DataTypeTok{ValOnce}\NormalTok{ (}\DataTypeTok{S}\NormalTok{ v)}
 \end{Highlighting}
 \end{Shaded}
@@ -4094,19 +4034,28 @@ Which will replace every application of a data constructor by one which
 has a reference to the variable we mutate \texttt{ref} as indicated by
 the \texttt{Just\ ref}.
 
-This refers to another AST change we haven't mentioned yet. And that is
-to track which data constructors are allowed to mutate a reference
-instead of constructing a new value. For reference here is the
-\texttt{Term} data type indexed on the list of names in context. This
-represents the core calculus of Idris and closely resemble a typical
-lambda calculus \texttt{Bind} for lambda abstraction and \texttt{App}
-for application.
+This refers to another AST change in how the \texttt{Term} data type
+needs to change in order to track which data constructors are allowed to
+mutate a reference instead of constructing a new value.
+
+\begin{figure}
+\centering
+\includegraphics[width=0.3\textwidth]{term_changes.png}
+\caption{Location of the core calculus changes}
+\end{figure}
+
+For reference here is the \texttt{Term} data type indexed on the list of
+names in context. This represents the core calculus of Idris and closely
+resembles a typical lambda calculus with \texttt{Bind} for lambda
+abstraction and \texttt{App} for application.
 
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{data} \DataTypeTok{Term} \OperatorTok{:} \DataTypeTok{List} \DataTypeTok{Name} \OtherTok{{-}\textgreater{}} \DataTypeTok{Type} \KeywordTok{where}
      \DataTypeTok{Local} \OperatorTok{:} \DataTypeTok{FC} \OtherTok{{-}\textgreater{}}\NormalTok{ (isLet }\OperatorTok{:} \DataTypeTok{Maybe} \DataTypeTok{Bool}\NormalTok{) }\OtherTok{{-}\textgreater{}}
 \NormalTok{             (idx }\OperatorTok{:} \DataTypeTok{Nat}\NormalTok{) }\OtherTok{{-}\textgreater{}}\NormalTok{ (}\DecValTok{0}\NormalTok{ p }\OperatorTok{:} \DataTypeTok{IsVar}\NormalTok{ name idx vars) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Term}\NormalTok{ vars}
+     \CommentTok{{-}{-} I our case, we\textquotesingle{}re interested in references that }
+     \CommentTok{{-}{-} point to a Data constructor}
      \DataTypeTok{Ref} \OperatorTok{:} \DataTypeTok{FC} \OtherTok{{-}\textgreater{}} \DataTypeTok{NameType} \OtherTok{{-}\textgreater{}}\NormalTok{ (name }\OperatorTok{:} \DataTypeTok{Name}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Term}\NormalTok{ vars}
      \DataTypeTok{Meta} \OperatorTok{:} \DataTypeTok{FC} \OtherTok{{-}\textgreater{}} \DataTypeTok{Name} \OtherTok{{-}\textgreater{}} \DataTypeTok{Int} \OtherTok{{-}\textgreater{}} \DataTypeTok{List}\NormalTok{ (}\DataTypeTok{Term}\NormalTok{ vars) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Term}\NormalTok{ vars}
      \DataTypeTok{Bind} \OperatorTok{:} \DataTypeTok{FC} \OtherTok{{-}\textgreater{}}\NormalTok{ (x }\OperatorTok{:} \DataTypeTok{Name}\NormalTok{) }\OtherTok{{-}\textgreater{}}
@@ -4124,6 +4073,7 @@ defined as follows:
 \KeywordTok{data} \DataTypeTok{NameType} \OperatorTok{:} \DataTypeTok{Type} \KeywordTok{where}
      \DataTypeTok{Bound}   \OperatorTok{:} \DataTypeTok{NameType}
      \DataTypeTok{Func}    \OperatorTok{:} \DataTypeTok{NameType}
+     \CommentTok{{-}{-} DataCon refers to data constructors}
      \DataTypeTok{DataCon} \OperatorTok{:}\NormalTok{ (tag }\OperatorTok{:} \DataTypeTok{Int}\NormalTok{) }\OtherTok{{-}\textgreater{}}\NormalTok{ (arity }\OperatorTok{:} \DataTypeTok{Nat}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{NameType}
      \DataTypeTok{TyCon}   \OperatorTok{:}\NormalTok{ (tag }\OperatorTok{:} \DataTypeTok{Int}\NormalTok{) }\OtherTok{{-}\textgreater{}}\NormalTok{ (arity }\OperatorTok{:} \DataTypeTok{Nat}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{NameType}
 \end{Highlighting}
@@ -4132,8 +4082,16 @@ defined as follows:
 We are interested in the \texttt{DataCon} constructor that indicates
 that our \texttt{Ref} is a data constructor. The change we need to make
 is to add a reference to the name of the variable in scope that we can
-update
-\texttt{DataCon\ :\ (ref\ :\ Maybe\ Name)\ -\textgreater{}\ (tag\ :\ Int)\ -\textgreater{}\ (arity\ :\ Nat)\ -\textgreater{}\ NameType}.
+update :
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{{-}{-}                ┌ If we allow mutation, the variable to}
+\CommentTok{{-}{-}                │ mutate will be here as a \textasciigrave{}Just\textasciigrave{}}
+\CommentTok{{-}{-}        ╭───────┴────────╮}
+\DataTypeTok{DataCon} \OperatorTok{:}\NormalTok{ (ref }\OperatorTok{:} \DataTypeTok{Maybe} \DataTypeTok{Name}\NormalTok{) }\OtherTok{{-}\textgreater{}}\NormalTok{ (tag }\OperatorTok{:} \DataTypeTok{Int}\NormalTok{) }\OtherTok{{-}\textgreater{}}\NormalTok{ (arity }\OperatorTok{:} \DataTypeTok{Nat}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{NameType}\OtherTok{\textasciigrave{}.}
+\end{Highlighting}
+\end{Shaded}
 
 The last step of this chain of changes is to inspect the
 \texttt{DataCon} constructor during compilation and emit the correct
@@ -4174,26 +4132,15 @@ a data constructor in application position:
 \NormalTok{lineariseDataCon rig }
 \NormalTok{  (}\DataTypeTok{App}\NormalTok{ fc (}\DataTypeTok{Ref}\NormalTok{ fc\textquotesingle{} (}\DataTypeTok{DataCon}\NormalTok{ r ref tag ary) name) arg) }\OtherTok{=}
 \NormalTok{    toMaybe }
-\NormalTok{      (rig }\OperatorTok{/=}\NormalTok{ r) }
+\NormalTok{      (rig }\OperatorTok{/=}\NormalTok{ r) }\CommentTok{{-}{-}              ┌ Replace the multiplicity inferred}
+                 \CommentTok{{-}{-}              │ by the one given}
+                 \CommentTok{{-}{-}              ▼}
 \NormalTok{      (}\DataTypeTok{App}\NormalTok{ fc (}\DataTypeTok{Ref}\NormalTok{ fc\textquotesingle{} (}\DataTypeTok{DataCon}\NormalTok{ rig ref tag ary) name) arg)}
 \NormalTok{lineariseDataCon \_ \_ }\OtherTok{=} \DataTypeTok{Nothing}
 \end{Highlighting}
 \end{Shaded}
 
-And call the function in \texttt{checklet}:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\CommentTok{{-}{-}  from the explicit linearity annotation ┐}
-\KeywordTok{let}\NormalTok{ newVal }\OtherTok{=}\NormalTok{ fromMaybe valv }\CommentTok{{-}{-}             ▼}
-\NormalTok{                       (lineariseDataCon rigb valv)}
-\NormalTok{…}
-                \CommentTok{{-}{-}   ┌ Return the updated constructor}
-\FunctionTok{pure}\NormalTok{ (}\DataTypeTok{Bind}\NormalTok{ fc n }\CommentTok{{-}{-} ╭─┴──╮}
-\NormalTok{         (}\DataTypeTok{Let}\NormalTok{ rigb newVal tyv) scopev,}
-\NormalTok{         gnf env (}\DataTypeTok{Bind}\NormalTok{ fc n (}\DataTypeTok{Let}\NormalTok{ rigb newVal\textquotesingle{} tyv) scopet))}
-\end{Highlighting}
-\end{Shaded}
+And call the function when let-bindings are being type-checked.
 
 An astute reader might notice that this implementation has multiple
 shortcomings:
@@ -4225,7 +4172,8 @@ linear programs!
 
 In order to test the effectiveness of this optimisation I ran a series
 of benchmarks using a modified version of the Idris2 compiler. The
-changes are summarised in section 6.2. This section presents the
+changes are summarised in section
+\ref{subsec:implementing-optimisation}. This section presents the
 methodology employed to measure the effectiveness of the optimisation.
 
 First I am going to talk about the core assumptions necessary to measure
@@ -4235,7 +4183,7 @@ present the tools used to run the benchmarks and the conditions in which
 they were run.
 
 \hypertarget{core-assumptions}{%
-\subsubsection{Core assumptions}\label{core-assumptions}}
+\subsubsection{Core Assumptions}\label{core-assumptions}}
 
 Our expectation is that our programs will run faster for 2 reasons:
 
@@ -4413,7 +4361,7 @@ the variance (and therefore standard deviation) to be higher on the
 second benchmark than in the first or third.
 
 \hypertarget{mapping-lists}{%
-\subsubsection{Mapping lists}\label{mapping-lists}}
+\subsubsection{Mapping Lists}\label{mapping-lists}}
 
 We know that we can remove the need for intermediate data-structures
 when mapping them using linear operations\cite{deforestation}, but can
@@ -4457,8 +4405,8 @@ linearly.
 
 In a similar fashion as the fibonacci benchmark, we are not removing
 running time, but uncertainty from having the garbage collector running.
-This means the second implementation should have a smaller variance than
-the first one.
+This means the second implementation should have a smaller standard
+deviation than the first one.
 
 \hypertarget{a-sat-solver}{%
 \subsubsection{A SAT solver}\label{a-sat-solver}}
@@ -4504,7 +4452,7 @@ differences in runtime in the order of seconds rather than
 micro-seconds.
 
 \hypertarget{how-to-run-the-benchmarks}{%
-\subsection{How to run the benchmarks}\label{how-to-run-the-benchmarks}}
+\subsection{How to Run the Benchmarks}\label{how-to-run-the-benchmarks}}
 
 Results are only useful if they are reproducible. This section aims to
 inform the reader of the conditions in which the benchmarks have been
@@ -4565,15 +4513,14 @@ Idris-bench takes the following arguments:
   flag is absent, the Chez backend will be used instead.
 \end{itemize}
 
-A hidden feature of it is the ability to use \texttt{realRunTime} in
-order to parse the result of the time spend executing a program. This
-requires recompiling the Idris-bench binary and is not documented. The
-reason is that it makes the assumption that the scheme backend has been
-modified to wrap programs into a call to \texttt{(time\ ...)}, which is
-not a feature officially supported by the compiler but which prove to be
-useful. Indeed, doing so will make the program output the time spend
-executing \emph{after} the startup time from the Chez runtime whereas
-the default mode includes the startup time.
+A hidden feature of it is the ability to use the \texttt{realRunTime}
+function in order to parse the result of the time spend executing a
+program. This requires recompiling the Idris-bench binary and is not
+documented. The reason for this, is that it makes the assumption that
+the scheme backend has been modified to wrap programs into a call to
+\texttt{(time\ ...)}, which is not a feature officially supported by the
+compiler but which prove to be useful to output the time spend executing
+\emph{after} the startup time from the Chez runtime.
 
 \hypertarget{idris-stats}{%
 \subsubsection{Idris-stats}\label{idris-stats}}
@@ -4596,11 +4543,9 @@ name of final benchmark, result1, result2, result3, etc
 
 The first column is ignored for the purpose of data analysis.
 
-For each row we compute the minimum value, the maximum value, the mean
-and the variance. As a reminder, the variance is computed as the sum of
-the square difference with the mean divided by the number of samples.
-
-\[ \operatorname{Var}(X) = \frac{1}{n} \sum_{i=1}^n (x_i - \mu)^2 \]
+For each row we compute the minimum value, the maximum value, the mean,
+the standard deviation and the standard error to compare data sets with
+different numbers of samples.
 
 \hypertarget{running-instructions}{%
 \subsubsection{Running Instructions}\label{running-instructions}}
@@ -4649,7 +4594,7 @@ The result files were then fed into Idris-stat:
 Which outputs its analysis to stdout.
 
 \hypertarget{results-discussion}{%
-\subsection{Results \& discussion}\label{results-discussion}}
+\subsection{Results \& Discussion}\label{results-discussion}}
 
 In this section I will present the results obtained from the compiler
 optimisation. The methodology and the nature of the benchmarks is
@@ -4678,86 +4623,53 @@ a small difference in runtime between those three versions. However, the
 memory pressure incurred in the second example will trigger the garbage
 collector to interfere with execution and introduce uncertainty in the
 runtime of the program. This should translate in our statistical model
-as a greater variance in the results rather than a strictly smaller
-mean.
+as a greater standard deviation in the results rather than a strictly
+smaller mean.
 
 \hypertarget{fibonacci-1}{%
 \subsubsection{Fibonacci}\label{fibonacci-1}}
 
 Here are the results of running our benchmarks 100 times in a row:
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTestNoMutation}\OperatorTok{.}\NormalTok{idr,}
-\FloatTok{5.76e{-}4}\NormalTok{,}
-\FloatTok{0.00119}\NormalTok{,}
-\FloatTok{6.733999999999996e{-}4}\NormalTok{,}
-\FloatTok{1.0818499999999999e{-}8}
+\begin{tabular}{ l | c c c }
+          & no allocation & with allocation & with optimisation\\
+\hline 
+  minimum       & 2.027443000s & 2.063915000s & 2.103887000s \\
+  maximum       & 2.161514000s & 2.195077000s & 2.401920000s \\ 
+  average       & 2.034254150s & 2.072595070s & 2.118569650s \\
+  std deviation & 0.014956143s & 0.014123120s & 0.040342991s \\
+  srd error     & 0.001495614s & 0.001412312s & 0.004034299s \\
+\end{tabular}
 
-\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTest}\OperatorTok{.}\NormalTok{idr,}
-\FloatTok{5.84e{-}4}\NormalTok{,}
-\FloatTok{8.41e{-}4}\NormalTok{,}
-\FloatTok{6.449e{-}4}\NormalTok{,}
-\FloatTok{2.3797899999999993e{-}9}
+As you can see the results are not consistent with our predictions, the
+version which aims to remove allocations has higher average and a higher
+standard deviation. Additionally, the allocating version and the
+original implementation without allocation have \emph{very similar}
+performance profiles. In order to ensure our results are not the product
+of random fluctuations, we are going to run the same benchmark 1000
+times instead of 100.
 
-\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTailRec}\OperatorTok{.}\NormalTok{idr,}
-\FloatTok{5.88e{-}4}\NormalTok{,}
-\FloatTok{8.53e{-}4}\NormalTok{,}
-\FloatTok{6.499100000000001e{-}4}\NormalTok{,}
-\FloatTok{2.692301899999999e{-}9}
+\begin{tabular}{ l | c c c }
+          & no allocation & with allocation & with optimisation\\
+\hline 
+  minimum       & 2.027936000s & 2.066721000s & 2.108056000s \\
+  maximum       & 2.300934000s & 2.476587000s & 2.535437000s \\ 
+  average       & 2.059218259s & 2.109659476s & 2.186972896s \\
+  std deviation & 0.054314868s & 0.066678467s & 0.083581987s \\
+  srd error     & 0.001752092s & 0.002150918s & 0.002696193s \\
+\end{tabular}
 
-\NormalTok{[}\DecValTok{3}\NormalTok{, }\DecValTok{18}\NormalTok{, }\DecValTok{18}\NormalTok{, }\DecValTok{32}\NormalTok{, }\DecValTok{12}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{2}\NormalTok{, }
-\DecValTok{1}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{1}\NormalTok{]}
-\NormalTok{[}\DecValTok{7}\NormalTok{, }\DecValTok{22}\NormalTok{, }\DecValTok{26}\NormalTok{, }\DecValTok{27}\NormalTok{, }\DecValTok{6}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }
-\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{]}
-\NormalTok{[}\DecValTok{7}\NormalTok{, }\DecValTok{20}\NormalTok{, }\DecValTok{20}\NormalTok{, }\DecValTok{28}\NormalTok{, }\DecValTok{9}\NormalTok{, }\DecValTok{5}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{,}
- \DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{]}
-\end{Highlighting}
-\end{Shaded}
+Now the standard error has gone down for our optimised program compared
+to the experiment with 100 runs, which is good news. However, the
+average and the standard deviation of our optimisation is both
+\emph{higher} than the other two, which contradicts our hypothesis.
 
-As you can see the results are pretty consistent with our predictions
-but the values themselves aren't statistically significant. In order to
-get a better picture, we are going to run the same benchmark 1000 times
-instead of 100.
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTestNoMutation}\OperatorTok{.}\NormalTok{idr,}
-\FloatTok{5.08e{-}4}\NormalTok{,}
-\FloatTok{0.001795}\NormalTok{,}
-\FloatTok{6.561829999999996e{-}4}\NormalTok{,}
-\FloatTok{1.4789385511000005e{-}8}
-
-\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTest}\OperatorTok{.}\NormalTok{idr,}
-\FloatTok{5.08e{-}4}\NormalTok{,}
-\FloatTok{0.001753}\NormalTok{,}
-\FloatTok{5.882930000000001e{-}4}\NormalTok{,}
-\FloatTok{1.5392219150999998e{-}8}
-
-\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTailRec}\OperatorTok{.}\NormalTok{idr,}
-\FloatTok{4.89e{-}4}\NormalTok{,}
-\FloatTok{0.001974}\NormalTok{,}
-\FloatTok{6.241300000000006e{-}4}\NormalTok{,}
-\FloatTok{3.8718697099999886e{-}8}
-
-\NormalTok{[}\DecValTok{53}\NormalTok{, }\DecValTok{126}\NormalTok{, }\DecValTok{460}\NormalTok{, }\DecValTok{192}\NormalTok{, }\DecValTok{47}\NormalTok{, }\DecValTok{23}\NormalTok{, }\DecValTok{31}\NormalTok{, }\DecValTok{32}\NormalTok{, }\DecValTok{11}\NormalTok{, }\DecValTok{5}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{5}\NormalTok{, }
-\DecValTok{0}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{]}
-\NormalTok{[}\DecValTok{261}\NormalTok{, }\DecValTok{546}\NormalTok{, }\DecValTok{76}\NormalTok{, }\DecValTok{32}\NormalTok{, }\DecValTok{18}\NormalTok{, }\DecValTok{12}\NormalTok{, }\DecValTok{13}\NormalTok{, }\DecValTok{7}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{5}\NormalTok{, }\DecValTok{10}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{5}\NormalTok{, }\DecValTok{0}\NormalTok{, }
-\DecValTok{1}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{]}
-\NormalTok{[}\DecValTok{217}\NormalTok{, }\DecValTok{527}\NormalTok{, }\DecValTok{80}\NormalTok{, }\DecValTok{44}\NormalTok{, }\DecValTok{23}\NormalTok{, }\DecValTok{14}\NormalTok{, }\DecValTok{12}\NormalTok{, }\DecValTok{11}\NormalTok{, }\DecValTok{7}\NormalTok{, }\DecValTok{6}\NormalTok{, }\DecValTok{10}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{6}\NormalTok{, }\DecValTok{11}\NormalTok{, }\DecValTok{5}\NormalTok{,}
-\DecValTok{4}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{]}
-\end{Highlighting}
-\end{Shaded}
-
-The results are pretty similar which gives us a greater confidence in
-their accuracy.
-
-There is however something we can do to improve our measurement and that
-is to subtract the startup time of the scheme runtime. Indeed, every
-program is measured using the difference between the time it started and
-the time it ended. But this time also includes the time it takes to
-launch Scheme and then execute a program on it. Indeed, the following
-program:
+There is, however, something we have not taken into account yet, and
+that is to subtract the startup time of the scheme runtime. Indeed,
+every program is measured using the difference between the time it
+started and the time it ended. But this time also includes the time it
+takes to launch Scheme and then execute a program on it. Indeed, the
+following program:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -4766,8 +4678,10 @@ program:
 \end{Highlighting}
 \end{Shaded}
 
-Takes 0.13 seconds to run despite doing nothing. This time is the
-startup time and can go up to 0.3 seconds.
+Takes 0.3 seconds to run despite doing nothing, this time is the startup
+time and can go up to 0.3 seconds. Therefore, we expect more accurate
+results with less standard deviation and an average of about 0.3 seconds
+shorter.
 
 \hypertarget{fibonacci-without-startup-time}{%
 \paragraph{Fibonacci without startup
@@ -4775,57 +4689,40 @@ time}\label{fibonacci-without-startup-time}}
 
 In order to remove the startup time, we are going to change the emitted
 bytecode to wrap our main function inside a time-measuring function
-\texttt{(time\ \ldots{})}. Since the timer won't start until the program
-is ready to run the startup time will be eliminated. Running our empty
-program we get the following (expected) result:
+\texttt{(time\ \ldots{})}\footnote{This change also has the benefit of
+  reporting how many memory allocations and garbage collection cycles
+  happen and it turns out that our optimis.ed program allocates exactly
+  as much memory as the non-allocating one.}. Since the timer won't
+start until the program is ready to run the startup time will be
+eliminated. Running our empty program we get the following (expected)
+result:
 
 \begin{verbatim}
 > 0.000000000s elapsed cpu time
 \end{verbatim}
 
 This time we will run our benchmarks 1000 times using the same command
-as before. We expect to see the same results, but the difference should
-give us a greater confidence. Running our statistical analysis gives us
-those results:
+as before. Running our statistical analysis gives us those results:
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTestNoMutation}\OperatorTok{.}\NormalTok{idr,}
-\FloatTok{1.696760896}\NormalTok{,}
-\FloatTok{1.977075901}\NormalTok{,}
-\FloatTok{1.7447377120060026}\NormalTok{,}
-\FloatTok{9.18303221644259e{-}4}
+\begin{tabular}{ l | c c c }
+          & no allocation & with allocation & with optimisation\\
+\hline 
+  minimum       & 1.65627213s & 1.696760896s & 1.734708117s \\
+  maximum       & 1.88141296s & 1.977075901s & 2.152951106s \\ 
+  average       & 1.67685517s & 1.744737712s & 1.786299514s  \\
+  std deviation & 0.30236463s & 0.030303518s & 0.047403167s \\
+  srd error     & 0.00975369s & 0.000977532s & 0.001529134s \\
+\end{tabular}
 
-\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTest}\OperatorTok{.}\NormalTok{idr,}
-\FloatTok{1.734708117}\NormalTok{,}
-\FloatTok{2.152951106}\NormalTok{,}
-\FloatTok{1.786299514231}\NormalTok{,}
-\FloatTok{0.002247060292357963}
+The results do not differ significantly from the previous measurement,
+indicating that the startup time was not responsible for our unexpected
+result. Though we note that the average of the optimised version has
+gone down a bit.
 
-\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTailRec}\OperatorTok{.}\NormalTok{idr,}
-\FloatTok{1.65627213}\NormalTok{,}
-\FloatTok{1.881412963}\NormalTok{,}
-\FloatTok{1.6768551703740004}\NormalTok{,}
-\FloatTok{9.142437018832634e{-}4}
-
-\NormalTok{[}\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{136}\NormalTok{, }\DecValTok{113}\NormalTok{, }\DecValTok{17}\NormalTok{, }\DecValTok{620}\NormalTok{, }\DecValTok{62}\NormalTok{, }\DecValTok{22}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{6}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{4}\NormalTok{, }
-\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{]}
-\NormalTok{[}\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{164}\NormalTok{, }\DecValTok{217}\NormalTok{, }\DecValTok{36}\NormalTok{, }\DecValTok{160}\NormalTok{, }\DecValTok{264}\NormalTok{, }\DecValTok{47}\NormalTok{, }\DecValTok{36}\NormalTok{, }\DecValTok{18}\NormalTok{, }\DecValTok{19}\NormalTok{, }\DecValTok{7}\NormalTok{, }\DecValTok{5}\NormalTok{, }
-\DecValTok{5}\NormalTok{, }\DecValTok{7}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{]}
-\NormalTok{[}\DecValTok{647}\NormalTok{, }\DecValTok{221}\NormalTok{, }\DecValTok{19}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{52}\NormalTok{, }\DecValTok{33}\NormalTok{, }\DecValTok{8}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{5}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }
-\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{]}
-\end{Highlighting}
-\end{Shaded}
-
-As you can see the results aren't exactly as expected, both our
-\emph{average} and our \emph{variance} is higher than without any
-optimisation. A result that we definitely did not anticipate and goes
-against the belief that founded our hypothesis.
-
-One possible explanation is that Scheme performs JIT compilation and
+Another possible explanation is that Scheme performs JIT compilation and
 correctly identifies the hot-loop in our unoptimised example but is
 unable to perform such optimisation with our mix of pure and mutating
-code.
+code in the non-mutating one.
 
 \hypertarget{fibonacci-without-startup-time-small-loop}{%
 \paragraph{Fibonacci without startup time, small
@@ -4842,53 +4739,20 @@ simply change the loop count from \texttt{8*10\^{}6} to
 \texttt{8*10\^{}4} reducing it by two orders of magnitude reduces the
 running time accordingly.
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTestNoMutation}\OperatorTok{.}\NormalTok{idr,}
-\FloatTok{0.007216185}\NormalTok{,}\FloatTok{0.008861124}\NormalTok{,}
-\FloatTok{0.007520532116999987}\NormalTok{,}
-\FloatTok{3.5827851856347296e{-}8}
+\begin{tabular}{ l | c c c }
+          & no allocation & with allocation & with optimisation\\
+\hline 
+  minimum       & 0.006385357s & 0.007216185s & 0.006543267s \\
+  maximum       & 0.007625528s & 0.008861124s & 0.010942671s \\ 
+  average       & 0.006624731s & 0.007520532s & 0.006867369s \\
+  std deviation & 0.000154925s & 0.000189282s & 0.000230448s \\
+  srd error     & 0.000004997s & 0.000006105s & 0.000007433s \\\end{tabular}
 
-\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTest}\OperatorTok{.}\NormalTok{idr,}\FloatTok{0.006543267}\NormalTok{,}
-\FloatTok{0.010942671}\NormalTok{,}
-\FloatTok{0.006867369243000004}\NormalTok{,}
-\FloatTok{5.3106313711037986e{-}8}
-
-\OperatorTok{../}\DataTypeTok{Idris2\_fib\_benchmark}\OperatorTok{/}\NormalTok{fibTailRec}\OperatorTok{.}\NormalTok{idr,}
-\FloatTok{0.006385357}\NormalTok{,}
-\FloatTok{0.007625528}\NormalTok{,}
-\FloatTok{0.006624731209000001}\NormalTok{,}
-\FloatTok{2.4002041892751334e{-}8}
-
-\NormalTok{[}\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{72}\NormalTok{, }\DecValTok{411}\NormalTok{, }\DecValTok{361}\NormalTok{, }\DecValTok{106}\NormalTok{, }\DecValTok{17}\NormalTok{, }\DecValTok{12}\NormalTok{, }\DecValTok{8}\NormalTok{, }\DecValTok{6}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{2}\NormalTok{, }
-\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{]}
-\NormalTok{[}\DecValTok{0}\NormalTok{, }\DecValTok{95}\NormalTok{, }\DecValTok{493}\NormalTok{, }\DecValTok{288}\NormalTok{, }\DecValTok{83}\NormalTok{, }\DecValTok{13}\NormalTok{, }\DecValTok{9}\NormalTok{, }\DecValTok{10}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }
-\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{]}
-\NormalTok{[}\DecValTok{303}\NormalTok{, }\DecValTok{470}\NormalTok{, }\DecValTok{161}\NormalTok{, }\DecValTok{41}\NormalTok{, }\DecValTok{13}\NormalTok{, }\DecValTok{7}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }
-\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{]}
-\end{Highlighting}
-\end{Shaded}
-
-And indeed this data corroborates our hypothesis but does not confirm
-that JIT was responsible for the previous performance results. However,
-since this thesis is not about the intricacies of the scheme runtime we
-are going to let the issue rest for now.
-
-Those results showcase two things: That our optimisation works, and that
-it is not significant enough to be strictly superior to other forms of
-optimisations. Ideally, the best way to test our optimisation would be
-to write our own runtime which runs on \emph{bare metal} or some
-approximation of it (WASM/LLVM) which would (probably) be even faster
-than Scheme. It would also give us more control over which optimisations
-play nicely together (for example with JIT) and which ones are redundant
-or even harmful to performance.
-
-Idris2 has an alternative javascript backend, however, the javascript
-code generation is unable to translate our programs into plain loops
-free of recursion. Because of this, our benchmark exceeds the maximum
-stack size and the program aborts. When the stack size is increased the
-program segfaults. This could be solved with the use of trampolines in
-the runtime, instead of plain recursion.
+This data suggests that Racket was not able to optimise the allocating
+version, and given two program, one that allocates and one that does
+not, the second one is faster. Our hypothesis about variance has been
+contradicted throughout with the variance of the this run being again
+higher than the other two.
 
 \hypertarget{mapping-a-list}{%
 \subsubsection{Mapping a list}\label{mapping-a-list}}
@@ -4899,26 +4763,15 @@ and returns its size. We ran each program 100 times using
 \texttt{idris-bench}. As before we expect a negligible average speedup
 but a significant decrease in variance.
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\OperatorTok{../}\NormalTok{map\_test}\OperatorTok{/}\FunctionTok{map}\OperatorTok{.}\NormalTok{idr,}
-\FloatTok{8.73337e{-}4}\NormalTok{,}
-\FloatTok{0.005067636}\NormalTok{,}
-\FloatTok{0.0011461037300000004}\NormalTok{,}
-\FloatTok{2.211481014400371e{-}7}
-
-\OperatorTok{../}\NormalTok{map\_test\_mutate}\OperatorTok{/}\NormalTok{mapMutation}\OperatorTok{.}\NormalTok{idr,}
-\FloatTok{5.23816e{-}4}\NormalTok{,}
-\FloatTok{0.001308711}\NormalTok{,}
-\FloatTok{6.850426700000001e{-}4}\NormalTok{,}
-\FloatTok{1.9851180862141108e{-}8}
-
-\NormalTok{[}\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{47}\NormalTok{, }\DecValTok{29}\NormalTok{, }\DecValTok{6}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{4}\NormalTok{, }\DecValTok{6}\NormalTok{, }\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }
-\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{]}
-\NormalTok{[}\DecValTok{63}\NormalTok{, }\DecValTok{26}\NormalTok{, }\DecValTok{5}\NormalTok{, }\DecValTok{5}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }
-\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{]}
-\end{Highlighting}
-\end{Shaded}
+\begin{tabular}{ l | c c c }
+          & allocating map & mutating map \\
+\hline 
+  minimum       & 0.000873337s & 0.000523816s \\
+  maximum       & 0.005067636s & 0.001308711s \\ 
+  average       & 0.001146103s & 0.000685042s \\
+  std deviation & 0.000470263s & 0.000140894s\\
+  srd error     & 0.000047026s & 0.000014089s\\
+\end{tabular}
 
 This time our performance improvements are more noticeable in average
 than before. Though it might not be significant since it runs in tens of
@@ -4931,14 +4784,17 @@ For this benchmark, we didn't use \texttt{idris-bench} rather we
 compiled two versions of \texttt{isat}
 (\url{https://git.sr.ht/~cypheon/idris-minisat}), one with the inlining
 optimisation, and one without. And ran each version 10 times on the same
-input (in appendix) :
+input (in appendix \ref{sec:appendix}) :
 
-\begin{verbatim}
-sat      | average            | variance
----------+--------------------+-----------------
-normal   | 384008.545454545   | 337134927.872727
-mutating | 371382.454545455   | 264041625.672727
-\end{verbatim}
+\begin{tabular}{ l | c c c }
+          & Allocating SAT & Inlined SAT \\
+\hline 
+  minimum       & 3.51878s & 3.47685s \\
+  maximum       & 3.96815s & 3.87899s \\
+  average       & 3.84008s & 3.71382s \\
+  std deviation & 0.17506s & 0.15493s \\
+  srd error     & 0.05835s & 0.05164s \\
+\end{tabular}
 
 The results show an improvement of about 3.3\% in average which is
 encouraging. This small improvement could be taken further by
@@ -4947,10 +4803,61 @@ linearly bound, since it does not hurt performance. And hope that the
 inlined function will be subject to further optimisations after being
 inlined.
 
+\hypertarget{discussion}{%
+\subsubsection{Discussion}\label{discussion}}
+
+\label{subsec:discussion}
+
+Overall the results show that linear types do have an effect on
+performance, however the results also show that those benefits are not
+strictly superior to other forms of optimisations such as JIT nor
+automatic unboxing of newtypes (another feature that we have not
+discussed here, but subsumes our mutation optimisation when the data
+constructor has only one case with one value in it).
+
+Particularly in the fibonacci example, despite our best efforts, we see
+that removing allocation through linear types impedes performance by
+making other forms of optimisation harder to detect.
+
+Ideally, the best way to test our optimisation would be to write our own
+runtime which runs on \emph{bare metal} or some approximation of it
+(WASM/LLVM) which would (probably) be even faster than Scheme. It would
+also give us more control over which optimisations play nicely together
+(for example with JIT) and which ones are redundant or even harmful to
+performance. But this exercise would pertain more to \emph{beating} the
+Racket runtime rather than \emph{working} with it.
+
+From this I draw two conclusions:
+
+\begin{itemize}
+\tightlist
+\item
+  We need linearity to be easier to use so that it appears in more
+  programs so that we can replicate the performance gains from mapping
+  lists and inlining values.
+\item
+  In order to show drastic improvement in runtime using linearity we
+  need to drastically change the nature of the memory model.
+\end{itemize}
+
+Both those ideas have been explored in section \ref{sec:qtt-ergonomics}
+in which the idea of using different semirings allows for better
+ergonomics as well as mapping to a memory model that is directly
+manipulated through the type system.
+
+One final note about backends; Idris2 has an alternative javascript
+backend, however, the javascript code generation is unable to translate
+our programs into plain loops free of recursion. Because of this, our
+benchmark exceeds the maximum stack size and the program aborts. When
+the stack size is increased the program segfaults. This could be solved
+with the use of trampolines in the runtime, instead of plain recursion.
+
 \newpage
 
 \hypertarget{future-work}{%
-\section{Future work}\label{future-work}}
+\section{Future Work}\label{future-work}}
+
+\label{sec:future-work}
 
 Work never ends and progress instils more progress, while a lot of
 ground has been covered, exploring the forest of all knowledge not only
@@ -4959,12 +4866,13 @@ additional work that could be done in order to ease the use of linear
 types as well as make use of them for additional functionality.
 
 \hypertarget{enlarging-the-scope}{%
-\subsection{Enlarging the scope}\label{enlarging-the-scope}}
+\subsection{Enlarging the Scope}\label{enlarging-the-scope}}
 
-The optimisation of section 6 only looks at the \emph{immediate} scope
-of let bindings. Technically speaking, there is nothing preventing our
-optimisation from working with a more indirect scoping mechanism.
-Indeed, the following should trigger our optimisation:
+The optimisation of section \ref{sec:performance} only looks at the
+\emph{immediate} scope of let bindings. Technically speaking, there is
+nothing preventing our optimisation from working with a more indirect
+scoping mechanism. Indeed, the following should trigger our
+optimisation:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -4996,12 +4904,12 @@ While both those strategies are valid they incur a cost in terms of
 complexity and compile time that may not be worth the effort in terms of
 performance results. They could be hidden behind a -O3 flag, but that
 kind of effort is probably better spend in making the ergonomics of
-linear types more streamlined, which would help make those optimisations
-more commonplace. Which is the topic of the next section.
+linear types more streamlined in order to help those optimisations be
+more commonplace.
 
 \hypertarget{making-linearity-easier-to-use}{%
-\subsection{Making linearity easier to
-use}\label{making-linearity-easier-to-use}}
+\subsection{Making Linearity Easier to
+Use}\label{making-linearity-easier-to-use}}
 
 There are multiple barriers that make linearity harder to use than one
 might expect. They roughly end up in two buckets:
@@ -5015,7 +4923,7 @@ might expect. They roughly end up in two buckets:
 \end{itemize}
 
 \hypertarget{not-linear-enough}{%
-\subsubsection{Not linear enough}\label{not-linear-enough}}
+\subsubsection{Not Linear Enough}\label{not-linear-enough}}
 
 The first one appears when the programmer tries to make thoughtful usage
 of linear and erased annotation but finds that other parts of existing
@@ -5112,7 +5020,7 @@ A similar solution could be provided for \texttt{Num}
 So that it can be used with both linear and non-linear variables.
 
 \hypertarget{too-linear-now}{%
-\subsubsection{Too linear now}\label{too-linear-now}}
+\subsubsection{Too Linear Now}\label{too-linear-now}}
 
 We've already mentioned before how beneficial it would be for our
 optimisation strategy to be \emph{100\%} linear in every aspect. We also
@@ -5372,7 +5280,11 @@ dealing with.
 \subsection{Semiring}\label{semiring}}
 
 A mathematical structure that requires its values to be combined with
-\texttt{+} and \texttt{*} in the ways you expect from natural numbers
+\texttt{+} and \texttt{*} in the ways you expect from natural numbers.
+That is \texttt{0\ +\ n\ =\ n}, \texttt{1\ *\ n\ =\ n},
+\texttt{0\ *\ n\ =\ 0} ,
+\texttt{a\ *\ (b\ +\ c)\ =\ (a\ *\ b)\ +\ (a\ *\ c)} , and both
+operators are symetric.
 
 \hypertarget{syntax-1}{%
 \subsection{Syntax}\label{syntax-1}}
@@ -5429,6 +5341,8 @@ we mean a specific set of logical rules that can be implemented into a
 
 \hypertarget{appendix}{%
 \section{Appendix}\label{appendix}}
+
+\label{sec:appendix}
 
 \hypertarget{sat-solver-benchmark-input}{%
 \subsection{Sat solver benchmark

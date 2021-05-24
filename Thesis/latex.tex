@@ -4,14 +4,13 @@
 %
 \documentclass[
 ]{article}
+\usepackage{amsmath,amssymb}
 \usepackage{lmodern}
-\usepackage{amsmath}
-\usepackage{ifxetex,ifluatex}
-\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+\usepackage{iftex}
+\ifPDFTeX
   \usepackage[T1]{fontenc}
   \usepackage[utf8]{inputenc}
   \usepackage{textcomp} % provide euro and other symbols
-  \usepackage{amssymb}
 \else % if luatex or xetex
   \usepackage{unicode-math}
   \defaultfontfeatures{Scale=MatchLowercase}
@@ -102,7 +101,7 @@
 \usepackage{fancyvrb}[]
 \fvset{samepage=true, baselinestretch=1, frame=lines}
 \renewcommand{\baselinestretch}{1.2}
-\ifluatex
+\ifLuaTeX
   \usepackage{selnolig}  % disable illegal ligatures
 \fi
 
@@ -111,7 +110,7 @@
 
 \begin{document}
 
-\title{Exploring the uses of Quantitative Types}
+\title{Exploring the Uses of Quantitative Types}
 \author{Andre Videla}
 \maketitle
 
@@ -119,15 +118,15 @@
 \section{Abstract}\label{abstract}}
 
 Idris2 is a programming language featuring Quantitative Type Theory, a
-Type Theory centered around tracking \emph{usage quantities} in addition
+Type Theory centred around tracking \emph{usage quantities} in addition
 to dependent types. This is the result of more than 30 years of
 development spawned by the work of Girard on Linear logic. Until
 recently, our understanding of linear types and their uses in
 dependently-typed programs was hypothetical. However, this changes with
-Idris2, which allow us to explore the semantics of running programs
-using linear and dependent types. In this thesis I explore multiple
+Idris2, which allows us to explore the semantics of running programs
+using linear and dependent types. In this thesis, I explore multiple
 facets of programming through the lens of quantitative programming, from
-ergonomics, to performance. I will present how quantitative annotations
+ergonomics to performance. I will present how quantitative annotations
 can help the programmer write programs that precisely match their
 intention, provide more information to the compiler to better analyse
 the program written, and enable the output bytecode to run faster.
@@ -141,31 +140,31 @@ the program written, and enable the output bytecode to run faster.
 \hypertarget{introduction}{%
 \section{Introduction}\label{introduction}}
 
-In this project I will demonstrate different uses and results stemming
+In this project, I will demonstrate different uses and results stemming
 from a programming practice that allows us to specify how many times
 each variable is being used. This information is part of the type
-system, in our case we are tracking if a variable is allowed to be used
-exactly once, or if it has no restrictions. Such type system is called a
-``linear type system''.
+system; in our case we are tracking if a variable is allowed to be used
+exactly once, or if it has no restrictions. Such a type system is called
+a ``linear type system''.
 
 As we will see, there is a lot more to this story, so as part of this
 thesis, I will spend some time introducing dependent types as well as
-our host language: Idris. This warm up will be followed by a context
+our host language: Idris. This warm-up will be followed by a context
 review outlining the existing body of work about linear types and
 related topics. Once both the theoretical and technical landscape have
-been set I will introduce the concept of linear and quantitative type.
+been set, I will introduce the concept of linear and quantitative types.
 Those two concepts together are the key to understanding the rest of
-this thesis which is about the ergonomics of Quantitative Type
-Theory\cite{qtt}\cite{nuttin} (QTT, for short) for software development
-and the performance improvement we can derive from the linearity
-features of Idris2.
+this thesis which is about the ergonomics of Quantitative Type Theory
+\cite{qtt}\cite{nuttin} (QTT, for short) for software development and
+the performance improvement we can derive from the linearity features of
+Idris2.
 
 The main goal of this thesis is to explore the uses of quantitative
 types in a dependently-typed setting for real-world programs, those last
 two chapters are the result of such exploration. With it, I aim to
-explain the limitation of quantitative types and propose ways of getting
-around them. Some of those ideas have been implemented in the Idris2
-compiler, and we discuss their details and consequences.
+explain the limitations of quantitative types and propose ways of
+getting around them. Some of those ideas have been implemented in the
+Idris2 compiler and we discuss their details and consequences.
 
 Let us begin slowly and introduce the basic concepts. The following will
 only make assumptions about basic understanding of imperative and
@@ -189,7 +188,7 @@ You will find more complete definitions at the end, in the glossary.
 \hypertarget{type}{%
 \subparagraph{Type}\label{type}}
 
-A label associated to a collection of values. For example,
+A label associated with a collection of values. For example,
 \texttt{String} is the type given to strings of characters for text.
 \texttt{Int} is the type given to integer values. \texttt{Nat} is the
 type given to natural numbers.
@@ -197,10 +196,9 @@ type given to natural numbers.
 \hypertarget{type-system}{%
 \subparagraph{Type-System}\label{type-system}}
 
-Set of rules the types in a program have to follow in order to be
-accepted by the compiler. The goal of the type-system is to catch some
-classes of errors while helping the programmer reach their goal more
-easily.
+Set of rules the types in a program have to follow to be accepted by the
+compiler. The goal of the type-system is to catch some classes of errors
+while helping the programmer reach their goal more easily.
 
 \hypertarget{linear-types}{%
 \subparagraph{Linear types}\label{linear-types}}
@@ -218,27 +216,28 @@ a variable is expected to be used.
 \hypertarget{syntax}{%
 \subparagraph{Syntax}\label{syntax}}
 
-The structure of some piece of information, usual in the form of
+The structure of some piece of information, usually in the form of
 \emph{text}. Syntax itself does not convey any meaning.
 
 \hypertarget{semantics}{%
 \subparagraph{Semantics}\label{semantics}}
 
-The meaning associated to a piece of data, most often related to syntax.
+The meaning associated with a piece of data, most often related to
+syntax.
 
 \hypertarget{pattern-matching}{%
 \subparagraph{Pattern matching}\label{pattern-matching}}
 
-Destructuring a value into its constituent parts in order to access them
-or understand what kind of value we are dealing with.
+Destructuring a value into its constituent parts to access them or
+understand what kind of value we are dealing with.
 
 \hypertarget{generic-type-polymorphic-type-type-parameter}{%
 \subparagraph{Generic type / Polymorphic type / Type
 parameter}\label{generic-type-polymorphic-type-type-parameter}}
 
-A type that needs a concrete type in order to be complete. For example,
+A type that needs a concrete type to be complete. For example,
 \texttt{Maybe\ a} takes the single type \texttt{a} as parameter. Once we
-pass it the type \texttt{Int}, it becomes the complete type
+pass the type \texttt{Int}, it becomes the complete type
 \texttt{Maybe\ Int}.
 
 \hypertarget{programming-recap}{%
@@ -253,10 +252,9 @@ In \emph{imperative programming}, functions can perform powerful
 operations like ``malloc'' and ``free'' for memory management or make
 network requests through the internet. While powerful in a practical
 sense, those functions are really hard to study because it is not
-obvious how to define them in a mathematical way. In order to make our
-life easier we only consider functions in the \emph{mathematical} sense
-of the word : A function is something that takes an input and returns an
-output.
+obvious how to define them mathematically. To make our life easier we
+only consider functions in the \emph{mathematical} sense of the word: A
+function is something that takes an input and returns an output.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -281,20 +279,19 @@ This simplifies our model because it forbids the complexity related to
 operations like arbitrary memory modification or network
 access\footnote{We can recover those features by using patterns like
   ``monad'' but they do not fit in the scope of this brief introduction.}.
-Functional programming describes a programming practice centered around
+Functional programming describes a programming practice centred around
 the use of such functions. In addition, traditional functional
 programming languages have a strong emphasis on their type system which
 allows the types to describe the structure of the values very precisely.
 
 During the rest of this thesis we are going to talk about Idris2, a
-purely functional programming language featuring Quantitiative Type
+purely functional programming language featuring Quantitative Type
 Theory (QTT), a type theory\footnote{\emph{Type theory} is the abstract
-  study of type systems, most often in the context of pure,
-  mathematical, logic. When we say ``a Type Theory'' we mean a specific
-  set of logical rules that can be implemented into a \emph{Type
-  System}.} based around managing resources. But before we talk about
-QTT itself, we have to explain what is Idris and what are dependent
-types.
+  study of type systems, most often in the context of pure, mathematical
+  logic. When we say ``a Type Theory'' we mean a specific set of logical
+  rules that can be implemented into a \emph{Type System}.} based around
+managing resources. But before we talk about QTT itself, we have to
+explain what is Idris and what are dependent types.
 
 \hypertarget{idris-and-dependent-types}{%
 \subsection{Idris and Dependent Types}\label{idris-and-dependent-types}}
@@ -313,13 +310,13 @@ and ``term-level'' is blurred.
 \hypertarget{simple-example}{%
 \subsubsection{Simple Example}\label{simple-example}}
 
-Let us start with a very simple example of a function in Idris, without
+Let us start with a very simple example of a function in Idris without
 dependent types. This function returns whether or not a list\footnote{A
   list is defined as
 
-  ``data List a = Nil \textbar{} Cons a (List a)
+  \texttt{data\ List\ a\ =\ Nil\ \textbar{}\ Cons\ a\ (List\ a)}
 
-  Which mean a list is either empty (\texttt{Nil}) or non-empty
+  Which means a list is either empty (\texttt{Nil}) or non-empty
   (\texttt{Cons}) and will contain an element of type \texttt{a} and a
   reference to the tail of the list, which itself might be empty or not.
   It is customary to write the \texttt{Cons} case as \texttt{::}, and in
@@ -358,7 +355,7 @@ Every signature starts with a name, followed by a colon \texttt{:} and
 ends with a type. In this case, the type is
 \texttt{List\ a\ -\textgreater{}\ Bool} which represents a function that
 takes a list of \texttt{a} and returns a \texttt{Bool}. Interestingly,
-the type \texttt{a} is a \emph{Type parameter} and could be anything,
+the type \texttt{a} is a \emph{Type parameter} and could be anything;
 this function will work for all lists, irrespective of their content.
 
 As for the body, here is how it is composed:
@@ -388,13 +385,13 @@ Function bodies are implemented with \emph{clauses} of the form
 \texttt{*function\ name*\ *arguments*\ =\ *value*}, everything before
 the \texttt{=} is called \emph{the left-hand side} and everything after
 is called \emph{the right-hand side}. Arguments on the left-hand side
-are pattern matched, and for each corresponding match the function
-return a suitable value.
+are pattern matched, and for each corresponding match, the function
+returns a suitable value.
 
 In this example, we only have two cases, the empty list \texttt{{[}{]}}
 and the non-empty list \texttt{x\ ::\ xs}. When we match on a value we
 may discover that we can access new variables, and we give them names
-(or \emph{bind} them). In this case the \texttt{::} case allows us to
+(or \emph{bind} them). In this case, the \texttt{::} case allows us to
 bind\footnote{Binding a variable means to associate a value to a
   variable. A Binder is the piece of syntax that achieves the
   association.\texttt{let\ n\ =\ 3\ in\ \ldots{}} \emph{binds} the value
@@ -447,7 +444,7 @@ words, the return type is different depending on the value of
 types}.
 
 \emph{Pattern matching} on the argument allows us to return different
-values for each branch of our program
+values for each branch of our program:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -465,17 +462,17 @@ values for each branch of our program
 \end{Shaded}
 
 This typically cannot be done in programming languages with conventional
-type systems. Which is why one might want to use Idris rather than Java,
-C or even Haskell in order to implement their programs. Some programming
-languages can exhibits some behaviours similar to dependent types but
-achieving this often comes at the expense of readability, performance
-and ergonomics\cite{hasochism}.
+type systems. This is why one might want to use Idris rather than Java,
+C, or even Haskell in order to implement their programs. Some
+programming languages can exhibit some behaviours similar to dependent
+types but achieving this often comes at the expense of readability,
+performance, and ergonomics\cite{hasochism}.
 
 \hypertarget{holes-in-idris}{%
 \subsubsection{Holes in Idris}\label{holes-in-idris}}
 
-A very useful feature of Idris is \emph{type holes}, one can replace any
-term by a variable name prefixed by a question mark, like this :
+A very useful feature of Idris is \emph{type holes}. One can replace any
+term with a variable name prefixed by a question mark, like this:
 \texttt{?hole} . This tells the compiler to infer the type at this
 position and report it to the user in order to better understand what
 value could possibly fit the expected type. In addition, the compiler
@@ -483,7 +480,7 @@ will also report what it knows about the surrounding context to give
 additional insight.
 
 If we take our example of \texttt{intOrString} and replace the
-implementation by a hole we have the following:
+implementation with a hole we have the following:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -495,7 +492,7 @@ implementation by a hole we have the following:
 We can then ask the compiler what is the expected type, information
 provided by the compiler will be shown with a column of
 \texttt{\textgreater{}} on the left side to distinguish it from code.
-When the compiler tells us about holes, its will display the variables
+When the compiler tells us about holes, it will display the variables
 available in the immediate scope of the hole above a horizontal bar, and
 the ``goal'' under the horizontal bar. Here is the type we get when
 asking about our \texttt{hole}:
@@ -560,9 +557,9 @@ types?}\label{whats-wrong-with-non-dependent-types}}
 
 Non-dependent type systems cannot represent the behaviour described by
 \texttt{intOrString} and have to resort to patterns like
-\texttt{Either}\footnote{Defined as : ``data Either a b = Left a
-  \textbar{} Right b} to encapsulate the two possible cases our program
-can encounter.
+\texttt{Either}\footnote{Defined as :
+  \texttt{data\ Either\ a\ b\ =\ Left\ a\ \textbar{}\ Right\ b}} to
+encapsulate the two possible cases our program can encounter.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -573,8 +570,8 @@ can encounter.
 \end{Shaded}
 
 While this is fine in principle, it comes with a set of drawbacks that
-cannot be solved without dependent types. In order to see this, let us
-place a hole in the implementation of \texttt{eitherIntOrString}:
+cannot be solved without dependent types. To see this, let us place a
+hole in the implementation of \texttt{eitherIntOrString}:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -593,8 +590,8 @@ place a hole in the implementation of \texttt{eitherIntOrString}:
 
 While this type might be easier to read than
 \texttt{if\ b\ then\ Int\ else\ String} it does not tell us how to
-proceed in order to find a more precise type to fill. We can try pattern
-matching on \texttt{b}:
+proceed to find a more precise type to fill. We can try pattern matching
+on \texttt{b}:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -621,9 +618,9 @@ types to use.
 \end{Highlighting}
 \end{Shaded}
 
-In itself using \texttt{Either} isn't a problem, however
+In itself using \texttt{Either} isn't a problem; however,
 \texttt{Either}'s lack of information manifests itself in other ways
-during programming; take the following program:
+during programming. Take the following program:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -641,10 +638,10 @@ during programming; take the following program:
 \end{Highlighting}
 \end{Shaded}
 
-In this program we create the variable \texttt{intValue} by assigning it
-to the result of the function call to \texttt{eitherIntOrString} with
-the argument \texttt{True}. When we ask for the type of \texttt{Hole} we
-see that we are expected to return an \texttt{Int} The compiler is
+In this program, we create the variable \texttt{intValue} by assigning
+it to the result of the function call to \texttt{eitherIntOrString} with
+the argument \texttt{True}. When we ask for the type of \texttt{hole} we
+see that we are expected to return an \texttt{Int}. The compiler is
 unable to tell us if \texttt{intValue} contains an \texttt{Int} or a
 \texttt{String}. Despite us \emph{knowing} that \texttt{IntOrString}
 returns an \texttt{Int} when passed \texttt{True}, we cannot use this
@@ -680,7 +677,7 @@ alternatives are:
 \end{itemize}
 
 None of which are ideal nor replicate the functionality of the dependent
-version. This is why dependent types are desirable, they help:
+version. This is why dependent types are desirable; they help:
 
 \begin{itemize}
 \tightlist
@@ -720,9 +717,9 @@ In this context review, I will comment on the existing literature about
 linear types and present in four parts: The first aims to tell the
 origin story of linear types and their youthful promises. The second
 will focus on the current understanding of their application for
-real-world use. The third one will focus on the latest theoretical
-developments that linear types spun up. And the last one will present
-existing research project based on linear types. This section aims to
+real-world use. The third will focus on the latest theoretical
+developments that linear types spun up. And the last will present
+existing research projects based on linear types. This section aims to
 motivate and explain why we use linear types before we introduce them
 formally in the next chapter.
 
@@ -733,20 +730,20 @@ Linear types were first introduced by J-Y. Girard in his
 1987\cite{linear-logic} publication simply named \emph{Linear logic} .
 In this text he introduces the idea of restricting the application of
 the weakening rule and contraction rule from intuitionistic logic in
-order to allow to statements to be managed as \emph{resources}. Linear
-terms once used cannot be referred again, premises cannot be duplicated
-and contexts cannot be extended. This restriction was informed by the
-necessity of real-world computational restriction, in particular
-accessing information concurrently.
+order to allow to statements be managed as \emph{resources}. Linear
+terms once used cannot be referred to again, premises cannot be
+duplicated and contexts cannot be extended. This restriction was
+informed by the necessity of real-world computational restrictions, in
+particular accessing information concurrently.
 
 One of the pain-points mentioned was the inability to restrict usages to
 something more sophisticated than ``used exactly once''. Linear
 variables could be promoted to their unrestricted variants with the
 exponential operator (\texttt{!}) but it removes any benefit we get from
-linearity. A limitation that will be revisited in the follow-up paper:
+linearity - a limitation that will be revisited in the follow-up paper:
 Bounded linear logic.
 
-Already at this stage, the memory implication of linear types were
+Already at this stage, the memory implication of linear types was
 considered. Typically, the exponential operator was understood as being
 similar to ``long-term storage'' of a variable such that it could be
 reused in the future, whereas linear variables were stored in short-term
@@ -787,7 +784,7 @@ While deforestation itself might not be the algorithm that we want to
 implement today, it is likely we can come up with a similar set of
 optimisation rules in Idris2 that relies on linearity.
 
-Using linearity to avoid duplicating computation was again investigated
+Using linearity to avoid duplicating computations was again investigated
 in \emph{Once upon a Type}\cite{once_upon_a_type} which formalises the
 detection and inference of linear variables. And uses this information
 for safe inlining. Indeed, arbitrarily inlining functions might result
@@ -800,22 +797,22 @@ in duplicated computation:
 \end{Highlighting}
 \end{Shaded}
 
-In this example inlining into \texttt{(f\ x,\ f\ x)} duplicates the work
-done by \texttt{f}.
+In this example, inlining into \texttt{(f\ x,\ f\ x)} duplicates the
+work done by \texttt{f}.
 
-Beside inlining another way to use linear types for performance is
+Besides inlining, another way to use linear types for performance is
 memory space mutation. \emph{Linear types can change the
-world}\cite{linear_types_update} show that Linear types can be used for
-in-place update and mutation instead of relying on copying. They provide
-a safe API to update values by relying on the linearity of the argument
-being used.
+world}\cite{linear_types_update} showed that Linear types can be used
+for in-place update and mutation instead of relying on copying. They
+provide a safe API to update values by relying on the linearity of the
+argument being used.
 
 However, the weakness of this result is that the API exposed to the
 programmer relies on nested continuations when traversing nested data
-types. Which is largely seen as undesirable user experience. \emph{Is
+types, which is largely seen as an undesirable user experience. \emph{Is
 there a use for linear logic}\cite{linear_use} makes similar claims and
 introduces a concept of types with a \emph{unique} pointer to them. This
-removes the need for the clumsy continuation style, but comes are the
+removes the need for the clumsy continuation style, but comes at the
 cost of more complex typing rules. This restriction for unique pointers
 is something we are going to encounter again during this thesis.
 
@@ -826,77 +823,76 @@ reference counting in the runtime. This paper shows that a simple
 calculus augmented with memory management primitives can make use of
 linearity in order to control memory allocation and deallocation using
 linear types. While the calculus itself isn't very ergonomic to use for
-programming, one could imagine using it as a backend for a reference
-counted runtime.
+programming, one could imagine using it as a backend for a
+reference-counted runtime.
 
 Linear types need not be used exclusively for compiler optimisations but
 can also greatly improve programming ergonomics and safety as we see in
 \emph{Practical affine types}\cite{affine_types}; which aims to answer
 ``What does it mean to have access to linear and affine types \emph{in
 practice}''? Indeed, most of the results we've talked about develop a
-theory for linear types using a variant of linear logic, and then
-present a toy language to showcase their contribution. However, this
-does not teach us how they would interact and manifest in existing
-programs or in existing software engineering workflows. Do we see
-emerging new programming patterns? Is the user experience improved or
-diminished? In what regard is the code different to read or write? How
-is the code organised and shared? All those questions can only be
-answered by a fully fledged implementation of a programming language
-equipped to interact with existing systems.
+theory for linear types using a variant of linear logic and then present
+a toy language to showcase their contribution. However, this does not
+teach us how they would interact and manifest in existing programs or
+existing software engineering workflows. Do we see new programming
+patterns emerging? Is the user experience improved or diminished? In
+what regard is the code different to read or write? How is the code
+organised and shared? All those questions can only be answered by a
+fully-fledged implementation of a programming language equipped to
+interact with existing systems.
 
-\emph{Practical affine types} show that their implementation for
+\emph{Practical affine types} demonstrated that their implementation for
 linear+affine types allows us to express common operations in concurrent
 programs without any risk of data races\cite{linear_race}. They note
 that typical stateful protocols should also be implementable since their
 language is a strict superset of others which already provided protocol
-implementations. Those two results hint at us that linear types in a
-commercially-relevant programming language would provide us with
+implementations. Those two results hint that linear types in a
+commercially relevant programming language would provide us with
 additional guarantees without impeding on the existing writing or
 reading experience of programs.
 
-Haskell already benefits from a plethora of big and small extensions,
-they are so powerful that combining them results in some extremely
-useful, though quite unergonomic, implementation of dependent
-types\cite{hasochism}. Linear Haskell\cite{linear_haskell} is notable in
-that it extends the type system to allow linear functions to be defined.
-It introduces the linear arrow \texttt{-o} which declares a function to
-be linear. Because of Haskell's laziness, linearity doesn't mean ``will
-be used exactly once'' but rather ``\emph{if it is used}, then it will
-be used exactly once''.
+Haskell already benefits from a plethora of big and small extensions
+that are so powerful that combining them allows to obtain some form of
+dependent types\cite{hasochism}. Linear Haskell\cite{linear_haskell} is
+notable in that it extends the type system to allow linear functions to
+be defined. It introduces the linear arrow \texttt{-o} which declares a
+function to be linear. Because of Haskell's laziness, linearity doesn't
+mean ``will be used exactly once'' but rather ``\emph{if it is used},
+then it will be used exactly once''.
 
 This addition to the language was motivated by a concern for safe APIs,
 typically when dealing with unsafe or low-level code. Linear types allow
-to expose an API that cannot be misused while keeping the same level of
-expressivity and being completely backwards compatible. This backward
+restricting an API so that it cannot be misused while keeping the same
+level of expressivity and being backwards compatible. This backward
 compatibility is in part allowed thanks to parametric linearity, the
-ability to abstract over linearity annotations. And in part due to the
+ability to abstract over linearity annotations, and in part due to the
 approach of making \emph{function arrows} linear instead of \emph{types}
 themselves.
 
 Linearity on the type has the benefit that values themselves can be
-marked linear, which would enforce their uniqueness. But often comes at
-the cost of splitting our context in two\cite{lightweight_linear_types}
-between linear values and non-linear values which makes is unsuitable
-for a dependent type theory in which both types and terms live in the
-same context\footnote{I personally find the unified context to be a very
-  elegant solution.}.
+marked linear, which would enforce their uniqueness. Often, this comes
+at the cost of splitting our context in
+two\cite{lightweight_linear_types} between linear values and non-linear
+values which makes it unsuitable for a dependent type theory, in which
+both types and terms live in the same context\footnote{I personally find
+  the unified context to be a very elegant solution.}.
 
 \hypertarget{cutting-edge-linear-types}{%
 \subsection{Cutting Edge Linear Types}\label{cutting-edge-linear-types}}
 
 Granule is a language that features \emph{quantitative reasoning via
-graded modal types} and features indexed types\footnote{A type parameter
-  that changes with the values that inhabit the type. For example
-  \texttt{{[}"a",\ "b",\ "c"{]}\ :\ Vect\ 3\ String} has index
+graded modal types} and features indexed types\footnote{An index is a
+  type parameter that changes with the values that inhabit the type. For
+  example \texttt{{[}"a",\ "b",\ "c"{]}\ :\ Vect\ 3\ String} has index
   \texttt{3} and a type parameter \texttt{String}, because it has
   \texttt{3} elements and the elements are Strings. If the value was
   \texttt{{[}\textasciigrave{}"a",\ “b”{]}} then the type would become
-  \texttt{Vect\ 2\ String}, the index would change from \texttt{3} to
-  \texttt{2}, but the type parameter would stay as \texttt{String}.}.
-This effort is the result of years of research in the domain of effects,
-co-effects, resource-aware calculus and co-monadic
+  \texttt{Vect\ 2\ String}, that is, the index changes from \texttt{3}
+  to \texttt{2}, but the type parameter stays as \texttt{String}.}. This
+effort is the result of years of research in the domain of effects,
+co-effects, resource-aware calculus, and co-monadic
 computation\cite{monad_or_comonad}. Granule itself makes heavy use of
-\emph{graded monads}\cite{effect_coeffects_grading} which allow to
+\emph{graded monads}\cite{effect_coeffects_grading}, which allow to
 precisely annotate co-effects\cite{coeffect_computation} in the type
 system. This enables the program to model \emph{resource management} at
 the type-level. What's more, graded monads provide an algebraic
@@ -915,11 +911,10 @@ type theory} \cite{qtt}. A previous
 attempt\cite{integrating_linear_dependent} noted that a single language
 could have both a linear arrow and a dependent arrow and while the
 linear arrow can depend on non-linear terms, the linear arrow cannot be
-dependent. This is achieved again by splitting our context in two
-between a linear and non-linear.
+dependent. This is achieved again by splitting our context into a linear
+one and non-linear one.
 
-In order to implement full dependent types QTT makes the following
-changes:
+To implement full dependent types, QTT makes the following changes:
 
 \begin{itemize}
 \tightlist
@@ -933,27 +928,27 @@ changes:
 While this elegantly merges the capabilities of a Martin-Löf-style type
 theory\cite{martin-lof} and Linear Logic\cite{linear-logic}, the
 proposed result does not touch upon the potential performance
-improvement that such a language could feature but removing indices from
+improvement that such a language could achieve by removing indices from
 the runtime\cite{store_indices}. However, it has the potential to bring
 together linear types and dependent types in a way that allows precise
 resource tracking and strong performance guarantees. Resource tracking
-through semirings is not a novel idea, but has been explored through the
-lens of and explicit comonadic computation \cite{parametric_effects}
-instead of dependent linear type systems.
+through semirings is not a novel idea but has been explored through the
+lens of explicit comonadic computation \cite{parametric_effects} instead
+of dependent linear type systems.
 
-Unfortunately, this approach does not solve every long-standing problems
-of computer science like how to use the univalence axiom in the language
+Unfortunately, this approach does not solve every long-standing problem
+of computer science like how to use the univalence axiom in a language
 like cubical Agda\cite{cubical_agda}. Interestingly enough, cubical type
 theory and homotopy type theory display a problem that could be solved
-in Idris2 very easily: They are non-computational. This means that they
+in Idris2 very easily: they are non-computational. This means that they
 could be restricted to \emph{erased} multiplicity such that they are
 enforced by the compiler to never appear at runtime.
 
 Since this approach has already been tried in Agda\cite{agda}, maybe
-Idris2 should be extended with Observational Type Theory \cite{ott} in
-order to solve the problem of functional extensionality. This would
-greatly improve the range of programs Idris2 can write as we see with
-Idris-CT\cite{idris-ct} which require postulating function
+Idris2 should be extended with Observational Type Theory \cite{ott} to
+solve the problem of functional extensionality. This would greatly
+improve the range of programs Idris2 can write as we see with
+Idris-CT\cite{idris-ct}, which require postulating function
 extensionality for a lot of their proofs. Such an extension to the
 language would beautifully mix the dependent type aspect of Idris with
 linear types.
@@ -961,16 +956,16 @@ linear types.
 As we've seen earlier, linearity has strong ties with resource and
 memory management, including reference counting. \emph{Counting
 immutable beans}\cite{immutable_beans} does not concern itself with
-linearity, but it references a number of heuristics which are eerily
-similar to the rules enforces by linear logic. Those heuristics show up
-in the context of using reference counting for a purely functional
-programming language. While reference counting has, for a long time,
-been disregarded in favour of runtime garbage collectors, it now has
-proven to be commercially viable in languages like Swift or Python. The
+linearity, but it references several heuristics which are eerily similar
+to the rules enforced by linear logic. Those heuristics show up in the
+context of using reference counting for a purely functional programming
+language. While reference counting has, for a long time, been
+disregarded in favour of runtime garbage collectors, it has now proven
+to be commercially viable in languages like Swift or Python. The
 specific results presented here are focused on the performance benefits
 in avoiding unnecessary copies and reducing the amount of increment and
-decrement operation when manipulating the reference count at runtime. We
-are going to revisit this statement in section
+decrement operations when manipulating the reference count at runtime.
+We are going to revisit this statement in section
 \ref{subsec:linear-ref-counting} and frame it in the context of
 quantitative types.
 
@@ -1027,15 +1022,15 @@ signature:
 \end{Shaded}
 
 One issue with this approach is that it constrains us to a free-monadic
-style implementation where we need to write and interpreter for our
-monadic program, and we cannot mix other protocols within is without
+style implementation where we need to write an interpreter for our
+monadic program, and we cannot mix other protocols within it without
 changing the \texttt{Door} data type.
 
 The following example uses Idris2, with linear types, to implement the
-same protocol. While Linear types have not been formally introduced, it
-will be the topic of the next chapter, it is enough to show that we can
-use them to replace our previous implementation by one that is simpler
-and more intuitive:
+same protocol. While Linear types in Idris2 have not been formally
+introduced (it will be the topic of the next chapter) it is enough to
+show that we can use them to replace our previous implementation with
+one that is simpler and more intuitive:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1055,17 +1050,16 @@ and more intuitive:
 \end{Highlighting}
 \end{Shaded}
 
-In this example, instead of monadic composition we use plain
-\emph{function composition} in order to ensure that our protocol obeys
-the rules of our protocol. This result is desirable only because monads
-do not compose between each others, which prevented us from trivially
-interleaving another protocol in the \emph{indexed monad} example, but
-functions do compose.
+In this example, instead of monadic composition, we use plain
+\emph{function composition} to ensure that our protocol obeys the rules
+of our protocol. This result is desirable if only because monads do not
+compose with each other, which prevents us from interleaving another
+protocol in the \emph{indexed monad} example, but functions do compose.
 
 \texttt{operateDoor} verifies the protocol because it forces the
-\texttt{op} function has to make use of the provided door. The client of
-the API has no choice but to manipulate the existing door until the
-protocol is over.
+\texttt{op} function to make use of the provided door. The client of the
+API has no choice but to manipulate the existing door until the protocol
+is over.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1094,7 +1088,7 @@ We can now define the program simply by combining our door operations:
 This also makes combining other protocols trivial, assume we have
 another protocol to connect to the internet and is characterised by the
 signature
-\texttt{connect\ :\ (1\ \_\ :\ Socket\ Open)\ -\textgreater{}\ Socked\ Closed}
+\texttt{connect\ :\ (1\ \_\ :\ Socket\ Open)\ -\textgreater{}\ Socket\ Closed}
 we can take the product of the two functions and interleave their
 arguments:
 
@@ -1118,20 +1112,19 @@ rewrite our interpreter for the operations of the protocol.
 Dependencies}\label{more-granular-dependencies}}
 
 Granule is a programming language with \emph{graded modal types}, types
-which rely on \emph{graded modalities}. Those are annotations that span
-a \emph{range} of different values in order to describe each type. Those
-values can themselves be paired up together and combined in order to
-represent even more complex behaviour than our linear multiplication.
-For now, let us stick to multiplication and see what a future version of
-Idris supporting graded modalities could look like.
+which rely on \emph{graded modalities}, which are annotations that span
+a \emph{range} of different values to describe each type. Those values
+can themselves be paired up together and combined to represent even more
+complex behaviour than our linear multiplication. For now, let us stick
+to multiplication and see what a future version of Idris supporting
+graded modalities could look like.
 
-Granule's syntax is very close to Idris, Agda and Haskell, however,
+Granule's syntax is very close to Idris, Agda, and Haskell, however,
 linearity in \emph{Granule} is the default so there is nothing to
 specify for a linear variable. In addition, \texttt{Nat} is not a
 \texttt{Type} in \emph{Granule} but a \emph{modality} modelling exact
-usage. Which means that, in order to work with \texttt{Nat} and write
-dependencies between them, we will create a data type indexed on
-\texttt{Nat}:
+usage. This means that, to work with \texttt{Nat} and write dependencies
+between them, we will create a data type indexed on \texttt{Nat}:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1181,7 +1174,7 @@ argument depends on the value of the first argument. This syntax repeats
 in the implementation where the second argument \texttt{m} has to be
 ``unboxed'' using the \texttt{{[}m{]}} syntax which will tell the
 compiler to correctly infer the usage allowed by the indexed modality.
-In the first branch there are \texttt{0} uses available, and in the
+In the first branch, there are \texttt{0} uses available, and in the
 second there are \texttt{n\ +\ 1} uses available.
 
 While \emph{Granule} doesn't have dependent types, indexed types are
@@ -1194,7 +1187,7 @@ language\cite{dependent_graded}.
 \subsubsection{Invertible Functions}\label{invertible-functions}}
 
 Yet another use of linearity is to use them to implement
-\emph{invertible functions}. That is functions that have a counterpart
+\emph{invertible functions}. That is, functions that have a counterpart
 that can undo their actions. Such functions are extremely common in
 practice but aren't usually described in terms of their ability to be
 undone. Here are a couple of examples:
@@ -1211,9 +1204,9 @@ undone. Here are a couple of examples:
 
 The paper about Sparcl\cite{invertible_functions} goes into details
 about how to implement a language that features invertible functions,
-they introduce a new (postscript) type constructor
-\texttt{•\ :\ Type\ -\textgreater{}\ Type} that indicate that the type
-in argument is invertible. Invertible functions are declared as linear
+they introduce a new (postfix) type constructor
+\texttt{•\ :\ Type\ -\textgreater{}\ Type} that indicate the type in
+argument is invertible. Invertible functions are declared as linear
 functions \texttt{A•\ -o\ B•}. Invertible functions can be called to
 make progress one way or the other given some data using the
 \texttt{fwd} and \texttt{bwd} primitives:
@@ -1225,7 +1218,7 @@ make progress one way or the other given some data using the
 \end{Highlighting}
 \end{Shaded}
 
-Invertible functions aren't necessarily total, For example
+Invertible functions aren't necessarily total, for example
 \texttt{bwd\ (+\ 1)\ Z} will result in a runtime error. This is because
 of the nature of invertible functions: the \texttt{+\ 1} function
 effectively adds an \texttt{S} layer to the given data. In order to undo
@@ -1233,8 +1226,8 @@ this operation, we need to \emph{peel off} an \texttt{S} from the data.
 But \texttt{Z} doesn't have an \texttt{S} constructor surrounding it,
 resulting in an error.
 
-Those type of runtime errors can be avoided in Idris by adding a new
-implicit predicate that ensure the data is of the correct format:
+This type of runtime error can be avoided in Idris by adding a new
+implicit predicate that ensures the data has the correct shape:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1351,18 +1344,18 @@ need to use the pattern variables linearly.
 \end{Highlighting}
 \end{Shaded}
 
-In this last example we match on \texttt{S} and bind the argument of
+In this last example, we match on \texttt{S} and bind the argument of
 \texttt{S} (the predecessor) to the variable \texttt{n}. Since the
 original argument was linear, \texttt{n} is linear too and is indeed
 used later with \texttt{sum\ n\ m}.
 
 \hypertarget{dropping-and-picking-it-up-again}{%
-\subsection{Dropping and Picking It up
+\subsection{Dropping and Picking It Up
 Again}\label{dropping-and-picking-it-up-again}}
 
-Obviously, this programming discipline does not allow us to express
-every program the same way as before. Here are two typical examples that
-cannot be expressed :
+This programming discipline does not allow us to express every program
+the same way as before. Here are two typical examples that cannot be
+expressed :
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1373,7 +1366,7 @@ cannot be expressed :
 \end{Shaded}
 
 Here, the first function aims to ignore the argument and the second
-duplicates its argument and packages it in a pair.
+function duplicates its argument and packages it in a pair.
 
 We can explore what is wrong with those functions by trying to implement
 them and making use of holes.
@@ -1421,7 +1414,7 @@ get the following:
 \end{Highlighting}
 \end{Shaded}
 
-Which indicates that \texttt{v} is supposed to be used, but no uses have
+This indicates that \texttt{v} is supposed to be used, but no uses have
 been found.
 
 Similarly, for \texttt{copy} we have:
@@ -1443,7 +1436,7 @@ Similarly, for \texttt{copy} we have:
 \end{Shaded}
 
 In which we need to use \texttt{v} twice, but we're only allowed to use
-it once. Using it twice result in this program with this error:
+it once. Using it twice results in this program, with this error:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1478,7 +1471,7 @@ gives us an amazing insight:
 \end{Shaded}
 
 The hole has been updated to reflect the fact that though \texttt{v} is
-in scope, no uses of it are available. Despite that we still need to
+in scope, no uses of it are available. Despite that, we still need to
 make up a value of type \texttt{a} out of thin air, which is impossible
 because we do not know how to construct a value of type \texttt{a}.
 
@@ -1497,11 +1490,11 @@ Linear values cannot be duplicated or ignored, but provided we know how
 the values are constructed, we can work hard enough to tear them apart
 and build them back up. This allows us to dance around the issue of
 ignoring and duplicating linear variables by exploiting pattern matching
-in order to implement functions such as
-\texttt{copy\ :\ (1\ v\ :\ a)\ \textasciigrave{}-\textgreater{}\ (a,\ a)}
-and \texttt{drop\ :\ (1\ v\ :\ a)\ -\textgreater{}\ ()}.
+to implement functions such as
+\texttt{copy\ :\ (1\ v\ :\ a)\ -\textgreater{}\ (a,\ a)} and
+\texttt{drop\ :\ (1\ v\ :\ a)\ -\textgreater{}\ ()}.
 
-The next snippet show how to implement those for \texttt{Nat}:
+The next snippet shows how to implement those for \texttt{Nat}:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1534,7 +1527,7 @@ We can encapsulate those functions in the following interfaces:
 \end{Shaded}
 
 Since we know how to implement those for \texttt{Nat} we can ask
-ourselves how we could give implementation of those interfaces to
+ourselves how we could give an implementation of those interfaces to
 additional types.
 
 \begin{Shaded}
@@ -1566,7 +1559,7 @@ additional types.
 \end{Shaded}
 
 Going through this exercise would show that this process of tearing
-apart values and building them back up would be very similar than what
+apart values and building them back up would be very similar to what
 we've done for \texttt{Nat}, but there is an additional caveat to this
 approach: primitive types do not have constructors like \texttt{Nat} and
 \texttt{Tree} do. \texttt{String}, \texttt{Int}, \texttt{Char}, etc, are
@@ -1584,7 +1577,7 @@ linear types. Linear types are rare in other programming languages which
 make them seem foreign at first glance. In the absence of familiarity,
 it is especially important to build up intuition.
 
-To that end we are going to explore a number of examples that illustrate
+To that end, we are going to explore several examples that illustrate
 how linearity can be understood.
 
 \hypertarget{you-cant-have-your-cake-and-eat-it-too}{%
@@ -1652,9 +1645,9 @@ Note that removing every linearity annotation makes the program compile:
 \end{Highlighting}
 \end{Shaded}
 
-Since we have not said anything about \texttt{Cake} it means there are
-no restriction in usage, and we can have as much cake as we want and
-keep it too.
+Since we have not said anything about \texttt{Cake}, there is no
+restriction in usage, and we can have as much cake as we want (and keep
+it too!).
 
 \newpage
 
@@ -1698,10 +1691,10 @@ Inspecting the hole we get:
 \end{Highlighting}
 \end{Shaded}
 
-Which indicates that, while we can still \emph{see} the dots, we cannot
-do anything with them, they have linearity \texttt{0}. However, we ended
-up with a \texttt{drawing} that we can now use!\footnote{You will notice
-  that the program asks us to return a value of type \texttt{Fun} this
+It indicates that, while we can still \emph{see} the dots, we cannot do
+anything with them, they have linearity \texttt{0}. However, we ended up
+with a \texttt{drawing} that we can now use!\footnote{You will notice
+  that the program asks us to return a value of type \texttt{Fun}, this
   is because the goal of this exercise is to have fun.}
 
 \hypertarget{safe-inlining-with-1}{%
@@ -1844,14 +1837,14 @@ It is hard to understand why this is the case just by looking at the
 type signature \texttt{Vect\ n\ a\ -\textgreater{}\ Nat} and this is
 because it is not complete. Behind the scenes, the Idris2 compiler is
 adding implicit arguments \footnote{Implicit arguments are arguments to
-  function that are not given by the programmer, but rather are filled
+  functions that are not given by the programmer, but rather are filled
   in by the compiler automatically. Implicit arguments are extremely
-  important in dependently-types languages because without them every
+  important in dependently-typed languages because without them every
   type signature would be extremely heavy. Moreover, since the
   distinction between types and terms is blurry, the mechanism to infer
   \emph{types} is the same as the mechanism to infer \emph{terms} which
   is how the compiler can infer which value to insert whenever a
-  function require an implicit argument.} for \texttt{n} and \texttt{a}
+  function requires an implicit argument.} for \texttt{n} and \texttt{a}
 and automatically gives them linearity \texttt{0}. The full signature
 looks like this:
 
@@ -1863,24 +1856,22 @@ looks like this:
 \end{Shaded}
 
 The \texttt{0} means we cannot use the variable outside of the type
-signature, but how come we can use them in the type signature and not to
-implement our \texttt{length} function?
+signature, but if we can use it in the signature, why can't we use it in
+the implementation of the \texttt{length} function?
 
-The difference is that linearity \texttt{0} variables are available
-\emph{at compile time} and are forbidden to appear \emph{at runtime}.
-The compiler can use them, compute types with them, but they cannot be
-allocated and used during execution of the program we generate.
+This is explained by the fact that linearity \texttt{0} variables are
+available \emph{at compile time} and are forbidden to appear \emph{at
+runtime}. The compiler can use them, compute types with them, but they
+cannot be allocated and used during the execution of the program.
 
 This is why linearity \texttt{0} variables are also called
-\texttt{erased} variables because they are removed from the execution of
-the program. We can use them to convince the compiler that some
-invariants hold, but we cannot allocate any memory for them during the
-execution of our program.
+\texttt{erased} variables: because they are removed from the execution
+of the program. We can use them to convince the compiler that some
+invariants hold, but we cannot allocate any memory for them at runtime.
 
-Finally, another subtlety is that erased variables can actually appear
-inside the body of a function, but only in position where they are
-allowed are arguments to functions with \texttt{0} usage. Such functions
-are:
+Finally, another subtlety is that erased variables can appear inside the
+body of a function, but only in a position with \texttt{0} usage. Such
+functions are:
 
 \hypertarget{arguments-annotated-with-0}{%
 \paragraph{\texorpdfstring{1. Arguments annotated with
@@ -1944,12 +1935,12 @@ variable, even if it erased. Such matches are called
 \emph{uninformative}, and they are characterised by the fact that they
 do not generate new codepaths.
 
-No new codepaths means that, whether we match or not, the output
+``No new codepaths'' means that, whether we match or not, the output
 bytecode would be the same. The difference lies in that matching on
-those variable would inform us and the compiler of very important
+those variables would inform us, and the compiler, of very important
 properties from our types. Just like the \texttt{intOrString} example
 informed us of the return type of our function, an uninformative match
-can reveal useful information to both the programmer and the compiler.
+can reveal useful information relevant to typechecking.
 
 A good example of an uninformative match is \texttt{Refl} which has only
 one constructor:
@@ -1962,7 +1953,7 @@ one constructor:
 \end{Shaded}
 
 This suggests that, even if our equality proof has linearity \texttt{0},
-we can match on it, since there is only 1 constructor we are never going
+we can match on it; since there is only 1 constructor we are never going
 to generate new branches.
 
 But an uninformative match can also happen on types with multiple
@@ -2022,7 +2013,7 @@ following error:
 \end{Shaded}
 
 It tells us that \texttt{n} unifies with \texttt{Z} and forces the user
-to spell out the match. Effectively forcing uninformative matches to be
+to spell out the match, effectively forcing uninformative matches to be
 made. A similar error appears if we try the same thing on the second
 branch, trying to remove \texttt{S\ n}.
 
@@ -2038,10 +2029,10 @@ QTT is still a recent development and because of its young age, it has
 not seen widespread use in commercial applications. The Idris2 compiler
 itself stands as the most popular example of a complex program that
 showcases uses for QTT and quantitative types. Linear types already
-benefit from a body of work that showcase their uses
-\cite{linear_diff}\cite{linear_types_update}\cite{linear_types_session}\cite{linear_types_subst}\cite{actor_channels}\cite{linear_race}\cite{linear_use}\cite{once_upon_a_type}\cite{deforestation},
+benefit from a body of work that showcase their
+uses\cite{linear_diff}\cite{linear_types_update}\cite{linear_types_session}\cite{linear_types_subst}\cite{actor_channels}\cite{linear_race}\cite{linear_use}\cite{once_upon_a_type}\cite{deforestation},
 but one of the goals of this thesis was to list and discover some new
-and innovative uses for linear types and QTT. In this chapter I will
+and innovative uses for linear types and QTT. In this chapter, I will
 mention some specific uses for QTT that I discovered during my study.
 
 \hypertarget{linear-multiplication}{%
@@ -2052,7 +2043,7 @@ types. But can we write a multiplication algorithm using linear types?
 Let us inspect the traditional multiplication algorithm and see if we
 can update it with linear types.
 
-Here is a multiplication function without any linear variables
+Here is a multiplication function without any linear variables:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -2063,20 +2054,21 @@ Here is a multiplication function without any linear variables
 \end{Shaded}
 
 Just like with addition, we notice that some variables are only used
-once, but some aren't. \texttt{n} is used exactly once in both branches,
-but \texttt{m} is not used in one branch, and used twice in the other.
-Which leads to the following program:
+once, but some aren't: \texttt{n} is used exactly once in both cases,
+but \texttt{m} is not used in the \texttt{Z} one, and used twice in the
+\texttt{S} case. Which leads to the following program:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{ multiplication }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ n }\OperatorTok{:} \DataTypeTok{Nat}\NormalTok{) }\OtherTok{{-}\textgreater{}}\NormalTok{ (m }\OperatorTok{:} \DataTypeTok{Nat}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Nat}
-\NormalTok{ multiplication }\DataTypeTok{Z}\NormalTok{ m }\OtherTok{=} \DataTypeTok{Z}
-\NormalTok{ multiplication (}\DataTypeTok{S}\NormalTok{ n) m }\OtherTok{=}\NormalTok{ m }\OperatorTok{+}\NormalTok{ (multiplication n m)}
+\CommentTok{{-}{-} \textasciigrave{}m\textasciigrave{} is unrestricted, \textasciigrave{}n\textasciigrave{} is linear}
+\NormalTok{multiplication }\OperatorTok{:}\NormalTok{ (}\DecValTok{1}\NormalTok{ n }\OperatorTok{:} \DataTypeTok{Nat}\NormalTok{) }\OtherTok{{-}\textgreater{}}\NormalTok{ (m }\OperatorTok{:} \DataTypeTok{Nat}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Nat}
+\NormalTok{multiplication }\DataTypeTok{Z}\NormalTok{ m }\OtherTok{=} \DataTypeTok{Z}
+\NormalTok{multiplication (}\DataTypeTok{S}\NormalTok{ n) m }\OtherTok{=}\NormalTok{ m }\OperatorTok{+}\NormalTok{ (multiplication n m)}
 \end{Highlighting}
 \end{Shaded}
 
 Which compiles correctly, but how could we go about implementing a
-completely linear version of \texttt{mutliplication}?
+completely linear version of \texttt{multiplication}?
 
 Indeed, writing
 \texttt{multiplication\ :\ (1\ n\ :\ Nat)\ -\textgreater{}\ (0\ m\ :\ Nat)\ -\textgreater{}\ Nat}
@@ -2093,8 +2085,8 @@ gets us the error:
 \end{Highlighting}
 \end{Shaded}
 
-Which catches the fact that \texttt{m} is use twice in the second branch
-(but the first branch is fine).
+Which catches the fact that \texttt{m} is used twice in the second
+branch (but the first branch is fine).
 
 Ideally, we would like to write this program:
 
@@ -2168,7 +2160,7 @@ dependent types and linear types in a way that wasn't possible before.
 It has been done in the context of my work for Statebox, a company that
 strongly relies on dependent types to write formally verified software.
 
-One of their project is a validator for petri-nets\cite{petri-nets} and
+One of their projects is a validator for petri-nets\cite{petri-nets} and
 petri-net executions:
 \href{https://github.com/statebox/fsm-oracle}{FSM-oracle}\footnote{\url{https://github.com/statebox/fsm-oracle}}.
 While the technical details of this project are outside the scope of
@@ -2177,7 +2169,7 @@ linear types, and that is the concept of permutation.
 
 FSM-Oracle describes petri-nets using
 \href{http://www.zanasi.com/fabio/files/paperCALCO19b.pdf}{\emph{hypergraphs}}
-\cite{cartographer} those hypergraphs use
+\cite{cartographer} , hypergraphs themselves use
 \href{https://github.com/statebox/fsm-oracle/blob/master/src/Permutations/Permutations.idr\#L31}{\emph{permutations}}\footnote{\url{https://github.com/statebox/fsm-oracle/blob/master/src/Permutations/Permutations.idr\#L31}}
 in order to model that a wire inside it can be moved around. This
 concept is key in a correct and proven implementation of hypergraphs.
@@ -2190,8 +2182,8 @@ their definition into a
 
 The relevant bit about permutation can be found in the two files
 \texttt{Permutations.idr} and \texttt{SwapDown.idr}, a permutation
-relies on a list of ``swaps'' that describe the operation that we can do
-on a list to generate a new permutation of the same list.
+relies on a list of ``swaps'' that describe the operations that we can
+do on a list to generate a new permutation of the same list.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -2224,9 +2216,9 @@ full glory, here is an example of what we are dealing with:
 \end{Highlighting}
 \end{Shaded}
 
-This function ensures that composition of permutation is associative. It
-relies on helper functions such as \texttt{shuffleComp} which are not
-even implemented in Idris1 because it is too hard to implement.
+This function ensures that the composition of permutation is
+associative. It relies on helper functions such as \texttt{shuffleComp}
+which is postulated in Idris1 because it is too hard to implement.
 
 Linear types can thankfully ease the pain by providing a very simple
 representation of permutations :
@@ -2261,8 +2253,8 @@ greater than \texttt{0}:
 \end{Shaded}
 
 In this example, \texttt{a} is bound with \emph{unrestricted}
-multiplicity, which give us the hint that it \emph{is} inspected and the
-permutation might not be a legitimate permutation.
+multiplicity, which gives us the hint that it \emph{is} inspected and
+the permutation might not be a legitimate permutation.
 
 What's more, viewing permutations as a function gives it extremely
 simple categorical semantics: It is just an instance of the category of
@@ -2299,7 +2291,7 @@ Assuming \texttt{Category} is defined this way:
 \end{Highlighting}
 \end{Shaded}
 
-We can write and instance of \texttt{Category} for \texttt{List\ o}:
+We can write an instance of \texttt{Category} for \texttt{List\ o}:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -2391,8 +2383,8 @@ in the future, it wouldn't seem extravagant to have the type-system
 automatically generate the code as part of a derived interface.
 
 Finally and most importantly, this program could not exist without using
-both dependent types to declare the necessary proofs to formally
-verified our Categorical structure, and linear types to implement
+both dependent types to declare the necessary proofs to formally verify
+our Categorical structure, and linear types to implement
 \texttt{Permutation}. It is a beautiful example where the two features
 meet and merge in a way that is both practical and elegant.
 
@@ -2402,8 +2394,8 @@ meet and merge in a way that is both practical and elegant.
 \emph{The gentle art of levitation}\cite{levitation} shows that a
 dependently typed language has enough resources to describe all indexed
 data types with only a few constructors. The ability to define types as
-a language library rather than a language features allows a great deal
-of introspection which in turns allows a realm of possibilities. Indeed,
+a language library rather than as a language feature allows a great deal
+of introspection which in turn allows a realm of possibilities. Indeed,
 we can now define operations on those data types that will preserve the
 semantics of the type but make the representation more efficient. We can
 generate interface implementations for them automatically. And we can
@@ -2418,18 +2410,18 @@ those features are plagued by multiple shortcomings: the verbosity of
 the definitions not only make the data declaration hard to write and
 read, it makes the compiler spend a lot of time constructing and
 checking those terms, and it has trouble identifying what is a type
-parameter or what is an index.
+parameter and what is an index.
 
 Thankfully, the performance inefficiency from levitation can be
 alleviated by a smart use of erasure. In his thesis, Ahmad Salim relies
 on erasing terms with the \texttt{.} (dot) syntax, which does its best
 but cannot enforce erasure of terms.
 
-While the following has not been implemented, it shows Idris2 has a lot
-of promise in lifting previous performance limitations. This is because,
-in Idris2, we can perform and enforce erasure by annotating
-well-formedness proofs with \texttt{0} and use data types such as
-\texttt{Exists} instead of \texttt{DPair}.
+While this has not been implemented, it shows Idris2 has a lot of
+promise in lifting previous performance limitations. This is because, in
+Idris2, we can perform and enforce erasure by annotating proofs with
+\texttt{0} and use data types such as \texttt{Exists} instead of
+\texttt{DPair}.
 
 More challenges arise when we try to use levitation to represent Idris
 data definitions. Indeed, linear and erased variables in constructors
@@ -2447,10 +2439,10 @@ itself (defining the description of linear data types in terms of
 itself) would be achievable.
 
 Interestingly enough, encoding linearity in levitated description might
-also help fix one of the shortcoming of levitation in Idris:
+also help fix one of the shortcomings of levitation in Idris:
 automatically discerning between type parameters and type indices.
-Combined with the ability to pattern match on types, in turn would allow
-the Idris2 compiler to generate definitions for interfaces such as
+Combined with the ability to pattern match on types, in turn, would
+allow the Idris2 compiler to generate definitions for interfaces such as
 \texttt{Functor} and \texttt{Applicative}.
 
 \hypertarget{compile-time-string-concatenation}{%
@@ -2475,7 +2467,7 @@ this situation:
 \end{Highlighting}
 \end{Shaded}
 
-It allows string literal to include expressions \emph{inline} and leave
+It allows string literals to include expressions \emph{inline} and leave
 the compiler to build the expected string concatenation. One example of
 string interpolation syntax would look like this:
 
@@ -2506,7 +2498,7 @@ can perform compile-time concatenation.
 \end{Shaded}
 
 In the above example, it would be reasonable to expect the compiler to
-notice that the variable \texttt{name} is a string literals and that,
+notice that the variable \texttt{name} is a string literal and that,
 because it is only used in a string interpolation statement, it can be
 concatenated at compile time. Effectively being equivalent to the
 following:
@@ -2519,7 +2511,7 @@ following:
 \end{Shaded}
 
 But this kind of translation can lead to very misleading beliefs about
-String interpolation and its performance implications. In this following
+string interpolation and its performance implications. In this following
 example the compiler would \emph{not} be able to perform the
 concatenation at compile time:
 
@@ -2546,14 +2538,13 @@ Since the variable \texttt{name} has linearity \texttt{0}, it cannot
 appear at runtime, which means it cannot be concatenated with the string
 \texttt{"hello\ "}, which means the only way this program compiles is if
 the string \texttt{"Susan"} is inlined with the string
-\texttt{"hello\ "}at compile-time.
+\texttt{"hello\ "} at compile-time.
 
 Using holes we can describe exactly what would happen in different
 circumstances. As a rule, string interpolation would do its best to
 avoid allocating memory and performing operations at runtime. Much like
-our previous optimisation, it would look for values which are
-constructed in scope and simply concatenate the string without counting
-it as a use.
+our previous optimisation, it would look for values that are constructed
+in scope and simply concatenate the string without counting it as a use.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -2563,7 +2554,7 @@ it as a use.
 \end{Highlighting}
 \end{Shaded}
 
-Would result in the error
+Would result in the error:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -2571,7 +2562,7 @@ Would result in the error
 \end{Highlighting}
 \end{Shaded}
 
-Adding a hole at the end would show.
+Adding a hole at the end would show:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -2627,9 +2618,9 @@ Ergonomics}\label{quantitative-type-theory-and-programming-ergonomics}}
 \label{sec:qtt-ergonomics}
 
 In section \ref{sec:qtt-practice} we highlighted uses of linear types in
-Idris2. In this section we are going to show the limitations of linear
+Idris2. In this section, we are going to show the limitations of linear
 types in terms of ergonomics and provide solutions for them. A lot of
-those limitations stem from our intent to use linear types for
+these limitations stem from our intent to use linear types for
 performance analysis in section \ref{sec:performance} and are discussed
 in detail in section \ref{subsec:discussion}.
 
@@ -2692,7 +2683,7 @@ data structures. And the benefits of this approach would translate quite
 well to our situation, beyond the ability to dance around linearity with
 primitive types.
 
-Indeed, once our types are represented as a data types we can use their
+Indeed, once our types are represented as data types we can use their
 structure to infer its properties. For example, if a data type has
 \emph{type parameters}, then we can generate instances for
 \texttt{Functor}, \texttt{Applicative}, etc. If the data type resembles
@@ -2708,7 +2699,7 @@ constant size and index through them in \texttt{O(1)} instead of
 \texttt{O(n)}.
 
 As the cherry on top, this mapping would help the coverage checker to
-infer missing cases accurately for primitive types, allowing to write
+infer missing cases accurately for primitive types, allowing us to write
 proofs about primitive types easier. In the following example the Idris2
 compiler is unable to check the coverage of all strings, even though it
 should:
@@ -2758,22 +2749,22 @@ Tracking}\label{semirings-and-their-semantics-for-resource-tracking}}
 
 \label{subsec:semiring-semantics}
 
-Linear types allow us to declare variable to be use either \texttt{0},
-\texttt{1} or any number of times. However, we've seen this approach is
-pretty restrictive, in this thesis we are interested in how to use
-multiplicities and quantitative types for the benefit of the user in
-terms of ergonomics and performance.
+Linear types allow us to declare a variable to be used either
+\texttt{0}, \texttt{1} or any number of times. However, we've seen this
+approach is pretty restrictive, in this thesis we are interested in how
+to use multiplicities and quantitative types for the benefit of the user
+in terms of ergonomics and performance.
 
-This section is the result of our finding in section
+This section is the result of our findings in section
 \ref{sec:performance} about performance. While the results are
 encouraging, they suggest that more drastic changes are required in
 order to derive a competitive advantage over other programming
-environments. Specially the ones targeted at systems-programming.
+environments, especially the ones targeted at systems-programming.
 However, making linear types easier to use is an obvious first step
-toward expressing the semantics of performant programs in the type and
+toward expressing the semantics of performant programs in the type, and
 is the reason for the following development.
 
-Quantitative type theory tracks usage through a generic semirings, any
+Quantitative type theory tracks usage through a generic semiring, any
 implementation of QTT can use any positive semiring for it to function.
 Idris2 uses the following semiring:
 
@@ -2833,7 +2824,7 @@ example of another semiring:
 Which is the finite group\footnote{A group is a semiring in which every
   element is invertible.} of size 5. Using this semiring would mean that
 we cannot have more than 5 of every variable. It would also mean that
-sharing a variable too many times result in linearity \texttt{0} which
+sharing a variable too many times results in linearity \texttt{0} which
 makes this semiring unsuitable for resource tracking.
 
 One very useful semiring is the \texttt{InfNat} semiring, the natural
@@ -2860,7 +2851,7 @@ one could imagine implementing \texttt{copy} like so:
 
 This encoding of resources is extremely expressive since it encapsulates
 both linearity and variable sharing. We are going to see how to use it
-for a very practical purpose in the section
+for a very practical purpose in section
 \ref{subsec:linear-ref-counting}. In the meantime, here is another very
 useful semiring:
 
@@ -2884,13 +2875,13 @@ and would allow us to write the following program:
 \end{Shaded}
 
 There are infinitely many semirings, some make more sense than others.
-We could for example combine semirings in pairs, since pairs of
-semirings are also semirings. Another semiring is showcased in
+We could for example combine semirings in pairs since pairs of semirings
+are also semirings. Another semiring is showcased in
 \emph{Granule}\cite{granule} which has a good example of \emph{privacy
 access} as a resource semiring.
 
 In conclusion, different semirings allow us to express different
-resource semantics. In the next few pages I will explore how the
+resource semantics. In the next few pages, I will explore how the
 \emph{precise usage} semiring \texttt{InfNat} is useful and will show a
 refactoring that allows us to use it in Idris2.
 
@@ -2905,40 +2896,39 @@ is known to be the source of countless bugs and security issues).
 \emph{Tracing garbage collection} (which we will refer to as ``GC'')
 generally refers to algorithms of automatic memory management such as
 \emph{mark \& sweep} or to runtimes using them such as the
-\emph{Boehm-GC}\footnote{\url{https://en.wikipedia.org/wiki/Boehm_garbage_collector}}.
-The greatest benefit of garbage collection is that the burden of memory
-management is completely lifted from the programmer. But this feature is
-not always good news, the benefits come at the expense of predictability
-and control.
+\emph{Boehm-GC}\footnote{.}. The greatest benefit of garbage collection
+is that the burden of memory management is completely lifted from the
+programmer. But this feature is not always good news, the benefits come
+at the expense of predictability and control.
 
 Since the garbage collector runs automatically without any input from
 the programmer, there is no way to tell how often the garbage collector
 will run and for how long, just by looking at a program. What's more,
 garbage collection does not happen instantly, some algorithms stop the
-execution of the program for an unknown amount of time in order to
-reclaim memory. And this process cannot be stoped or controlled. A
-number of programming patterns emerged as a result (Object-pool pattern)
-but instead of making programming easier, they exhibit a structure akin
-to manual memory management (mutate existing memory spaces, avoid memory
-leaks). Which is exactly what GC advertises to eliminate.
+execution of the program for an unknown amount of time to reclaim
+memory. And this process cannot be stopped or controlled. A number of
+programming patterns emerged as a result (Object-pool pattern), but
+instead of making programming easier, they exhibit a structure akin to
+manual memory management (mutate existing memory spaces, avoid memory
+leaks), which is exactly what GC advertises to eliminate.
 
 On the other hand, Rust \cite{rust} manages to remove all manual memory
 management, but it comes at the cost of a restricted programming model
-based on borrowing and lifetimes. Functions define lifetimes which
-ensure the arguments will not be freed during the execution of the
-function and avoid use-after-free errors. Borrowing and move semantics
-are very close to linear type semantics and ensure no two mutable
-pointers are being accessed at the same time on the same memory space.
-This programming practice might seem a bit foreign at a cursory look,
-but in fact it is similar to what is considered good programming
-practice in manual memory management programming languages like C++.
+based on borrowing and lifetimes. Functions define lifetimes that ensure
+the arguments will not be freed during the execution of the function and
+avoid use-after-free errors. Borrowing and move semantics are very close
+to linear type semantics and ensure no two mutable pointers are being
+accessed at the same time on the same memory space. This programming
+practice might seem a bit foreign at a cursory look, but in fact, it is
+similar to what is considered good programming practice in manual memory
+management programming languages like C++.
 
 Finally, \emph{reference counting} describes an automatic memory
 management system that tracks how many references runtime variables
 have. The runtime does this by pairing each heap-allocated value with a
-\emph{counter} that will be incremented every time the value is shared,
+\emph{counter} that will be incremented every time the value is shared
 and decremented every time the value is consumed. Once the counter
-reaches 0, the value is freed. This, guarantees the maximum amount of
+reaches 0, the value is freed. This guarantees the maximum amount of
 memory is always available since objects are deleted immediately at the
 end of their lifetime, instead of having to wait for the garbage
 collector to delete them. While appealing, this approach has multiple
@@ -2948,10 +2938,10 @@ shortcomings compared to garbage collection:
 \tightlist
 \item
   It still has a runtime cost, since each dereferencing and aliasing
-  induce a decrement/increment operation.
+  induces a decrement/increment operation.
 \item
-  Typical implementation do not support reference cycles which introduce
-  memory leaks.
+  A typical implementation does not support reference cycles, which may
+  introduce memory leaks.
 \item
   The memory management is not completely removed from the control of
   the user since they now need to pay attention to cycles and lifetimes.
@@ -2962,13 +2952,13 @@ solution to provide for each one of them.
 
 While it is true that reference counting incurs a runtime cost, there
 are a lot of opportunities for optimisations. Not all aliasing and not
-all dereferencing needs to lead to an increment or decrement operations.
+all dereferencing needs to lead to an increment or decrement operation.
 As for cycles, Idris2 being a functional programming language, there are
 very few opportunities to construct cyclical data structures.
 
 As for the last shortcoming of reference counting, the following
 sections will focus on how to address manual memory management in a
-reference counted runtime leveraging quantitative types. This will not
+reference-counted runtime leveraging quantitative types. This will not
 remove the need for thinking about memory management, but it will make
 memory management a \emph{linearity error} rather than an invisible
 property of programs. Finally, encouraging users to think about memory
@@ -2983,9 +2973,9 @@ Counting}\label{putting-everything-together-linearity-and-reference-counting}}
 \label{subsec:linear-ref-counting}
 
 The idea of mapping linear usage to reference counting isn't
-new\cite{linear_ref_count}, but with QTT, we can have a much greater
-control over the semantics of the semiring we use in order to make it
-correspond precisely with the behaviour of our runtime.
+new\cite{linear_ref_count}, but with QTT, we can have much greater
+control over the semantics of the semiring we use to make it correspond
+precisely with the behaviour of our runtime.
 
 \emph{Counting immutable beans}\cite{immutable_beans} shows us how
 effective reference counting can be in a purely functional programming
@@ -3001,8 +2991,8 @@ two regards:
   Remove the need for heuristics and formalise them in the type-system
 \end{itemize}
 
-Those two points mean basically the same thing, in order to illustrate
-this, let us take an example they use, \texttt{makePairOf}:
+Those two points mean the same thing; to illustrate this, let us take an
+example they use, \texttt{makePairOf}:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -3016,7 +3006,7 @@ this, let us take an example they use, \texttt{makePairOf}:
 This function is exactly the same as our \texttt{copy} function from the
 chapter on linearity, except it has an additional instruction
 \texttt{inc}. This instruction tells the runtime to \emph{increase} the
-reference count of \texttt{x} because it's been duplicated. In order to
+reference count of \texttt{x} because it's been duplicated. To
 understand the intuition behind this behaviour let us examine a simpler
 function, the identity function:
 
@@ -3027,14 +3017,15 @@ function, the identity function:
 \end{Highlighting}
 \end{Shaded}
 
-This function needs not allocating, freeing, incrementing or
-decrementing a variable or a counter. It simply takes the argument and
-return it without modifications, its memory space is left untouched.
-Modifying this function to return a pair instead makes is so that we
-share \emph{an additional reference} to our value. This additional
-reference must be accounted for and this is why \texttt{makePairOf}
-increments the reference count by one. If it were to return a triple,
-the variable's reference count would be increased by two.
+This function needs not allocating, freeing, incrementing, or
+decrementing of a variable or a counter. It simply takes the argument
+and returns it without modifications, its memory space is left
+untouched. Modifying this function to return a pair instead makes it so
+that we share \emph{an additional reference} to our value. This
+additional reference must be accounted for and this is why
+\texttt{makePairOf} increments the reference count by one. If it were to
+return a triple, the variable's reference count would be increased by
+two.
 
 We've seen how different semirings can have different semantics. If
 Idris2 used \texttt{Nat} as a semiring we could write the following
@@ -3049,13 +3040,13 @@ program:
 
 Without requiring a reference increment. Why? Because the \emph{type
 signature} already informs the caller that \texttt{x} needs to have at
-least a reference count of 2 in order to be called by
-\texttt{makePairOf}. This defers the reference increment to the caller
-instead of the function. The deferring of reference counting is
-significant because it now allows the runtime to allocate a value with
-the correct reference count from the beginning, instead of allocating it
-with a reference count of 1 and then incrementing it for each sharing.
-Effectively cutting a large chunk of \texttt{inc} operations.
+least a reference count of 2 to be called by \texttt{makePairOf}. This
+defers the reference increment to the caller instead of the function.
+The deferring of reference counting is significant because it now allows
+the runtime to allocate a value with the correct reference count from
+the beginning, instead of allocating it with a reference count of 1 and
+then incrementing it for each sharing. Effectively cutting a large chunk
+of \texttt{inc} operations.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -3064,8 +3055,8 @@ Effectively cutting a large chunk of \texttt{inc} operations.
 \end{Highlighting}
 \end{Shaded}
 
-Another way to avoid \texttt{inc} and \texttt{dec} operations is to
-allow \emph{borrowing} of variables, that is, if a variable is not
+Another way to avoid \texttt{inc} and \texttt{dec} operations would be
+to allow \emph{borrowing} of variables, that is, if a variable is not
 updated, then it is safe to share. In the following program we inspect a
 \texttt{Maybe} value and return if it contains a value or not:
 
@@ -3078,10 +3069,10 @@ updated, then it is safe to share. In the following program we inspect a
 \end{Shaded}
 
 In the current implementation of Idris2, this function cannot be linear
-since it patterns matches on its argument. However, one could make the
-argument that the \emph{content} of the pattern match is not used.
-Therefore, the pattern match only inspects the tag of the constructor,
-not its fields, allowing the field to be safely shared elsewhere.
+since it matches on its argument. However, one could make the argument
+that the \emph{content} of the pattern match is not used. Therefore, the
+pattern match only inspects the tag of the constructor, not its fields,
+allowing the field to be safely shared elsewhere.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -3091,7 +3082,7 @@ not its fields, allowing the field to be safely shared elsewhere.
 \end{Highlighting}
 \end{Shaded}
 
-In this example we use the custom syntax \texttt{\&} for the
+In this example, we use the custom syntax \texttt{\&} for the
 multiplicity to indicate that the value is borrowed. This tells the
 compiler that the value should \emph{not} be erased from the runtime,
 but that calling this function does not constitute a use, just like the
@@ -3109,10 +3100,10 @@ borrowed and therefore does not constitute a use.
 
 Finally, there is another way to remove \texttt{inc} and \texttt{dec}
 operations leveraging quantities, and that is to use the resource
-tracking we do at compile time to ensure liveliness of our variables
+tracking we do at compile time to ensure the liveliness of our variables
 (much like the lifetime checker of Rust) and use reference counting only
 when the compiler detects a variable has been spent. In the following
-example we allocate a value to be used 5 times, we also have access to
+example, we allocate a value to be used 5 times, we also have access to
 functions that use our variable 2 times and 3 times. If we were to
 simply use linearity as our reference counter we would expect 5
 \texttt{dec} operation. Fortunately, we can reduce this to 2
@@ -3142,20 +3133,20 @@ Combining our first and last optimisation we can reduce the amount of
 \subsection{Implementing Generic
 Semirings}\label{implementing-generic-semirings}}
 
-In the following I am going to showcase the biggest changes necessary in
-order to implement resource tracking through different semirings in a
-fully fledged programming language such as Idris. Going through this
-exercise made me discover additional structures for proper resource
-tracking in a practical programming language (as opposed to a theorem
-prover). The goal of this section is to demonstrate the role of those
-additional structures and explain why they are necessary.
+In the following I am going to showcase the biggest changes necessary to
+implement resource tracking through different semirings in a fully
+fledged programming language such as Idris. Going through this exercise
+made me discover additional structures for proper resource tracking in a
+practical programming language (as opposed to a theorem prover). The
+goal of this section is to demonstrate the role of those additional
+structures and explain why they are necessary.
 
 The current Idris2 compiler uses
 \texttt{data\ RigCount\ =\ Rig0\ \textbar{}\ Rig1\ \textbar{}\ RigW} for
-linearity \texttt{0}, \texttt{1}, \texttt{ω} respectively. In order to
-support a different semiring we need to abstract over the operations of
-semirings and update the existing codebase to make use of them instead
-of relying on our definition of \texttt{RigCount}.
+linearity \texttt{0}, \texttt{1}, \texttt{ω} respectively. To support a
+different semiring we need to abstract over the operations of semirings
+and update the existing codebase to make use of them instead of relying
+on our definition of \texttt{RigCount}.
 
 A \texttt{Semiring}\footnote{As a reminder, a semi ring is defined by
   two operations, \texttt{+} and \texttt{*} and have neutral elements
@@ -3197,8 +3188,8 @@ Become:
 \end{Highlighting}
 \end{Shaded}
 
-In order to recover the functionality from pattern matching we introduce
-an eliminator for \texttt{Semiring}, \texttt{elimSemi}:
+To recover the functionality from pattern matching we introduce an
+eliminator for \texttt{Semiring}, \texttt{elimSemi}:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -3213,7 +3204,7 @@ an eliminator for \texttt{Semiring}, \texttt{elimSemi}:
 \end{Highlighting}
 \end{Shaded}
 
-Which reads ``if we are looking at the neutral element for \texttt{+}
+Which reads ``if we are looking at the neutral element for \texttt{+},
 then return the value associated with zero, otherwise if we are looking
 at the neutral element for \texttt{*}, then return the value associated
 with one, otherwise, we are looking at a number that is not one of the
@@ -3264,9 +3255,9 @@ left one is smaller than the right one.
 \end{Highlighting}
 \end{Shaded}
 
-You can see that the pattern matching doesn't spell out the relation
-between the first and the second argument. However, the same program can
-be refactored using an ordering on a generic semiring:
+You can see that pattern matching doesn't spell out the relation between
+the first and the second argument. However, the same program can be
+refactored using an ordering on a generic semiring:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -3287,7 +3278,7 @@ implemented using intervals, we could not rely on a \emph{total
 order}\footnote{A \emph{total order} is an ordering for which every
   value is related to every other value, unlike a partial order where
   only some values are comparable.} since some intervals cannot be
-compared with each others. For example, \texttt{{[}3..5{]}} and
+compared with each other. For example, \texttt{{[}3..5{]}} and
 \texttt{{[}0..4{]}} are not directly related to each other. For this
 reason, we are going to use a \texttt{Preorder} which only requires
 equality to be valid for some pairs of values and requires transitivity
@@ -3308,7 +3299,7 @@ and associativity to hold. In Idris2 this is formulated as:
 \end{Highlighting}
 \end{Shaded}
 
-For engineering reasons this is not exactly the version used in the
+For engineering reasons, this is not exactly the version used in the
 Idris2 compiler but this should not detract from the observation that a
 semiring alone is not enough.
 
@@ -3317,12 +3308,12 @@ implementation \texttt{RigW} is used as a default value when creating
 values with unknown linearity. This is because Idris2 is
 \emph{unrestricted by default} instead of \emph{linear by default}. In
 our case, the default value has a very neat property: it is greater or
-equal to every other values of the semiring. In technical term, in
+equal to every other value of the semiring. In technical terms, in
 addition to having a semiring and a preorder we also need our
-multiplicity type to have a \emph{top} value, which means we are
-actually dealing with a \emph{meet semi-lattice}.
+multiplicity type to have a \emph{top} value, which means we are dealing
+with a \emph{meet semi-lattice}.
 
-Top is easily defined as follows:
+\texttt{top} is easily defined as follows:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -3367,36 +3358,36 @@ uses matches the linearity. Or in other words, ``if the multiplicity is
 linear, and we have not used the variable exactly once, then throw an
 error''.
 
-This suggests that in order to implement pattern matching for a generic
-semiring, we also need to add a way to associate the multiplicity with a
-natural number so that we can compare it with a number of occurrences.
-Or we need a concept of \emph{leftover typing} where a resource can be
-partially consumed via subtracting. That is, if we have \texttt{5} of a
-resource, then we can partially use it \texttt{3} times, leaving us with
-\texttt{5\ -\ 3\ =\ 2} resources.
+This suggests that to implement pattern matching for a generic semiring,
+we also need to add a way to associate the multiplicity with a natural
+number. This way we can compare the value of the resource with its
+number of occurrences. Or we need a concept of \emph{leftover typing}
+where a resource can be partially consumed via subtracting. That is, if
+we have \texttt{5} of a resource, then we can partially use it
+\texttt{3} times, leaving us with \texttt{5\ -\ 3\ =\ 2} resources.
 
 \hypertarget{next-steps}{%
 \subsubsection{Next Steps}\label{next-steps}}
 
 This exercise was particularly informative in teaching us what is
 \emph{really needed} in practice to build up a programming language
-based on QTT. \emph{Meet semi-lattice} aren't mentioned in Quantitative
-Type Theory\cite{qtt} but they appear in Granule \cite{granule} while
-this is not entirely surprising it is noteworthy that both approach
+based on QTT. \emph{Meet semi-lattices} aren't mentioned in Quantitative
+Type Theory\cite{qtt} but they appear in Granule \cite{granule}; while
+this is not entirely surprising, it is noteworthy that both approaches
 reach the same conclusion: ordered semirings are the foundation of a
 sound implementation of a calculus with quantities into a useful
 programming language.
 
-This implementation is only the first step into extended the language
+This implementation is only the first step into extending the language
 for full reference counting without garbage collection, in the meantime,
-there are a lot of intermediate steps. And additionally, now that the
-seal is broken on multiple types of multiplicities, nothing stops us
-from implementing different multiplicities for Idris2 and see what
+there are a lot of intermediate steps. Additionally, now that the seal
+is broken on multiple types of multiplicities, nothing stops us from
+implementing different multiplicities for Idris2 and seeing what
 happens. We can now discover semantics for semirings, rather than use
 different semirings to reach different semantics. Granule already has
 products, intervals, access variables and natural numbers in addition to
 linearity as their multiplicity. It would be interesting to see what
-matrices, or polynomials offer in terms of semantics as a resource
+matrices or polynomials offer in terms of semantics as a resource
 tracking semiring.
 
 The immediate next step for this project is to repeat this experiment
@@ -3422,18 +3413,18 @@ This section aims to answer the question ``what performance improvement
 can we get by using linear types \emph{today}?'' by implementing a
 well-known optimisation technique that linear types allow: memory reuse.
 
-First we are going to talk about what are the assumptions necessary for
-our optimisation to work. As we will see, they are not as simple as one
-might expect. The original formulation for linear types suggest that
+First, we are going to talk about the assumptions necessary for our
+optimisation to work. As we will see, they are not as simple as one
+might expect. The original formulation for linear types suggests that
 every linear function could reuse the memory space taken by linear
 variables. But this is not necessarily the case in Idris2 and additional
 requirements will have to be met for the optimisation to trigger. We
 will see in the conclusion that those requirements are quite limiting
-and prompted the work in section \ref{sec:qtt-ergonomics} .
+and prompted the work in section \ref{sec:qtt-ergonomics}.
 
 After clarifying our needs regarding our optimisation, we are going to
-look at the compiler changes necessary to implement our optimisation,
-this section is particularly useful as a compiler-engineering challenge
+look at the compiler changes necessary to implement our optimisation.
+This section is particularly useful as a compiler-engineering challenge
 and might help anyone who is interested in implementing a similar
 optimisation in other languages featuring linear types (such as linear
 Haskell for example).
@@ -3443,12 +3434,12 @@ results from testing our optimisation, this will involve benchmarking
 and some discussion on the nature of the tests.
 
 Finally, the results are presented along with their discussion. The
-discussion helps understand the chronology in which those tests were
+discussion helps us understand the chronology in which those tests were
 performed and motivate our conclusion which will be done in section
-\ref{subsec:discussion} .
+\ref{subsec:discussion}.
 
 \hypertarget{conditions-under-which-we-can-run-our-optimisation}{%
-\subsection{Conditions under Which We Can Run Our
+\subsection{Conditions Under Which We Can Run Our
 Optimisation}\label{conditions-under-which-we-can-run-our-optimisation}}
 
 Idris2 already allows defining linear functions, but despite the extra
@@ -3498,8 +3489,9 @@ for a safe-update function:
 \end{Highlighting}
 \end{Shaded}
 
-We have a data type with two cases, and update checks which case we have
-and then incrementing or decrementing the \texttt{Nat} value.
+We have a data type \texttt{Numbers} with two cases and \texttt{update}
+checks which case we have and then increments or decrements the
+\texttt{Nat} value accordingly.
 
 This function should perform in constant space (\texttt{O(1)}) but
 currently, the Idris compiler always allocates new values when a
@@ -3507,22 +3499,22 @@ constructor is called. In addition, the old value is now ready to be
 freed, but we have to wait on the garbage collector to catch it.
 
 Unfortunately, we cannot naively implement the free and update
-optimisation in order to see what kind of performance improvement we can
-get out of linear types. This is because a linear variable is not
-guaranteed to be unique when it is called on a linear function. One
-example of this sharing mechanism can be seen with function subtyping.
+optimisation to see what kind of performance improvement we can get out
+of linear types. This is because a linear variable is not guaranteed to
+be unique when it is called on a linear function. One example of this
+sharing mechanism can be seen with function subtyping.
 
 \hypertarget{issues-with-linear-function-subtyping}{%
 \subsubsection{Issues with Linear Function
 Subtyping}\label{issues-with-linear-function-subtyping}}
 
-In order to make the interplay between unrestricted and linear functions
-easier, Idris2 features subtyping on functions. As a refresher,
-subtyping allows a function to accept another type than the one that it
-has been specified with, as long as the other type is a \emph{subtype}
-of the original one. In the following example we are going to assume we
-have access to two types, \texttt{A} and \texttt{B}, with \texttt{B} is
-a subtype of \texttt{A}, noted with \texttt{B\ \textless{}:\ A}
+To make the interplay between unrestricted and linear functions easier,
+Idris2 features subtyping on functions. As a refresher, subtyping allows
+a function to accept another type than the one that it has been
+specified with, as long as the other type is a \emph{subtype} of the
+original one. In the following example we are going to assume we have
+access to two types, \texttt{A} and \texttt{B}, where \texttt{B} is a
+subtype of \texttt{A}, noted with \texttt{B\ \textless{}:\ A}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -3585,7 +3577,7 @@ compile correctly.
 \end{Shaded}
 
 In the following example we show how this breaks down our assumption of
-safe updates
+safe updates:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -3627,12 +3619,12 @@ safe updates and safe memory frees is not restrictive enough. We need an
 additional level of restriction to ensure \emph{uniqueness} of the
 values instead of linearity.
 
-In order to ensure uniqueness, we are only going to consider situations
-where a variable has been created in scope and is declared to be linear.
-In the next section I will talk about the changes that are necessary to
-a compiler for a functional language such as Idris. The changes should
+To ensure uniqueness, we are only going to consider situations where a
+variable has been created in scope and is declared to be linear. In the
+next section, I will talk about the changes that are necessary to a
+compiler for a functional language such as Idris. The changes should
 reflect the nature of our restrictions in a language that features
-pattern matching, a core lambda-calculus and immutable data structures.
+pattern matching, a core lambda-calculus, and immutable data structures.
 
 \hypertarget{implementing-our-optimisation}{%
 \subsection{Implementing Our
@@ -3665,11 +3657,11 @@ The changes to the Idris AST are as follows:
 \item
   Allow linear functions to mutate constructors that are bound linearly
 \item
-  Add a new instruction to the backend AST in order to mutate values
+  Add a new instruction to the backend AST to mutate values
 \end{itemize}
 
 Conceptually the compiler architecture is quite simple, in the following
-illustration we link trees transformation with their corresponding
+illustration we link trees transformations with their corresponding
 functions. Each tree is its own data declaration:
 
 \begin{figure}
@@ -3681,19 +3673,18 @@ functions. Each tree is its own data declaration:
 \texttt{PTerm} represents the surface level language, it is desugared
 into \texttt{RawImp} which is a front end for our typed terms
 \texttt{Term}. \texttt{Term} is indexed over the list of variables in
-context, which helps avoid indexing errors (specially when manipulating
+context, which helps avoid indexing errors (especially when manipulating
 de Bruijn indices) and makes explicit the rules of context extension
 (for example when binding arguments under a lambda). \texttt{CExp} is a
 tree of compiled expressions ready for codegen, it keeps the index for
-variables from \texttt{Term} and the index is then dropped when
-variables indices are replaced by their names in \texttt{NamedCExp}.
-Which is the same but with all variable substitutions from context
-performed.
+variables from \texttt{Term} and the index is then dropped when variable
+indices are replaced by their names in \texttt{NamedCExp}. Which is the
+same but with all variable substitutions from context performed.
 
 Since our changes do not touch the type checker or elaborator, they do
-not change the \texttt{checkTerm} stage. However, since we do need
-information from the control flow and the access to the case tree we
-need to perform our changes between \texttt{Term} and \texttt{CExp}.
+not change the \texttt{checkTerm} stage. However, we do need information
+from the control flow and we do need to access the case tree to perform
+our changes between \texttt{Term} and \texttt{CExp}.
 
 \hypertarget{adding-the-mutating-flag}{%
 \subsubsection{Adding the Mutating
@@ -3763,8 +3754,8 @@ There is however a very important limitation:
 \paragraph{Only mutate uses of the constructor we are matching
 on}\label{only-mutate-uses-of-the-constructor-we-are-matching-on}}
 
-The following program would see no mutation, since the constructor we
-are matching does not appear on the right-hand side.
+The following program would see no mutation since the constructor we are
+matching does not appear on the right-hand side.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -3778,7 +3769,7 @@ are matching does not appear on the right-hand side.
 This is to avoid implicit allocation when we mutate a constructor which
 has more fields than the one we are given. Or avoid memory corruption
 when updating a field outside of the allocated buffer. Imagine
-representing data as a records:
+representing data as records:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -3800,8 +3791,8 @@ attempting to mutate the second argument of a constructor that has only
 one.
 
 Ideally, our compiler would be able to identify data declaration that
-share the same layout and replace allocation for them by mutation, but
-for the purpose of this thesis we will ignore this optimisation and
+shares the same layout and replace allocation for them by mutation, but
+for the purpose of this thesis, we will ignore this optimisation and
 carefully design our benchmarks to make use of it.
 
 \hypertarget{mutating-instruction-in-the-ast}{%
@@ -3814,7 +3805,7 @@ AST}\label{mutating-instruction-in-the-ast}}
 \caption{Location of backend AST changes (CMut)}
 \end{figure}
 
-For this to work we need to add a new constructor to the AST that
+For this to work, we need to add a new constructor to the AST that
 represents \emph{compiled} programs \texttt{CExp}. We add the
 constructor \texttt{CMut}:
 
@@ -3827,7 +3818,7 @@ constructor \texttt{CMut}:
 It represents mutation of a variable identified by its \texttt{Name} in
 context and using the argument list to modify each of its fields.
 
-Once this change reached the code generator, it needs to output a
+Once this change reaches the code generator, it needs to output a
 \texttt{mutation} instruction rather than an allocation operation. Here
 is the code for the scheme backend:
 
@@ -3854,9 +3845,9 @@ is the code for the scheme backend:
 
 As you can see we generate one instruction per field to mutate as well
 as the final instruction to \emph{return} the value passed in argument,
-this to keep the semantics of the existing assumption about constructing
-new values. The function \texttt{schMutate} is then called to output the
-scheme program from a \texttt{NamedCExp}:
+this is to keep the semantics of the existing assumption about
+constructing new values. The function \texttt{schMutate} is then called
+to output the scheme program from a \texttt{NamedCExp}:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -3898,12 +3889,12 @@ the following will not compile:
 \end{Shaded}
 
 This is because \texttt{(+)} is not declared linearly. This could be
-solved with an alternative standard library which is purely linear.
+solved with an alternative standard library that exposes a linear API.
 
-The second condition is easy to implement as a boolean check, but
-requires a bit of thought about \emph{where} to put it. Since the next
-condition requires us to change the \emph{case tree} of our function
-definition, we are going to add the boolean check in
+The second condition is easy to implement as a boolean test but requires
+a bit of thought about \emph{where} to put it. Since the next condition
+requires us to change the \emph{case tree} of our function definition,
+we are going to add the boolean test in
 \texttt{src/TTImp/ProcessDef.idr} which will process every definition of
 our program.
 
@@ -3946,9 +3937,9 @@ the changes and change it slightly:
 This version makes use of a temporary variable \texttt{arg} instead of
 matching on the function argument directly. The calls to constructors
 \texttt{ValTwice} and \texttt{ValOnce} allocate memory, but we want to
-replace them by \texttt{CMut} which will reuse memory. In order to reuse
-the memory, space taken by \texttt{arg} they need to store a pointer to
-it. This is reflected in the signature of
+replace them with \texttt{CMut} which will reuse memory. To reuse the
+memory space taken by \texttt{arg} they need to store a pointer to it.
+This is reflected in the signature of
 \texttt{CMut\ :\ FC\ -\textgreater{}\ (ref\ :\ Name)\ -\textgreater{}\ List\ (CExp\ vars)\ -\textgreater{}\ CExp\ vars}
 where the second argument is the reference to reuse.
 
@@ -4030,9 +4021,9 @@ function:
 \end{Highlighting}
 \end{Shaded}
 
-Which will replace every application of a data constructor by one which
-has a reference to the variable we mutate \texttt{ref} as indicated by
-the \texttt{Just\ ref}.
+Which will replace every application of a data constructor with one
+which has a reference to the variable we mutate \texttt{ref} as
+indicated by the \texttt{Just\ ref}.
 
 This refers to another AST change in how the \texttt{Term} data type
 needs to change in order to track which data constructors are allowed to
@@ -4108,8 +4099,8 @@ The last step of this chain of changes is to inspect the
 \subsubsection{Ensuring Uniqueness}\label{ensuring-uniqueness}}
 
 The final piece of the puzzle is to ensure variables are \emph{unique},
-and for this we are going to use the property that linear variables that
-have been constructed in scope are unique:
+and for this, we are going to use the property that linear variables
+that have been constructed in scope are unique:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -4149,7 +4140,7 @@ shortcomings:
 \tightlist
 \item
   The unique tag isn't removed from \texttt{DataCon} once they leave the
-  let scope. Allowing the mutating mechanist to trigger on values that
+  let scope, allowing the mutating mechanism to trigger on values that
   have been shared.
 \item
   The \texttt{\%mutating} flag does not emit compile errors when used on
@@ -4164,13 +4155,13 @@ shortcomings:
 \end{itemize}
 
 Thankfully, most of those limitations are a matter of user ergonomics
-and not program performance. Which means we are now ready to benchmark
+and not program performance. This means we are now ready to benchmark
 linear programs!
 
 \hypertarget{methodology}{%
 \subsection{Methodology}\label{methodology}}
 
-In order to test the effectiveness of this optimisation I ran a series
+In order to test the effectiveness of this optimisation, I ran a series
 of benchmarks using a modified version of the Idris2 compiler. The
 changes are summarised in section
 \ref{subsec:implementing-optimisation}. This section presents the
@@ -4199,16 +4190,16 @@ Our expectation is that our programs will run faster for 2 reasons:
 Indeed, allocation will always be slower than simply updating parts of
 the memory. Memory allocation requires finding a new memory spot that is
 big enough, writing to it, and then returning the pointer to that new
-memory address. Sometimes, allocation of big buffers will trigger a
+memory address. Sometimes, allocating big buffers will trigger a
 reshuffling of the memory layout because the available memory is so
 fragmented that a single continuous buffer of memory of the right size
 isn't available.
 
 Obviously, all those behaviours are hidden from the programmer through
-\emph{virtual memory} which allows to completely ignore the details of
-how memory is actually laid out and shared between processes. Operating
-systems do a great job at sandboxing memory space and avoid unsafe
-memory operations. Still, those operations happen, and make the
+\emph{virtual memory} which allows us to completely ignore the details
+of how memory is actually laid out and shared between processes.
+Operating systems do a great job at sandboxing memory space and avoiding
+unsafe memory operations. Still, those operations happen and make the
 performance of a program a lot less consistent than if we did not have
 to deal with it.
 
@@ -4217,14 +4208,14 @@ memory pressure and trigger garbage collection during the runtime of our
 program. A consequence of automatic garbage collection is that memory
 management is now outside the control of the programmer and can trigger
 at times that are undesirable for the purpose of the program. Real-time
-applications in particular suffer from garbage collection because it
+applications, in particular, suffer from garbage collection because it
 makes the performance of the program hard to predict, an unacceptable
-trade-off when execution need to be guaranteed to run within a small
-time-frame.
+trade-off when execution needs to be guaranteed to run within a small
+time frame.
 
 In order to test our performance hypothesis, I am going to use a series
 of programs and run them multiple times under different conditions in
-order to measure different aspects of performance. Typically, observing
+order to measure different aspects of performance - typically, observing
 how memory usage and runtime varies depending on the optimisation we
 use.
 
@@ -4253,7 +4244,7 @@ will test our hypothesis.
 \hypertarget{fibonacci}{%
 \subsubsection{Fibonacci}\label{fibonacci}}
 
-Our first benchmark is the traditional fibonacci exercise. Three
+Our first benchmark is the traditional Fibonacci exercise. Three
 variants of this program will be used:
 
 \begin{itemize}
@@ -4348,12 +4339,12 @@ this version to have a similar performance profile as the first one.
 \end{Highlighting}
 \end{Shaded}
 
-For those three programs we expect the first one to be the fastest, and
+For those three programs, we expect the first one to be the fastest, and
 the second one to be the slowest. Our third implementation should be
 identical in terms of performance as the first one.
 
 We will run our benchmarks on the Chez backend, and we know that the
-chez backend is already really smart. With that in mind we expect the
+Chez runtime is already really smart. With that in mind, we expect the
 absolute difference between the three results to be within tens of
 seconds of each other. However, since what we are removing is not
 running time per se, but \emph{garbage collection uncertainty} we expect
@@ -4379,11 +4370,11 @@ from \texttt{Int} to \texttt{Int}.
 \end{Highlighting}
 \end{Shaded}
 
-Similarly to the deforestation algorithm we are going to see if we can
+Similar to the deforestation algorithm, we are going to see if we can
 improve the performance of linear functions across data structures like
 lists. When mapping across a list with a function of type
 \texttt{a\ -\textgreater{}\ a} that only mutates the input we can avoid
-allocating an entire new list.
+allocating an entirely new list.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -4403,7 +4394,7 @@ using the signature
 will not compile because \texttt{n\ +\ 1} does not consume \texttt{n}
 linearly.
 
-In a similar fashion as the fibonacci benchmark, we are not removing
+In a similar fashion as the Fibonacci benchmark, we are not removing
 running time, but uncertainty from having the garbage collector running.
 This means the second implementation should have a smaller standard
 deviation than the first one.
@@ -4411,7 +4402,7 @@ deviation than the first one.
 \hypertarget{a-sat-solver}{%
 \subsubsection{A SAT solver}\label{a-sat-solver}}
 
-Sat solvers themselves aren't necessarily considered ``real-world''
+SAT solvers themselves aren't necessarily considered ``real-world''
 programs in the same sense that compilers or servers are. However, they
 have two benefits:
 
@@ -4421,8 +4412,8 @@ have two benefits:
   You can make them arbitrarily slow to make the performance improvement
   very obvious by increasing the size of the problem to solve.
 \item
-  They still represent a real-life case study where a program need to be
-  fast and where traditional functional programming has fallen short
+  They still represent a real-life case study where a program needs to
+  be fast and where traditional functional programming has fallen short
   compared to imperative programs.
 \end{itemize}
 
@@ -4446,7 +4437,7 @@ safely inline this function since
 \texttt{(\textgreater{}\textgreater{}=)} will only be composed with
 itself, since it takes linear arguments the inlining when composed is
 safe. This time we expect the running time to be consistently smaller.
-Additionally, since we can make SAT problems arbitrary complicated we
+Additionally, since we can make SAT problems arbitrarily complicated we
 can have a benchmark that measures in tens of seconds and record
 differences in runtime in the order of seconds rather than
 micro-seconds.
@@ -4457,9 +4448,9 @@ micro-seconds.
 Results are only useful if they are reproducible. This section aims to
 inform the reader of the conditions in which the benchmarks have been
 run and which tools have been used in order to collect and analyse the
-results. This with the goal to make those results reproducible by you,
-the reader, either exactly by re-using the tools, or by replicating the
-functionality of the tools presented.
+results. This is with the goal to make those results reproducible by
+you, the reader, either exactly by re-using the tools, or by replicating
+the functionality of the tools presented.
 
 Since the benchmarks have to be run many times and have to be run in an
 identical and reproducible setting I've written a program that will do
@@ -4471,14 +4462,14 @@ results in a CSV file.
 Additionally, as mentioned in section 6.1, we are going to be very
 interested in the standard deviation of our results, this is why I have
 written another tool to analyse the results: Idris-stats. Idris-stats
-ingests the csv files from Idris-bench and outputs statistical
-information about it in another csv file.
+ingests the CSV file from Idris-bench and outputs statistical
+information about it in another CSV file.
 
 \hypertarget{idris-bench}{%
 \subsubsection{Idris-bench}\label{idris-bench}}
 
 Idris-bench is our benchmarking program and can be found at
-\url{https://github.com/andrevidela/idris-bench}.
+\protect\hyperlink{}{https://github.com/andrevidela/idris-bench}.
 
 Idris-bench takes the following arguments:
 
@@ -4487,7 +4478,7 @@ Idris-bench takes the following arguments:
 \item
   \texttt{-p\ \textbar{}\ -\/-path\ IDRIS\_PATH} the path to the idris2
   compiler we want to use to compile our tests. This is used to test the
-  different between different compiler versions. Typically, running the
+  difference between different compiler versions. Typically, running the
   benchmarks with our optimised compiler and running the benchmarks
   without our optimisation can be done by calling the program with two
   different versions of the idris2 compiler.
@@ -4514,13 +4505,13 @@ Idris-bench takes the following arguments:
 \end{itemize}
 
 A hidden feature of it is the ability to use the \texttt{realRunTime}
-function in order to parse the result of the time spend executing a
+function in order to parse the result of the time spent executing a
 program. This requires recompiling the Idris-bench binary and is not
-documented. The reason for this, is that it makes the assumption that
-the scheme backend has been modified to wrap programs into a call to
+documented. The reason for this is that it makes the assumption that the
+scheme backend has been modified to wrap programs into a call to
 \texttt{(time\ ...)}, which is not a feature officially supported by the
-compiler but which prove to be useful to output the time spend executing
-\emph{after} the startup time from the Chez runtime.
+compiler but which proves to be useful to output the time spent
+executing \emph{after} the startup time from the Chez runtime.
 
 \hypertarget{idris-stats}{%
 \subsubsection{Idris-stats}\label{idris-stats}}
@@ -4541,7 +4532,7 @@ name of second benchmark, result1, result2, result3, etc
 name of final benchmark, result1, result2, result3, etc
 \end{verbatim}
 
-The first column is ignored for the purpose of data analysis.
+The first column is ignored for the purpose of our data analysis.
 
 For each row we compute the minimum value, the maximum value, the mean,
 the standard deviation and the standard error to compare data sets with
@@ -4572,7 +4563,7 @@ all benchmarks at a steady 1.4Ghz.
 The benchmarks have been run using Idris-bench using the following
 options:
 
-For 100 runs of the fibonacci suite:
+For 100 runs of the Fibonacci suite:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -4596,31 +4587,31 @@ Which outputs its analysis to stdout.
 \hypertarget{results-discussion}{%
 \subsection{Results \& Discussion}\label{results-discussion}}
 
-In this section I will present the results obtained from the compiler
-optimisation. The methodology and the nature of the benchmarks is
+In this section, I will present the results obtained from the compiler
+optimisation. The methodology and the nature of the benchmarks are
 explained in the ``Benchmarks \& methodology'' section.
 
-Our first test suite runs the benchmark on our 3 fibonacci variants and
+Our first test suite runs the benchmark on our 3 Fibonacci variants and
 our list mapping. As a refresher, they are as follows:
 
 \begin{itemize}
 \tightlist
 \item
   The first one is implemented traditionally, carrying at all times 2
-  Ints representing the last 2 fibonacci numbers and computing the next
+  Ints representing the last 2 Fibonacci numbers and computing the next
   one
 \item
-  Second one boxes those Ints into a datatype that will be allocated
+  The second one boxes those Ints into a datatype that will be allocated
   every time it is changed
 \item
-  The Third one will make use of our optimisation and mutate the boxes
+  The third one will make use of our optimisation and mutate the boxes'
   values instead of discarding the old one and allocating a new one.
 \end{itemize}
 
-The hypothesis is as follows: Chez is a very smart and efficient
-runtime, and our example is small and simple. Because of this, we expect
-a small difference in runtime between those three versions. However, the
-memory pressure incurred in the second example will trigger the garbage
+The hypothesis is as follows: Chez is a very smart and efficient runtime
+and our example is small and simple. Because of this, we expect a small
+difference in runtime between those three versions. However, the memory
+pressure incurred in the second example will trigger the garbage
 collector to interfere with execution and introduce uncertainty in the
 runtime of the program. This should translate in our statistical model
 as a greater standard deviation in the results rather than a strictly
@@ -4638,16 +4629,16 @@ Here are the results of running our benchmarks 100 times in a row:
   maximum       & 2.161514000s & 2.195077000s & 2.401920000s \\ 
   average       & 2.034254150s & 2.072595070s & 2.118569650s \\
   std deviation & 0.014956143s & 0.014123120s & 0.040342991s \\
-  srd error     & 0.001495614s & 0.001412312s & 0.004034299s \\
+  std error     & 0.001495614s & 0.001412312s & 0.004034299s \\
 \end{tabular}
 
 As you can see the results are not consistent with our predictions, the
-version which aims to remove allocations has higher average and a higher
-standard deviation. Additionally, the allocating version and the
+version which aims to remove allocations has a higher average and a
+higher standard deviation. Additionally, the allocating version and the
 original implementation without allocation have \emph{very similar}
-performance profiles. In order to ensure our results are not the product
-of random fluctuations, we are going to run the same benchmark 1000
-times instead of 100.
+performance profiles. To ensure our results are not the product of
+random fluctuations, we are going to run the same benchmark 1000 times
+instead of 100.
 
 \begin{tabular}{ l | c c c }
           & no allocation & with allocation & with optimisation\\
@@ -4656,7 +4647,7 @@ times instead of 100.
   maximum       & 2.300934000s & 2.476587000s & 2.535437000s \\ 
   average       & 2.059218259s & 2.109659476s & 2.186972896s \\
   std deviation & 0.054314868s & 0.066678467s & 0.083581987s \\
-  srd error     & 0.001752092s & 0.002150918s & 0.002696193s \\
+  std error     & 0.001752092s & 0.002150918s & 0.002696193s \\
 \end{tabular}
 
 Now the standard error has gone down for our optimised program compared
@@ -4678,20 +4669,19 @@ following program:
 \end{Highlighting}
 \end{Shaded}
 
-Takes 0.3 seconds to run despite doing nothing, this time is the startup
-time and can go up to 0.3 seconds. Therefore, we expect more accurate
-results with less standard deviation and an average of about 0.3 seconds
-shorter.
+Takes 0.3 seconds to run despite doing nothing. Therefore, we expect
+more accurate results with less standard deviation and an average of
+about 0.3 seconds shorter.
 
 \hypertarget{fibonacci-without-startup-time}{%
 \paragraph{Fibonacci without startup
 time}\label{fibonacci-without-startup-time}}
 
-In order to remove the startup time, we are going to change the emitted
-bytecode to wrap our main function inside a time-measuring function
+To remove the startup time, we are going to change the emitted bytecode
+to wrap our main function inside a time-measuring function
 \texttt{(time\ \ldots{})}\footnote{This change also has the benefit of
   reporting how many memory allocations and garbage collection cycles
-  happen and it turns out that our optimis.ed program allocates exactly
+  happen and it turns out that our optimised program allocates exactly
   as much memory as the non-allocating one.}. Since the timer won't
 start until the program is ready to run the startup time will be
 eliminated. Running our empty program we get the following (expected)
@@ -4711,7 +4701,7 @@ as before. Running our statistical analysis gives us those results:
   maximum       & 1.88141296s & 1.977075901s & 2.152951106s \\ 
   average       & 1.67685517s & 1.744737712s & 1.786299514s  \\
   std deviation & 0.30236463s & 0.030303518s & 0.047403167s \\
-  srd error     & 0.00975369s & 0.000977532s & 0.001529134s \\
+  std error     & 0.00975369s & 0.000977532s & 0.001529134s \\
 \end{tabular}
 
 The results do not differ significantly from the previous measurement,
@@ -4734,10 +4724,10 @@ results are measured in milliseconds rather than seconds. This should be
 enough to prevent the runtime from identifying the loop and performing
 its optimisation.
 
-In order to reduce the running time from seconds to milliseconds we
-simply change the loop count from \texttt{8*10\^{}6} to
-\texttt{8*10\^{}4} reducing it by two orders of magnitude reduces the
-running time accordingly.
+To reduce the running time from seconds to milliseconds, we simply
+change the loop count from \texttt{8*10\^{}6} to \texttt{8*10\^{}4}
+reducing it by two orders of magnitude reduces the running time
+accordingly.
 
 \begin{tabular}{ l | c c c }
           & no allocation & with allocation & with optimisation\\
@@ -4748,20 +4738,20 @@ running time accordingly.
   std deviation & 0.000154925s & 0.000189282s & 0.000230448s \\
   srd error     & 0.000004997s & 0.000006105s & 0.000007433s \\\end{tabular}
 
-This data suggests that Racket was not able to optimise the allocating
-version, and given two program, one that allocates and one that does
+This data suggests that Scheme was not able to optimise the allocating
+version, and given two programs, one that allocates and one that does
 not, the second one is faster. Our hypothesis about variance has been
-contradicted throughout with the variance of the this run being again
-higher than the other two.
+contradicted throughout with the variance of this run being again higher
+than the other two.
 
 \hypertarget{mapping-a-list}{%
 \subsubsection{Mapping a list}\label{mapping-a-list}}
 
-In this exercise we are going to aggregate the result of our control and
-our experimental run of \texttt{map}; which increments a list of number
+In this example, we are going to aggregate the result of our control and
+our experimental run of \texttt{map}; which increments a list of numbers
 and returns its size. We ran each program 100 times using
 \texttt{idris-bench}. As before we expect a negligible average speedup
-but a significant decrease in variance.
+but a significant decrease in standard deviation.
 
 \begin{tabular}{ l | c c c }
           & allocating map & mutating map \\
@@ -4770,15 +4760,15 @@ but a significant decrease in variance.
   maximum       & 0.005067636s & 0.001308711s \\ 
   average       & 0.001146103s & 0.000685042s \\
   std deviation & 0.000470263s & 0.000140894s\\
-  srd error     & 0.000047026s & 0.000014089s\\
+  std error     & 0.000047026s & 0.000014089s\\
 \end{tabular}
 
-This time our performance improvements are more noticeable in average
+This time our performance improvements are more noticeable on average
 than before. Though it might not be significant since it runs in tens of
 microseconds.
 
 \hypertarget{sat-solver}{%
-\subsubsection{Sat solver}\label{sat-solver}}
+\subsubsection{SAT solver}\label{sat-solver}}
 
 For this benchmark, we didn't use \texttt{idris-bench} rather we
 compiled two versions of \texttt{isat}
@@ -4796,10 +4786,10 @@ input (in appendix \ref{sec:appendix}) :
   srd error     & 0.05835s & 0.05164s \\
 \end{tabular}
 
-The results show an improvement of about 3.3\% in average which is
+The results show an improvement of about 3.3\% on average which is
 encouraging. This small improvement could be taken further by
 implementing \emph{safe inlining by default} on every variable that is
-linearly bound, since it does not hurt performance. And hope that the
+linearly bound since it does not hurt performance and hoping that the
 inlined function will be subject to further optimisations after being
 inlined.
 
@@ -4808,14 +4798,14 @@ inlined.
 
 \label{subsec:discussion}
 
-Overall the results show that linear types do have an effect on
-performance, however the results also show that those benefits are not
-strictly superior to other forms of optimisations such as JIT nor
-automatic unboxing of newtypes (another feature that we have not
-discussed here, but subsumes our mutation optimisation when the data
-constructor has only one case with one value in it).
+Overall the results show that linear types do affect performance,
+however, the results also show that those benefits are not strictly
+superior to other forms of optimisations such as JIT or automatic
+unboxing of newtypes (another feature that we have not discussed here,
+but which subsumes our mutation optimisation when the data constructor
+has only one case with one value in it).
 
-Particularly in the fibonacci example, despite our best efforts, we see
+Particularly in the Fibonacci example, despite our best efforts, we see
 that removing allocation through linear types impedes performance by
 making other forms of optimisation harder to detect.
 
@@ -4836,8 +4826,8 @@ From this I draw two conclusions:
   programs so that we can replicate the performance gains from mapping
   lists and inlining values.
 \item
-  In order to show drastic improvement in runtime using linearity we
-  need to drastically change the nature of the memory model.
+  To show drastic improvement in runtime using linearity we need to
+  drastically change the nature of the memory model.
 \end{itemize}
 
 Both those ideas have been explored in section \ref{sec:qtt-ergonomics}
@@ -4859,7 +4849,7 @@ with the use of trampolines in the runtime, instead of plain recursion.
 
 \label{sec:future-work}
 
-Work never ends and progress instils more progress, while a lot of
+Work never ends and progress instils more progress. While a lot of
 ground has been covered, exploring the forest of all knowledge not only
 yields results, it uncovers new paths to explore. This section outlines
 additional work that could be done in order to ease the use of linear
@@ -4869,10 +4859,9 @@ types as well as make use of them for additional functionality.
 \subsection{Enlarging the Scope}\label{enlarging-the-scope}}
 
 The optimisation of section \ref{sec:performance} only looks at the
-\emph{immediate} scope of let bindings. Technically speaking, there is
-nothing preventing our optimisation from working with a more indirect
-scoping mechanism. Indeed, the following should trigger our
-optimisation:
+\emph{immediate} scope of let bindings. Technically speaking, nothing is
+preventing our optimisation from working with a more indirect scoping
+mechanism. Indeed, the following should trigger our optimisation:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -4891,7 +4880,7 @@ optimisation:
 \end{Shaded}
 
 But it will not because \texttt{defaultVal} is not a constructor, it's a
-function call that returns itself a constructor.
+function call that itself returns a constructor.
 
 One implementation strategy would be to wait for the compiler to inline
 those definitions and then run our optimiser without further changes.
@@ -4901,25 +4890,25 @@ in plain data constructors and replace the entire call chain by the
 constructor itself, and then run our optimisation.
 
 While both those strategies are valid they incur a cost in terms of
-complexity and compile time that may not be worth the effort in terms of
+complexity and compile-time that may not be worth the effort in terms of
 performance results. They could be hidden behind a -O3 flag, but that
-kind of effort is probably better spend in making the ergonomics of
-linear types more streamlined in order to help those optimisations be
-more commonplace.
+kind of effort is probably better spent in making the ergonomics of
+linear types more streamlined to help those optimisations be more
+commonplace.
 
 \hypertarget{making-linearity-easier-to-use}{%
 \subsection{Making Linearity Easier to
 Use}\label{making-linearity-easier-to-use}}
 
-There are multiple barriers that make linearity harder to use than one
-might expect. They roughly end up in two buckets:
+Multiple barriers make linearity harder to use than one might expect.
+They roughly end up in two buckets:
 
 \begin{itemize}
 \tightlist
 \item
   I want to use linearity but I cannot
 \item
-  I have a linear variable and that's actually annoying
+  I have a linear variable and that's bothersome
 \end{itemize}
 
 \hypertarget{not-linear-enough}{%
@@ -4981,9 +4970,9 @@ A similar problem occurs with interfaces
 > got (0 ty : Type) -> Type
 \end{verbatim}
 
-One way to solve those issues would be to have linearity polymorphism
-and be able to abstract over linearity annotations. For example, the map
-function could be written as:
+One way to solve those issues would be to have \emph{linearity
+polymorphism} and be able to abstract over linearity annotations. For
+example, the map function could be written as:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -5001,9 +4990,9 @@ rewritten as:
 \begin{Highlighting}[]
 \NormalTok{interface }\KeywordTok{forall}\NormalTok{ l }\OperatorTok{.} \DataTypeTok{Functor}\NormalTok{ (m }\OperatorTok{:}\NormalTok{ (l \_ }\OperatorTok{:} \DataTypeTok{Type}\NormalTok{) }\OtherTok{{-}\textgreater{}} \DataTypeTok{Type}\NormalTok{) }\KeywordTok{where}
     \OperatorTok{...}
-\NormalTok{interface }\KeywordTok{forall}\NormalTok{ l }\OperatorTok{.} \DataTypeTok{Functor}\NormalTok{ \{l\} m }\OtherTok{⇒} \DataTypeTok{Applicative}\NormalTok{ \{l\} m }\KeywordTok{where}
+\NormalTok{interface }\KeywordTok{forall}\NormalTok{ l }\OperatorTok{.} \DataTypeTok{Functor}\NormalTok{ \{l\} m ⇒ }\DataTypeTok{Applicative}\NormalTok{ \{l\} m }\KeywordTok{where}
     \OperatorTok{...}
-\NormalTok{interface }\KeywordTok{forall}\NormalTok{ l }\OperatorTok{.} \DataTypeTok{Applicative}\NormalTok{ \{l\} m }\OtherTok{⇒} \DataTypeTok{Monad}\NormalTok{ \{l\} m }\KeywordTok{where}
+\NormalTok{interface }\KeywordTok{forall}\NormalTok{ l }\OperatorTok{.} \DataTypeTok{Applicative}\NormalTok{ \{l\} m ⇒ }\DataTypeTok{Monad}\NormalTok{ \{l\} m }\KeywordTok{where}
     \OperatorTok{...}
 \end{Highlighting}
 \end{Shaded}
@@ -5027,8 +5016,8 @@ optimisation strategy to be \emph{100\%} linear in every aspect. We also
 mentioned how this is a problem to implement basic functionality like
 \texttt{drop} and \texttt{copy}, but those are artificial examples,
 rarely does a programmer need to call \texttt{copy} or \texttt{drop} in
-industrial applications. In the following example I will show how linear
-types hold back programming and how QTT can fix it.
+industrial applications. In the following example, I will show how
+linear types hold back programming and how QTT can fix it.
 
 A common scenario when debugging effectful code is sprinkling around log
 statements hoping that running the program will give insight into how
@@ -5038,12 +5027,12 @@ it's running.
 \begin{Highlighting}[]
 \KeywordTok{do}\NormalTok{ datas }\OtherTok{\textless{}{-}}\NormalTok{ getData arg1 arg2}
    \DataTypeTok{Just}\NormalTok{ success }\OtherTok{\textless{}{-}}\NormalTok{ trySomething datas (options}\OperatorTok{.}\NormalTok{memoized)}
-     \OperatorTok{|}\NormalTok{ \_ }\OtherTok{⇒} \FunctionTok{pure} \OperatorTok{$}\NormalTok{ returnError }\StringTok{"couldn\textquotesingle{}t make it work"}
+     \OperatorTok{|}\NormalTok{ \_ ⇒ }\FunctionTok{pure} \OperatorTok{$}\NormalTok{ returnError }\StringTok{"couldn\textquotesingle{}t make it work"}
    \KeywordTok{case} \OperatorTok{!}\NormalTok{(check\_timestamp success) }\KeywordTok{of}
-      \DataTypeTok{Safe}\NormalTok{ t v }\OtherTok{⇒}\NormalTok{ functionCall t v}
-      \DataTypeTok{Unsafe}\NormalTok{ t }\OtherTok{⇒}\NormalTok{ trySomethingElse t}
-      \DataTypeTok{UnSynchronized}\NormalTok{ v }\OtherTok{⇒}\NormalTok{ functionCall }\DecValTok{0}\NormalTok{ v }
-      \DataTypeTok{Invalid} \OtherTok{⇒} \FunctionTok{pure} \OperatorTok{$}\NormalTok{ returnError }\StringTok{"failed to check"}
+      \DataTypeTok{Safe}\NormalTok{ t v ⇒ functionCall t v}
+      \DataTypeTok{Unsafe}\NormalTok{ t ⇒ trySomethingElse t}
+      \DataTypeTok{UnSynchronized}\NormalTok{ v ⇒ functionCall }\DecValTok{0}\NormalTok{ v }
+      \DataTypeTok{Invalid}\NormalTok{ ⇒ }\FunctionTok{pure} \OperatorTok{$}\NormalTok{ returnError }\StringTok{"failed to check"}
 \end{Highlighting}
 \end{Shaded}
 
@@ -5054,17 +5043,17 @@ print statement without getting a linearity error:
 \begin{Highlighting}[]
 \KeywordTok{do}\NormalTok{ datas }\OtherTok{\textless{}{-}}\NormalTok{ getData arg1 arg2}
    \DataTypeTok{Just}\NormalTok{ success }\OtherTok{\textless{}{-}}\NormalTok{ trySomething datas (options}\OperatorTok{.}\NormalTok{memoized)}
-     \OperatorTok{|}\NormalTok{ \_ }\OtherTok{⇒} \FunctionTok{pure} \OperatorTok{$}\NormalTok{ returnError }\StringTok{"couldn\textquotesingle{}t make it work"}
+     \OperatorTok{|}\NormalTok{ \_ ⇒ }\FunctionTok{pure} \OperatorTok{$}\NormalTok{ returnError }\StringTok{"couldn\textquotesingle{}t make it work"}
    \FunctionTok{putStrLn} \OperatorTok{$} \FunctionTok{show}\NormalTok{ success }
    \CommentTok{{-}{-}                 ▲}
    \CommentTok{{-}{-}                 └── One use here}
    \CommentTok{{-}{-}   And one use there ──┐}
    \CommentTok{{-}{-}                       ▼}
    \KeywordTok{case} \OperatorTok{!}\NormalTok{(check\_timestamp success) }\KeywordTok{of}
-      \DataTypeTok{Safe}\NormalTok{ t v }\OtherTok{⇒}\NormalTok{ functionCall t v}
-      \DataTypeTok{Unsafe}\NormalTok{ t }\OtherTok{⇒}\NormalTok{ trySomethingElse t}
-      \DataTypeTok{UnSynchronized}\NormalTok{ v }\OtherTok{⇒}\NormalTok{ functionCall }\DecValTok{0}\NormalTok{ v }
-      \DataTypeTok{Invalid} \OtherTok{⇒} \FunctionTok{pure} \OperatorTok{$}\NormalTok{ returnError }\StringTok{"failed to check"}
+      \DataTypeTok{Safe}\NormalTok{ t v ⇒ functionCall t v}
+      \DataTypeTok{Unsafe}\NormalTok{ t ⇒ trySomethingElse t}
+      \DataTypeTok{UnSynchronized}\NormalTok{ v ⇒ functionCall }\DecValTok{0}\NormalTok{ v }
+      \DataTypeTok{Invalid}\NormalTok{ ⇒ }\FunctionTok{pure} \OperatorTok{$}\NormalTok{ returnError }\StringTok{"failed to check"}
 \end{Highlighting}
 \end{Shaded}
 
@@ -5079,7 +5068,7 @@ following program:
 \begin{Highlighting}[]
 \KeywordTok{do}\NormalTok{ datas }\OtherTok{\textless{}{-}}\NormalTok{ getData arg1 arg2}
    \DecValTok{2}\NormalTok{ (}\DataTypeTok{Just}\NormalTok{ success) }\OtherTok{\textless{}{-}}\NormalTok{ trySomething datas (options}\OperatorTok{.}\NormalTok{memoized)}
-     \OperatorTok{|}\NormalTok{ \_ }\OtherTok{⇒} \FunctionTok{pure} \OperatorTok{$}\NormalTok{ returnError }\StringTok{"couldn\textquotesingle{}t make it work"}
+     \OperatorTok{|}\NormalTok{ \_ ⇒ }\FunctionTok{pure} \OperatorTok{$}\NormalTok{ returnError }\StringTok{"couldn\textquotesingle{}t make it work"}
    \FunctionTok{putStrLn} \OperatorTok{$} \FunctionTok{show}\NormalTok{ success}
    \KeywordTok{case} \OperatorTok{!}\NormalTok{(check\_timestamp success) }\KeywordTok{of}
 \NormalTok{       …}
@@ -5094,18 +5083,18 @@ read-only variables to fix the same problem:
 \begin{Highlighting}[]
 \KeywordTok{do}\NormalTok{ datas }\OtherTok{\textless{}{-}}\NormalTok{ getData arg1 arg2}
    \DataTypeTok{Just}\NormalTok{ success }\OtherTok{\textless{}{-}}\NormalTok{ trySomething datas (options}\OperatorTok{.}\NormalTok{memoized)}
-     \OperatorTok{|}\NormalTok{ \_ }\OtherTok{⇒} \FunctionTok{pure} \OperatorTok{$}\NormalTok{ returnError }\StringTok{"couldn\textquotesingle{}t make it work"}
+     \OperatorTok{|}\NormalTok{ \_ ⇒ }\FunctionTok{pure} \OperatorTok{$}\NormalTok{ returnError }\StringTok{"couldn\textquotesingle{}t make it work"}
    \FunctionTok{putStrLn} \OperatorTok{$} \FunctionTok{show} \OperatorTok{\&}\NormalTok{success }\CommentTok{{-}{-} this doesn\textquotesingle{}t count as a use}
    \KeywordTok{case} \OperatorTok{!}\NormalTok{(check\_timestamp success) }\KeywordTok{of}
 \end{Highlighting}
 \end{Shaded}
 
 We've seen that read-only variables have been a topic for linearly typed
-system with \emph{Linear Types can change the
+systems with \emph{Linear Types can change the
 world}\cite{linear_types_update}, where linear read-only variables are
 allowed within some restriction on their scope. It would be interesting
 to implement a similar set of rules, adapted for QTT, that allows
-multiple use of linear types as long as they are read-only and our
+multiple uses of linear types as long as they are read-only and our
 \texttt{\%mutating} implementation to differentiate between read-only
 and mutating functions.
 
@@ -5114,7 +5103,7 @@ and mutating functions.
 \hypertarget{conclusion}{%
 \section{Conclusion}\label{conclusion}}
 
-I have learned a lot during this master project. Not only about linear
+I have learned a lot during this Master's project. Not only about linear
 types, quantitative types, graded modal types, containers, categories,
 optimisation techniques, benchmarking, program safety, compiler design
 and implementation, etc.
@@ -5123,7 +5112,7 @@ But I also learned about myself and how I best approach research topics.
 Research is not an activity to carry out alone, it is not a mindless
 job, and it is not limited to the ivory tower that is higher education.
 I learned that I do my best research work when I explore the paths that
-opens in the forest of knowledge after clearing one of them. I would
+open in the forest of knowledge after clearing one of them. I would
 never have understood graded modalities if I wasn't distracted by
 semirings. I would never have understood semirings if I wasn't
 frustrated porting some code to Idris2 and noticing the limitations of
@@ -5134,11 +5123,11 @@ tests for my performance improvements.
 While this behaviour is dangerous, in that it can result in nothing of
 value produced, it also taught me the importance of having a strong and
 reliable support group. Friends, both in research and otherwise, focus
-the mind, which results in a more focused work. Finally, research is not
+the mind, which results in more focused work. Finally, research is not
 something one can \emph{tune out of}, thoughts linger, ideas sprawl out
 of control and new connections are drawn during every event of daily
 life. I have discovered that sharing my research through teaching has
-been an extremely effective mean to contextualise my work and to put
+been an extremely effective means to contextualise my work and to put
 boundaries between personal and research life.
 
 Quantitative types, just like me, still have a long way to go. The work
@@ -5147,37 +5136,37 @@ to be done, for them to become commercially significant. In line with
 the two main topics of this thesis, I think the areas quantitative types
 need to improve are ergonomics and performance. They are two pain points
 that functional programming has failed to fix, while other programming
-language have been successful basing their entire value proposition upon
-them (Rust, Javascript, Python, etc).
+languages have been successful basing their entire value proposition
+upon them (Rust, Javascript, Python, etc).
 
 Ergonomics have made huge strides forward with interactive development
-environment like we find in Idris, Agda or Coq. But their gimmicks
-cannot sustain the behemoth of features that commercially successful
+environments as we find in Idris, Agda or Coq. But their gimmicks cannot
+sustain the behemoth of features that commercially successful
 programming languages showcase. Linear types won't turn the balance
 around, but they will help in some important aspects: ensuring APIs
 contracts and protocols are respected, showing this information in the
-type, and therefore in the documentation, help the compiler generate
-more helpful error messages, and help guide new users navigate complex
-programs by being explicit about usage rules that were left unwritten
-before.
+type, and therefore in the documentation, helping the compiler generate
+more useful error messages, and helping guide new users in navigating
+complex programs by being explicit about usage rules that were left
+unwritten before.
 
 Until the recent development in resource tracking technologies, it
 wasn't clear how the concept of performance could be approached and
 studied in functional programming. We did not have a way to get a hold
-of it. But just like we did not have a way to get a hold onto
-side-effect until monads, I strongly suspect quantitative types will
-allow us to turn performance from an abstract concept into a concrete
-term in a programming language, just like \texttt{IO} became a concrete
-term in functional programming languages.
+of it. But just like we did not have a way to get a hold on side-effect
+until monads, I strongly suspect quantitative types will allow us to
+turn performance from an abstract concept into a concrete term in a
+programming language, just like \texttt{IO} became a concrete term in
+functional programming languages.
 
 I hope you enjoyed reading this report on linear and quantitative types
 as much as I did writing it. I wish I explored the paths of knowledge
-that I discovered with more depth. Yet, I am satisfied with the result
-of this year of exploration. I come out of it with a strong intuition
-about quantitative types, how to use them and how to improve them. I
-strongly believe this thesis, as the first detailed exploration of
-quantitative types used in practice with dependent types, will be the
-start of a series of great discoveries.
+that I discovered in more depth. Yet, I am satisfied with the result of
+this year of exploration. I come out of it with a strong intuition about
+quantitative types, how to use them, and how to improve them. I strongly
+believe this thesis, as the first detailed exploration of quantitative
+types used in practice with dependent types, will be the start of a
+series of great discoveries.
 
 \newpage
 
@@ -5198,7 +5187,7 @@ times or at most infinitely many times (aka no restrictions)
 \hypertarget{co-monad-comonad}{%
 \subsection{Co-monad / Comonad}\label{co-monad-comonad}}
 
-A mathematical structure that allows to encapsulate \emph{access to a
+A mathematical structure that allows us to encapsulate \emph{access to a
 context}. For example, \texttt{List} is a Comonad because it allows us
 to work in a context where the value we manipulate is one out of many
 available to us, those other values available to us are the other values
@@ -5241,7 +5230,7 @@ than W and greater than Z
 \subsection{Linear types}\label{linear-types-1}}
 
 Linear types describe values that can be used exactly 0 times, exactly 1
-time or have no restrictions put on them
+time, or have no restrictions put on them
 
 \hypertarget{linearity-multiplicity}{%
 \subsection{Linearity / Multiplicity}\label{linearity-multiplicity}}
@@ -5262,7 +5251,7 @@ difference between those three terms:
 \hypertarget{monad}{%
 \subsection{Monad}\label{monad}}
 
-A mathematical structure that allows to encapsulate \emph{change in a
+A mathematical structure that allows us to encapsulate \emph{change in a
 context}. For example, \texttt{Maybe} is a Monad because it creates a
 context in which the values we are manipulating might be absent.
 Formally, a monad is a triple between an indexed set \(X_i\) a
@@ -5289,19 +5278,19 @@ operators are symetric.
 \hypertarget{syntax-1}{%
 \subsection{Syntax}\label{syntax-1}}
 
-The structure of some piece of information, usual in the form of
+The structure of some piece of information, usually in the form of
 \emph{text}. Syntax itself does not convey any meaning. Imagine this
 piece of data:
 
 \includegraphics{Zero.jpg}
 
-We can define a syntactic rules that allow us to express this circle,
-here is one: all shapes that you can draw without lifting your pen or
-making angles. From this definition lots of values are allowed,
-including \textbar, -, O but not + for example because there is a 90º
-angle between two bars. Is it supposed to be the letter ``O'', the
-number ``0'' the outline of a planet? The back of the head of a stick
-figure from the back?
+We can define syntactic rules that allow us to express this circle, here
+is one: all shapes that you can draw without lifting your pen or making
+angles. From this definition lots of values are allowed, including
+\texttt{\textbar{}}, \texttt{-}, \texttt{O} but not \texttt{+} because
+there is a 90º angle between two bars. Is it supposed to be the letter
+``O'', the number ``0'' the outline of a planet? The back of the head of
+a stick figure from the back?
 
 \hypertarget{semantics-1}{%
 \subsection{Semantics}\label{semantics-1}}
@@ -5332,128 +5321,11 @@ easily.
 \subsection{Type theory}\label{type-theory}}
 
 \emph{Type theory} is the abstract study of type systems, most often in
-the context of pure, mathematical, logic. When we say ``a Type Theory'',
+the context of pure, mathematical logic. When we say ``a Type Theory'',
 we mean a specific set of logical rules that can be implemented into a
 \emph{Type System}.
 
 \bibliography{bibliography} 
 \bibliographystyle{ieeetr}
-
-\hypertarget{appendix}{%
-\section{Appendix}\label{appendix}}
-
-\label{sec:appendix}
-
-\hypertarget{sat-solver-benchmark-input}{%
-\subsection{Sat solver benchmark
-input}\label{sat-solver-benchmark-input}}
-
-\begin{verbatim}
-c FILE: aim-50-1_6-yes1-4.cnf
-c
-c SOURCE: Kazuo Iwama, Eiji Miyano (miyano@cscu.kyushu-u.ac.jp),
-c          and Yuichi Asahiro
-c
-c DESCRIPTION: Artifical instances from generator by source.  Generators
-c              and more information in sat/contributed/iwama.
-c
-c NOTE: Satisfiable
-c
-p cnf 50 80
-16 17 30 0
--17 22 30 0
--17 -22 30 0
-16 -30 47 0
-16 -30 -47 0
--16 -21 31 0
--16 -21 -31 0
--16 21 -28 0
--13 21 28 0
-13 -16 18 0
-13 -18 -38 0
-13 -18 -31 0
-31 38 44 0
--8 31 -44 0
-8 -12 -44 0
-8 12 -27 0
-12 27 40 0
--4 27 -40 0
-12 23 -40 0
--3 4 -23 0
-3 -23 -49 0
-3 -13 -49 0
--23 -26 49 0
-12 -34 49 0
--12 26 -34 0
-19 34 36 0
--19 26 36 0
--30 34 -36 0
-24 34 -36 0
--24 -36 43 0
-6 42 -43 0
--24 42 -43 0
--5 -24 -42 0
-5 20 -42 0
-5 -7 -20 0
-4 7 10 0
--4 10 -20 0
-7 -10 -41 0
--10 41 46 0
--33 41 -46 0
-33 -37 -46 0
-32 33 37 0
-6 -32 37 0
--6 25 -32 0
--6 -25 -48 0
--9 28 48 0
--9 -25 -28 0
-19 -25 48 0
-2 9 -19 0
--2 -19 35 0
--2 22 -35 0
--22 -35 50 0
--17 -35 -50 0
--29 -35 -50 0
--1 29 -50 0
-1 11 29 0
--11 17 -45 0
--11 39 45 0
--26 39 45 0
--3 -26 45 0
--11 15 -39 0
-14 -15 -39 0
-14 -15 -45 0
-14 -15 -27 0
--14 -15 47 0
-17 17 40 0
-1 -29 -31 0
--7 32 38 0
--14 -33 -47 0
--1 2 -8 0
-35 43 44 0
-21 21 24 0
-20 29 -48 0
-23 35 -37 0
-2 18 -33 0
-15 25 -45 0
-9 14 -38 0
--5 11 50 0
--3 -13 46 0
--13 -41 43 0
-\end{verbatim}
-
-\hypertarget{sat-solver-benchmark-output}{%
-\subsection{Sat solver benchmark
-output}\label{sat-solver-benchmark-output}}
-
-\begin{verbatim}
-,,,,,,,,,,,,average,variance,,,,,,,,,
-normal,5m 51s 878ms,5m 52s 27ms,6m 29s 173ms,6m 35s 147ms,6m 34s 151ms,6m 35s 888ms,6m 36s 815ms,6m 35s 960ms,6m 33s 967ms,6m 34s 964ms,6m 4s 124ms,6m 24s 9ms,,,,,,,,,,
-mutat,6m 27s 894ms,6m 21s 214ms,6m 10s 131ms,6m 27s 206ms,6m 4s 71ms,6m 25s 495ms,6m 27s 899ms,6m 13s 771ms,5m 51s 541ms,5m 47s 685ms,5m 48s 300ms,6m 11s 382ms,,,,,,,,,,
-normal milisec,351878,352027,389173,395147,394151,395888,396815,395960,393967,394964,364124,384008.545454545,337134927.872727,,,,,,,,,
-mutating milisec,387894,381214,370131,387206,364071,385495,387899,373771,351541,347685,348300,371382.454545455,264041625.672727,,,,,,,,,
-normal milisec * 10^5,3.51878,3.52027,3.89173,3.95147,3.94151,3.95888,3.96815,3.9596,3.93967,3.94964,3.64124,3.84008545454545,0.0337134927872727,,,,,,,,,
-mutating milisec * 10⁵,3.87894,3.81214,3.70131,3.87206,3.64071,3.85495,3.87899,3.73771,3.51541,3.47685,3.483,3.71382454545455,0.0264041625672727,,,,,,,,,
-\end{verbatim}
 
 \end{document}
